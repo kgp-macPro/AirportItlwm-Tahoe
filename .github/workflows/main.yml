@@ -1,0 +1,60 @@
+name: Source and build validation
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: source-build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Source, host models and UNQUALIFIED CI build
+    runs-on: macos-15-intel
+    timeout-minutes: 45
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          submodules: false # Baseline has no gitlinks; exact standalone SDK below.
+      - name: Verify available toolchain and source identity
+        run: |
+          test -d "$DEVELOPER_DIR"
+          xcodebuild -version
+          python3 tools/verify_source.py
+          git diff --check
+      - name: Prepare pinned standalone MacKernelSDK
+        run: |
+          python3 tools/prepare_sdk.py
+          python3 tools/verify_source.py --sdk
+      - name: Host ownership, reset and drain regressions
+        run: python3 tools/run_host_tests.py
+      - name: Build Tahoe Release x86_64 (not the official qualified artifact)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/ci-evidence
+          build_root="$GITHUB_WORKSPACE/build/tahoe"
+          xcodebuild -project itlwm.xcodeproj \
+            -target AirportItlwm-Tahoe -configuration Release ARCHS=x86_64 \
+            SYMROOT="$build_root/products" OBJROOT="$build_root/intermediates" \
+            SHARED_PRECOMPS_DIR="$build_root/precompiled" \
+            CLANG_MODULE_CACHE_PATH="$build_root/module-cache" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build \
+            2>&1 | tee build/ci-evidence/BUILD_LOG.txt
+          python3 tools/verify_source.py --sdk
+      - name: Label and package unqualified CI output
+        run: python3 tools/package_ci.py build/tahoe/products/Release/Tahoe/AirportItlwm.kext build/ci-evidence
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: CI-BUILD-NOT-PHYSICALLY-VALIDATED-${{ github.sha }}
+          path: build/ci-evidence/
+          if-no-files-found: error
+          retention-days: 7

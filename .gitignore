@@ -1,0 +1,8 @@
+.DS_Store
+DerivedData
+build
+xcuserdata
+project.xcworkspace
+FwBinary.cpp
+*.pyc
+MacKernelSDK
