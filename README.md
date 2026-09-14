@@ -138,6 +138,12 @@ Supplies the specific Tahoe Modern Wireless framework environment used for KGP�
 
 AI-assisted work was performed under continuous human direction, physical testing, review and editorial control. No endorsement by OpenAI or any referenced developer/project is implied. Inherited licenses and upstream attribution remain intact. See [CREDITS.md](CREDITS.md).
 
-## Community
+## Reporting results
 
-[GitHub issues](https://github.com/kgp-macPro/AirportItlwm-Tahoe/issues) are available for project-specific reports. Include adapter/PCI identity, macOS build, executable hash/UUID, framework environment and the configured mapper setting together with observed runtime state. Remove personal identifiers from shared captures.
+For discussion, test results and user reports, please use the dedicated AirportItlwm-Tahoe threads:
+
+- [InsanelyMac – AirportItlwm-Tahoe 1.0.0 – Intel Wi-Fi with AppleVTD/IOMMU and AWDL Baseline Support on macOS Tahoe](https://www.insanelymac.com/forum/topic/363194-airportitlwm-tahoe-100-%E2%80%93-intel-wi-fi-with-applevtdiommu-and-awdl-baseline-support-on-macos-tahoe/)
+
+- [TonyMacx86 – AirportItlwm-Tahoe 1.0.0 – Intel Wi-Fi with AppleVTD/IOMMU and AWDL Baseline Support on macOS Tahoe](https://www.tonymacx86.com/threads/airportitlwm-tahoe-1-0-0-intel-wi-fi-with-applevtd-iommu-and-awdl-baseline-support-on-macos-tahoe.333361/)
+
+When reporting results, please include adapter/PCI identity, macOS build, exact executable SHA-256/UUID, framework environment, configured mapper setting and observed runtime mapper state. Distinguish captured evidence from physical observations and remove personal identifiers from shared captures.
