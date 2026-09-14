@@ -1,6 +1,6 @@
 # AirportItlwm-Tahoe 1.0.0
 
-**Release-qualified Intel AX210 Wi-Fi for macOS Tahoe, including AppleVTD operation.** The distributed bundle remains `AirportItlwm.kext`; identifier `com.zxystd.AirportItlwm`; executable `AirportItlwm`; version `1.0.0`.
+**Intel Wi-Fi for macOS Tahoe with AppleVTD/system IOMapper support, active AWDL/P2P integration, AirPlay and Screen Mirroring.** Intel AX210 / PCI `8086:2725` is the physically qualified reference adapter for 1.0.0; this does not automatically qualify other Intel adapters. The distributed bundle remains `AirportItlwm.kext`; identifier `com.zxystd.AirportItlwm`; executable `AirportItlwm`; version `1.0.0`.
 
 ## Validated functionality
 
@@ -48,4 +48,4 @@ awdl0 and tested AirPlay/Screen Mirroring do not establish complete AWDL or Appl
 
 ## Attribution
 
-Foundation: zxystd / OpenIntelWireless and DexterSLamb. Project development/research: KGP / kgp-macPro, ChatGPT by OpenAI and OpenAI Codex CLI under continuous human direction, physical testing, review and editorial control. References: NorthKoreanNoodles / maddog860 (independently published direct VIF attach/publication) and Mieze / IntelLucy (mapper-aware DMA/lifetime prior art). The implementation remains source-native; reference authors are not claimed as co-developers or endorsers. See [CREDITS.md](CREDITS.md).
+Foundation: zxystd / OpenIntelWireless and DexterSLamb. Project development/research: KGP / kgp-macPro, ChatGPT by OpenAI and OpenAI Codex CLI under continuous human direction, physical testing, review and editorial control. References: NorthKoreanNoodles / maddog860 (independently published direct VIF attach/publication) and [Mieze](https://github.com/Mieze) / [IntelLucy](https://github.com/Mieze/IntelLucy) (mapper-aware DMA/lifetime prior art). The implementation remains source-native; reference authors are not claimed as co-developers or endorsers. See [CREDITS.md](CREDITS.md).

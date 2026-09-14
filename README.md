@@ -6,11 +6,11 @@
 
 # AirportItlwm-Tahoe 1.0.0
 
-**Intel AX210 Wi-Fi on macOS Tahoe, including qualified operation with the macOS AppleVTD/system IOMapper environment available, active AWDL/P2P integration, bidirectional AirPlay and Screen Mirroring.**
+**Intel Wi-Fi on macOS Tahoe with AppleVTD/system IOMapper support, active AWDL/P2P integration, bidirectional AirPlay and Screen Mirroring — physically qualified on Intel AX210.**
 
 AirportItlwm-Tahoe is a separate Intel Wi-Fi driver based on AirportItlwm. It provides the project’s qualified OpenCore configuration with AppleVTD available, using the restored Ventura legacy wireless environment supplied by **[OCLP-CustoMac](https://github.com/kgp-macPro/OCLP-CustoMac)**. The installed bundle remains **`AirportItlwm.kext`**.
 
-**AirportItlwm-Tahoe 1.0.0 is release-qualified.** The same frozen binary passed both release gates on Tahoe 26.6.2. No rebuild occurred between AppleVTD, conventional comparison, and additional 26.7 tests. AX210 is the physically qualified adapter; other Intel devices and platforms are not qualified merely because upstream source contains support for them.
+**AirportItlwm-Tahoe 1.0.0 is release-qualified.** The same frozen binary passed both release gates on Tahoe 26.6.2. No rebuild occurred between AppleVTD, conventional comparison, and additional 26.7 tests. Intel AX210 / PCI `8086:2725` is the physically qualified reference adapter; other Intel devices and platforms are not qualified merely because upstream source contains support for them.
 
 [Installation](INSTALL.md) · [Release notes](RELEASE_NOTES_1.0.0.md) · [Qualification](docs/QUALIFICATION.md) · [Build](docs/BUILD.md) · [Source repository](https://github.com/kgp-macPro/AirportItlwm-Tahoe)
 
@@ -116,7 +116,7 @@ Source baseline and continued AirportItlwm development forming the direct upstre
 
 Independent technical contribution and prior implementation of the Ventura direct AWDL VIF create / attach → alias → registerService approach. This specific approach was independently investigated, validated in the AirportItlwm-Tahoe environment and adopted narrowly for the AWDL/P2P interface-publication path; it is not authorship of AirportItlwm-Tahoe as a whole.
 
-### Mieze / IntelLucy
+### [Mieze](https://github.com/Mieze) / [IntelLucy](https://github.com/Mieze/IntelLucy)
 
 Important architectural prior art for Tahoe AppleVTD, mapper-aware DMA handling and packet-lifetime management. AirportItlwm-Tahoe does not claim copied IntelLucy source or co-development.
 

@@ -14,7 +14,7 @@
 ## Technical references and acknowledgements
 
 - **NorthKoreanNoodles / maddog860** — Independently identified and published the Ventura direct VIF attach/publication approach. The narrow `attach(this)` → `fAWDLInterface` assignment → `registerService()` method was independently validated in this project under Tahoe + AppleVTD and adopted for the final AWDL baseline.
-- **Mieze / IntelLucy** — Prior art informing mapper-aware DMA/lifetime design. The implementation remains source-native; this does not imply copied code or co-development.
+- **[Mieze](https://github.com/Mieze) / [IntelLucy](https://github.com/Mieze/IntelLucy)** — Prior art informing mapper-aware DMA/lifetime design. The implementation remains source-native; this does not imply copied code or co-development.
 
 ## AI assistance
 
