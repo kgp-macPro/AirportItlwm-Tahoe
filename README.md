@@ -6,6 +6,49 @@
 
 # AirportItlwm-Tahoe 1.0.0
 
+> [!IMPORTANT]
+> ## Experimental Public BETA Test Build — B1-ZC4-SUPPLY
+>
+> A new **AirportItlwm-Tahoe B1-ZC4-SUPPLY** build is now officially being distributed for **public BETA validation**.
+>
+> The primary validation target is:
+>
+> **macOS Tahoe + `DisableIoMapper=false` + active AppleVTD**
+>
+> The new candidate uses a renewable mapper-backed direct-packet RX supply and has passed sustained-load physical validation on KGP's **Intel AX210** under macOS Tahoe 26.7.1.
+>
+> Additional testing is especially requested on:
+>
+> **AX201 / AX210 / AX211**
+>
+> particularly on systems capable of sustained several-hundred-Mbps throughput.
+>
+> **This is an experimental BETA test build, not a final release.**
+>
+> - The corresponding B1-ZC4-SUPPLY source changes are **not yet merged into this repository**.
+> - The BETA binary is **not published as a GitHub Release asset**.
+> - The frozen and release-qualified **AirportItlwm-Tahoe 1.0.0** release remains unchanged.
+> - The current GitHub source continues to represent the published 1.0.0 release, not B1-ZC4-SUPPLY.
+>
+> **B1-ZC4-SUPPLY identity**
+>
+> - LC_UUID: `DF3C8104-D6B5-35D7-8487-D2867293207A`
+> - Executable SHA-256: `235bdbfed116f82004619e2d7d065dddc683e4b2fc46c0a8f5832e7dc9286d96`
+>
+> **Direct BETA binary download (forum-hosted):**
+>
+> [Download AirportItlwm.kext.zip](https://www.tonymacx86.com/attachments/airportitlwm-kext-zip.600406/)
+>
+> Please verify the executable SHA-256 above before testing.
+>
+> Full background and testing instructions:
+>
+> - **InsanelyMac:**  
+>   https://www.insanelymac.com/forum/topic/363194-airportitlwm-tahoe-100-%E2%80%93-intel-wi-fi-with-applevtdiommu-and-awdl-baseline-support-on-macos-tahoe/#findComment-2855021
+>
+> - **TonyMacx86:**  
+>   https://www.tonymacx86.com/threads/airportitlwm-tahoe-1-0-0-intel-wi-fi-with-applevtd-iommu-and-awdl-baseline-support-on-macos-tahoe.333361/post-2438596
+
 **Intel Wi-Fi on macOS Tahoe with AppleVTD/system IOMapper support, active AWDL/P2P integration, bidirectional AirPlay and Screen Mirroring — physically qualified on Intel AX210.**
 
 AirportItlwm-Tahoe is a separate Intel Wi-Fi driver based on AirportItlwm. It provides the project’s qualified OpenCore configuration with AppleVTD available, using the restored Ventura legacy wireless environment supplied by **[OCLP-CustoMac](https://github.com/kgp-macPro/OCLP-CustoMac)**. The installed bundle remains **`AirportItlwm.kext`**.
@@ -53,7 +96,7 @@ Reference hardware: **Intel AX210, PCI 8086:2725**, x86_64 Custom Mac, with the 
 
 Active `awdl0`, Apple P2P integration and the tested features do not establish complete AWDL or Apple Continuity restoration. Reported packet samples had no kernel drops; that is a sample result, not an unrestricted packet-loss guarantee.
 
-**Important scope note:** This kext does **not** claim to restore AirDrop, Continuity Camera, or Personal Hotspot. These features, and Intel BE200 support, remain future development gates. Broader post-1.0.0 development is planned to resume starting in October 2026; this is a development plan, not a promised completion date or feature order.
+**Important scope note:** This kext does **not** claim to restore AirDrop, Continuity Camera, or Personal Hotspot. These features, and Intel BE200 support, remain future development gates. Broader post-1.0.0 development resumed in October 2026; the current B1-ZC4-SUPPLY public BETA work focuses specifically on AppleVTD RX performance, packet lifetime and sustained-load robustness. This does not imply a promised feature order or completion date for other future work.
 
 ## Current KGP EFI distribution
 
@@ -61,11 +104,17 @@ The [current public KGP EFI distribution](https://www.insanelymac.com/forum/file
 
 ## Installation with OpenCore
 
-Use the official release asset’s **`AirportItlwm.kext`** with the framework environment described in [INSTALL.md](INSTALL.md). Keep the bundle, executable and identifier unchanged; use only one AirportItlwm variant for the device. Preserve a working recovery setup. This project does not install itself, configure the bootloader, or provide a substitute for required OCLP root patches.
+For the frozen **AirportItlwm-Tahoe 1.0.0 release**, use the official release asset’s **`AirportItlwm.kext`** with the framework environment described in [INSTALL.md](INSTALL.md).
+
+For **B1-ZC4-SUPPLY public BETA testing**, use only the forum-hosted BETA binary identified at the top of this README and verify its executable SHA-256 before testing.
+
+Keep the bundle, executable and identifier unchanged; use only one AirportItlwm variant for the device. Preserve a working recovery setup. This project does not install itself, configure the bootloader, or provide a substitute for required OCLP root patches.
 
 ## Build from this source
 
-This repository already contains the complete source; internal experimental patches are not build inputs. Acquire the pinned standalone MacKernelSDK dependency, then build **only** `AirportItlwm-Tahoe / Release / x86_64` using [BUILD.md](docs/BUILD.md). The supported `fw_gen` dependency generates firmware source during a source build.
+This repository contains the complete source corresponding to the frozen **AirportItlwm-Tahoe 1.0.0 release**. The experimental **B1-ZC4-SUPPLY** source changes are not yet merged into this repository and are therefore not build inputs here.
+
+Acquire the pinned standalone MacKernelSDK dependency, then build **only** `AirportItlwm-Tahoe / Release / x86_64` using [BUILD.md](docs/BUILD.md). The supported `fw_gen` dependency generates firmware source during a source build.
 
 High Sierra, Mojave, Catalina, Big Sur, Monterey, Ventura, Sonoma 14.0 and Sonoma 14.4 targets remain preserved. They are not additional 1.0.0 qualified products.
 
