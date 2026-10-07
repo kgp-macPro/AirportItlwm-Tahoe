@@ -41,6 +41,9 @@
 >
 > Please verify the executable SHA-256 above before testing.
 >
+> **GPLv2 corresponding source availability:**  
+> The complete corresponding source code for this **B1-ZC4-SUPPLY** BETA binary is available upon written request in accordance with GPLv2 Section 3(b). This written offer is valid for at least three years and is available to any third party for a charge no more than the cost of physically performing source distribution. Please contact me through GitHub or one of the linked forum threads to request the complete machine-readable source corresponding to this exact binary.
+>
 > Full background and testing instructions:
 >
 > - **InsanelyMac:**  
