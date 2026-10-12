@@ -120,6 +120,9 @@
 #include <net/ethernet.h>
 
 #include <sys/_task.h>
+#include <IOKit/IOMapper.h>
+#include <kern/thread_call.h>
+#include <IOKit/IOLocks.h>
 #include <sys/pcireg.h>
 #include <net80211/ieee80211_priv.h>
 
@@ -203,7 +206,7 @@ int ItlIwx::rx2GBegin(struct iwx_softc *sc, struct iwx_rx_data *data, mbuf_t m)
         // retained mbuf, delivery, or change to the stock data[cur] selection.
         const uint16_t tagIndex = __atomic_load_n(&fRx2GLive.record[slot].word[15], __ATOMIC_RELAXED) & 0xffff;
         rx2GWord(slot, 28, tagIndex);
-        if (tagIndex < IWX_RX_MQ_RING_COUNT) {
+        if (tagIndex == cur) { // B1-ZC: only the completed/synchronized slot.
             mbuf_t other = sc->rxq.data[tagIndex].m;
             if (other && mbuf_len(other) >= 8 && mbuf_data(other)) {
                 rx2GWord(slot, 29, static_cast<uint32_t>(mbuf_len(other)));
@@ -257,19 +260,20 @@ void ItlIwx::rx2HError(unsigned slot, unsigned stage, IOReturn result)
 // Reusable backing primitive; RX/TX/command publication and retirement policies
 // remain separate. This helper has no ring, mbuf, callback or provider ownership.
 static IOReturn allocatePacketBacking2H(struct iwx_dma_info *dma, size_t size,
-                                        unsigned alignment, unsigned *stage)
+                                        unsigned alignment, unsigned *stage, IOMapper *mapper = nullptr,
+                                        bool coherentPayload = false)
 {
     *stage = 1;
     IOBufferMemoryDescriptor *bmd = IOBufferMemoryDescriptor::inTaskWithPhysicalMask(
-        kernel_task, kIODirectionInOut | kIOMemoryPhysicallyContiguous | kIOMapInhibitCache,
-        size, DMA_BIT_MASK(64));
+        kernel_task, kIODirectionInOut | (mapper ? (kIOMemoryHostPhysicallyContiguous | kIOMemoryMapperNone) : kIOMemoryPhysicallyContiguous) |
+        (coherentPayload ? 0 : kIOMapInhibitCache), size, DMA_BIT_MASK(64));
     if (!bmd) return kIOReturnNoMemory;
     *stage = 2;
     IOReturn result = bmd->prepare();
     if (result != kIOReturnSuccess) { bmd->release(); return result; }
     *stage = 3;
     IODMACommand *cmd = IODMACommand::withSpecification(kIODMACommandOutputHost64,
-        64, 0, IODMACommand::kMapped, 0, alignment);
+        64, 0, IODMACommand::kMapped, 0, alignment, mapper);
     if (!cmd) { bmd->complete(); bmd->release(); return kIOReturnNoMemory; }
     *stage = 4;
     result = cmd->setMemoryDescriptor(bmd);
@@ -282,7 +286,8 @@ static IOReturn allocatePacketBacking2H(struct iwx_dma_info *dma, size_t size,
     IODMACommand::Segment64 seg = {};
     result = cmd->gen64IOVMSegments(&offset, &seg, &count);
     if (result == kIOReturnSuccess && (count != 1 || offset != size || seg.fLength != size ||
-        !alignment || (seg.fIOVMAddr & (alignment - 1)) || !bmd->getBytesNoCopy())) {
+        !alignment || (seg.fIOVMAddr & (alignment - 1)) || !bmd->getBytesNoCopy() ||
+        (coherentPayload && cmd->getIOMemoryDescriptor()!=bmd))) {
         *stage = 6;
         result = kIOReturnBadArgument;
     }
@@ -305,6 +310,139 @@ static IOReturn allocatePacketBacking2H(struct iwx_dma_info *dma, size_t size,
     return kIOReturnSuccess;
 }
 
+
+// BOOTFIX1 mapper routing uses already-published state only.
+// BOOTFIX1: inspect only already-resolved IOKit state; never wait for a mapper.
+// IOMapper.h/XNU encode pending states in low bits (1/2), resolved absence as 0.
+// AppleVTD::adjustDevice publishes per-device iommu-selection and iommu-parent.
+bool ItlIwx::dma5Select()
+{
+    if (fDma5Selected) return true;
+    if (!pci.pa_tag || !getMainWorkLoop() || getMainWorkLoop()->inGate()) return false;
+    boot5Mark(10, "DMA routing entered");
+    IOMapper *system = __atomic_load_n(&IOMapper::gSystem, __ATOMIC_ACQUIRE);
+    if (reinterpret_cast<uintptr_t>(system) & 3U) {
+        boot5Mark(10, "unresolved system mapper; attach refused", 1); return false;
+    }
+    OSObject *parent = pci.pa_tag->copyProperty("iommu-parent");
+    OSObject *selection = pci.pa_tag->copyProperty("iommu-selection");
+    OSData *data = OSDynamicCast(OSData, selection);
+    uint32_t policy = 0;
+    bool validPolicy = !selection;
+    if (data && data->getLength() == sizeof(policy)) {
+        memcpy(&policy, data->getBytesNoCopy(), sizeof(policy));
+        validPolicy = (policy & ~31U) == 0;
+    }
+    IOMapper *device = OSDynamicCast(IOMapper, parent);
+    bool mapped = false, resolved = false;
+    if (!system) {
+        // Resolved kNoMapper AND no device mapper/pending device policy.
+        resolved = !parent && validPolicy && policy == 0;
+    } else if (system->metaCast("AppleVTD") && system->getPageSize() && validPolicy && data) {
+        if (policy == 0 && !parent) {
+            mapped = resolved = true; // ZC4's implicit system-mapper contract.
+        } else if ((policy & 1U) && device && device->metaCast("AppleVTDDeviceMapper") && device->getPageSize()) {
+            mapped = resolved = true; // Already published device domain; no lookup.
+        }
+    }
+    if (__atomic_load_n(&IOMapper::gSystem, __ATOMIC_ACQUIRE) != system) resolved = false;
+    if (mapped && com.sc_device_family < IWX_DEVICE_FAMILY_AX210) resolved = false;
+    if (resolved) {
+        fDma5Mapper = device; if (device) device->retain();
+        fDma5UseMapped = mapped;
+        fDma5Provider = pci.pa_tag; fDma5Provider->retain();
+        fDma5Selected = true;
+    }
+    if (parent) parent->release();
+    if (selection) selection->release();
+    if (!resolved) { boot5Mark(10, "device DMA policy unresolved; attach refused", 2); return false; }
+    pci.pa_tag->setProperty("KGP_ZC5_DMA_MODE", mapped ? "mapped RX/TX" : "original Dexter RX/TX");
+    pci.pa_tag->setProperty("KGP_RX_EXPERIMENT", "AirportItlwm-Tahoe-B1-ZC5-BOOTFIX1");
+    boot5Mark(11, mapped ? "DMA routing completed: mapped" : "DMA routing completed: original Dexter");
+    return true;
+}
+
+void ItlIwx::boot5Mark(unsigned stage, const char *message, int error)
+{
+    fBoot5Stage = stage;
+    IOLog("itlwm: B1-ZC5-BOOTFIX1 attach stage=%u error=%d %s\n", stage, error, message);
+}
+
+// Lifecycle-only fence. Installed only after failed hardware terminal while
+// the same workloop gate excludes RX/TX callbacks. Pending interrupt work must
+// not invoke Dexter's unchanged parser/completion after uncertain STOP_MASTER.
+void ItlIwx::boot5ClosedInterrupt(OSObject *, IOInterruptEventSource *, int)
+{
+}
+
+void ItlIwx::boot5ConventionalStop()
+{
+    if (!dma5Mapped()) com.sc_ic.ic_if.if_flags &= ~IFF_RUNNING;
+}
+
+IOReturn ItlIwx::boot5ConventionalRun(OSObject *owner, void *generation, void *, void *, void *)
+{
+    auto *that = static_cast<ItlIwx *>(owner);
+    if (that->dma5Mapped() || unsigned(uintptr_t(generation)) != unsigned(that->com.sc_generation) ||
+        __atomic_load_n(&that->fPc1Suspended, __ATOMIC_ACQUIRE) ||
+        __atomic_load_n(&that->fPc1Fault, __ATOMIC_ACQUIRE)) return kIOReturnNotReady;
+    that->com.sc_ic.ic_if.if_flags |= IFF_RUNNING;
+    return kIOReturnSuccess;
+}
+
+void ItlIwx::boot5ConventionalFault()
+{
+    if (!dma5Mapped() && com.sc_ih) {
+        com.sc_ih->setAction(reinterpret_cast<IOEventSource::Action>(boot5ClosedInterrupt));
+        com.sc_ih->disable();
+    }
+}
+
+void ItlIwx::boot5RemoveInterrupt()
+{
+    if (!com.sc_ih) return;
+    com.sc_ih->disable();
+    if (fBoot5InterruptAdded && pci.workloop) pci.workloop->removeEventSource(com.sc_ih);
+    fBoot5InterruptAdded = false;
+    com.sc_ih->release(); com.sc_ih = nullptr;
+}
+
+bool ItlIwx::dma5Terminal() const
+{
+    return !fDma5Published || (fPc1Suspended && fPc1LastMaster && fPc1TerminalEpoch &&
+        fPc1TerminalEpoch==fPc1ResetEpoch && !__atomic_load_n(&fPc1Fault,__ATOMIC_ACQUIRE));
+}
+void ItlIwx::dma5Report(bool force)
+{
+    if (!pci.pa_tag || (!force && (++fDma5Notifs & 255))) return;
+    const uint64_t now=time2GNow();
+    if (!force && now-fDma5LastReport<1000000000ULL) return;
+    fDma5LastReport=now;
+    uint64_t wire[40]={5,++fDma5Reports,unsigned(dma5Mapped()),now};
+    for (unsigned i=0;i<32;++i) wire[4+i]=__atomic_load_n(&fTx5Telemetry[i],__ATOMIC_RELAXED);
+    wire[36]=__atomic_load_n(&fPc1Fault,__ATOMIC_ACQUIRE);
+    wire[37]=__atomic_load_n(&fTx2IBlocked,__ATOMIC_ACQUIRE);
+    wire[38]=fPc1ResetEpoch; wire[39]=fPc1TerminalEpoch;
+    rxZcTelemetry(wire); // Copy bounded metadata; the RX worker publishes outside the gate.
+}
+bool ItlIwx::tx5RingReleasable(const struct iwx_tx_ring *ring) const
+{
+    if (com.sc_device_family<IWX_DEVICE_FAMILY_AX210 || !fDma5Published) return true;
+    if (__atomic_load_n(&fPc1Fault,__ATOMIC_ACQUIRE)) return false;
+    if (ring==&com.txq[IWX_DQA_CMD_QUEUE]) return true;
+    if (fPc1Suspended && fPc1LastMaster) return true;
+    for (unsigned i=0;i<ring->ring_count;++i) if (ring->data[i].m) return false;
+    return true; // No submitted packet storage in this ring.
+}
+void ItlIwx::tx5Return(unsigned token)
+{
+    if (!getMainWorkLoop()->inGate() || !token || token>kTx2ICount ||
+        fTx5FreeCount>=kTx2ICount || fTx2I[token-1].state!=Tx2IFree) {
+        tx2IError(token,50,uint32_t(kIOReturnBadArgument));
+        __atomic_store_n(&fTx2IBlocked,1U,__ATOMIC_RELEASE); return;
+    }
+    fTx5Free[fTx5FreeCount++]=uint16_t(token);
+}
 
 // PC1: reset recovery uses the hardware stop/reset boundary AND the same
 // workloop gate as ordinary TX and RX notifications. Quarantined payloads are
@@ -442,14 +580,21 @@ void ItlIwx::tx2IError(unsigned token, unsigned stage, uint32_t result)
 bool ItlIwx::tx2IAllocate()
 {
     fTx2IStats[0] = 1;
+    if (!dma5Mapped()) {
+        for (unsigned i=0;i<kTx2ICount;++i) fTx2I[i].state=Tx2IFree;
+        __atomic_store_n(&fTx2IReady,1U,__ATOMIC_RELEASE);
+        return true; // Keep PC1 admission, but allocate no mapped packet backing.
+    }
     for (unsigned i = 0; i < kTx2ICount; ++i) {
         unsigned stage = 0;
-        IOReturn result = allocatePacketBacking2H(&fTx2I[i].dma, kTx2ISize, PAGE_SIZE, &stage);
+        IOReturn result = allocatePacketBacking2H(&fTx2I[i].dma, kTx2ISize, PAGE_SIZE, &stage, fDma5Mapper, true);
         if (result != kIOReturnSuccess) {
             tx2IError(i + 1, stage, uint32_t(result)); return false;
         }
         __atomic_store_n(&fTx2I[i].state, uint32_t(Tx2IFree), __ATOMIC_RELEASE);
         ++fTx2IStats[2];
+        fTx5Free[fTx5FreeCount++]=uint16_t(i+1);
+        ++fTx5Telemetry[12]; ++fTx5Telemetry[10]; fTx5Telemetry[11]+=kTx2ISize;
     }
     __atomic_store_n(&fTx2IReady, 1U, __ATOMIC_RELEASE);
     tx2IReport(1);
@@ -458,9 +603,13 @@ bool ItlIwx::tx2IAllocate()
 int ItlIwx::tx2IPrepare(struct iwx_tx_data *data, mbuf_t packet, int qid, int idx,
                        IOPhysicalSegment *segments)
 {
+    if (!dma5Mapped() || !getMainWorkLoop()->inGate()) {
+        __atomic_fetch_add(&fTx5Telemetry[21],1ULL,__ATOMIC_RELAXED); return 0;
+    }
     __atomic_fetch_add(&fTx2IStats[3], 1U, __ATOMIC_RELAXED);
     if (__atomic_load_n(&fTx2IBlocked, __ATOMIC_ACQUIRE)) {
-        __atomic_fetch_add(&fTx2IStats[8], 1U, __ATOMIC_RELAXED); return 0;
+        __atomic_fetch_add(&fTx2IStats[8], 1U, __ATOMIC_RELAXED);
+        __atomic_fetch_add(&fTx5Telemetry[20],1ULL,__ATOMIC_RELAXED); return 0;
     }
     const size_t length = mbuf_pkthdr_len(packet);
     if (!length || length > kTx2ISize || data->m ||
@@ -468,18 +617,17 @@ int ItlIwx::tx2IPrepare(struct iwx_tx_data *data, mbuf_t packet, int qid, int id
         __atomic_fetch_add(&fTx2IStats[10], 1U, __ATOMIC_RELAXED);
         tx2IError(0, 10, uint32_t(kIOReturnBadArgument)); return 0;
     }
-    unsigned token = 0;
-    for (unsigned n = 0; n < kTx2ICount; ++n) {
-        const unsigned i = (fTx2INext + n) % kTx2ICount;
-        uint32_t expected = Tx2IFree;
-        if (__atomic_compare_exchange_n(&fTx2I[i].state, &expected, uint32_t(Tx2ICopying),
-                                         false, __ATOMIC_ACQ_REL, __ATOMIC_RELAXED)) {
-            token = i + 1; fTx2INext = (i + 1) % kTx2ICount; break;
-        }
+    if (!fTx5FreeCount) {
+        __atomic_fetch_add(&fTx5Telemetry[6],1ULL,__ATOMIC_RELAXED);
+        __atomic_fetch_add(&fTx2IStats[9],1U,__ATOMIC_RELAXED);
+        return 0; // Finite reserve pressure is backpressure, not unsafe reuse.
     }
-    if (!token) {
-        __atomic_fetch_add(&fTx2IStats[9], 1U, __ATOMIC_RELAXED);
-        tx2IError(0, 11, uint32_t(kIOReturnNoResources)); return 0;
+    const unsigned token=fTx5Free[--fTx5FreeCount];
+    uint32_t claimed=Tx2IFree;
+    if (!token || token>kTx2ICount || !__atomic_compare_exchange_n(&fTx2I[token-1].state,
+        &claimed,uint32_t(Tx2ICopying),false,__ATOMIC_ACQ_REL,__ATOMIC_RELAXED)) {
+        __atomic_store_n(&fTx2IBlocked,1U,__ATOMIC_RELEASE);
+        tx2IError(token,51,uint32_t(kIOReturnBadArgument)); return 0;
     }
     Tx2IBacking &backing = fTx2I[token - 1];
     __atomic_store_n(&backing.owner, data, __ATOMIC_RELEASE); backing.length = uint32_t(length);
@@ -487,7 +635,11 @@ int ItlIwx::tx2IPrepare(struct iwx_tx_data *data, mbuf_t packet, int qid, int id
     // mbuf_copydata copies the complete final chain after encryption and trim;
     // it does not replace/free the mbuf or transfer the caller's node reference.
     const int copied = mbuf_copydata(packet, 0, length, backing.dma.vaddr);
-    IOReturn result = copied ? kIOReturnError : backing.dma.cmd->synchronize(kIODirectionOut);
+    IOReturn result = copied ? kIOReturnError : kIOReturnSuccess;
+    // Coherent kMapped storage was verified non-bounced at setup. Publication
+    // is ordered after descriptor construction; no per-packet mapping or sync.
+    __atomic_fetch_add(&fTx5Telemetry[8],1ULL,__ATOMIC_RELAXED);
+    if (!copied) __atomic_fetch_add(&fTx5Telemetry[9],uint64_t(length),__ATOMIC_RELAXED);
     if (copied || result != kIOReturnSuccess) {
         __atomic_fetch_add(&fTx2IStats[copied ? 11 : 12], 1U, __ATOMIC_RELAXED);
         tx2IError(token, copied ? 12 : 13, copied ? uint32_t(copied) : uint32_t(result));
@@ -496,8 +648,8 @@ int ItlIwx::tx2IPrepare(struct iwx_tx_data *data, mbuf_t packet, int qid, int id
         __atomic_exchange_n(&data->tx2I_token, uint16_t(0), __ATOMIC_ACQ_REL);
         uint32_t expected = Tx2ICopying;
         __atomic_store_n(&backing.owner, static_cast<iwx_tx_data *>(nullptr), __ATOMIC_RELEASE);
-        __atomic_compare_exchange_n(&backing.state, &expected, uint32_t(Tx2IFree),
-                                     false, __ATOMIC_ACQ_REL, __ATOMIC_RELAXED);
+        if (__atomic_compare_exchange_n(&backing.state, &expected, uint32_t(Tx2IFree),
+                                     false, __ATOMIC_ACQ_REL, __ATOMIC_RELAXED)) tx5Return(token);
         return 0;
     }
     // Preserve the header's TB limit (4K-4), and never cross a page boundary.
@@ -530,13 +682,19 @@ int ItlIwx::tx2IPrepare(struct iwx_tx_data *data, mbuf_t packet, int qid, int id
 }
 void ItlIwx::tx2IPublished(struct iwx_tx_data *data)
 {
-    const uint32_t n = __atomic_add_fetch(&fTx2IStats[5], 1U, __ATOMIC_RELAXED);
-    const unsigned kind = data->type == IEEE80211_FC0_TYPE_DATA ? 22 :
-        (data->type == IEEE80211_FC0_TYPE_MGT ? 23 : 24);
-    const uint32_t typed = __atomic_add_fetch(&fTx2IStats[kind], 1U, __ATOMIC_RELAXED);
-    if (n == 1) __atomic_store_n(&fTx2IStats[29], uint32_t(data->type), __ATOMIC_RELAXED);
-    if (n == 1 || n == 16 || n == 256 || n == 1024) tx2IReport(2);
-    else if (kind == 22 && typed == 1) tx2IReport(7);
+    const unsigned token=__atomic_load_n(&data->tx2I_token,__ATOMIC_ACQUIRE);
+    if (!token || token>kTx2ICount) return;
+    const uint64_t packets=__atomic_add_fetch(&fTx5Telemetry[0],1ULL,__ATOMIC_RELAXED);
+    __atomic_fetch_add(&fTx5Telemetry[1],uint64_t(fTx2I[token-1].length),__ATOMIC_RELAXED);
+    const uint64_t outstanding=__atomic_add_fetch(&fTx5Telemetry[4],1ULL,__ATOMIC_RELAXED);
+    uint64_t peak=__atomic_load_n(&fTx5Telemetry[5],__ATOMIC_RELAXED);
+    while (peak<outstanding && !__atomic_compare_exchange_n(&fTx5Telemetry[5],&peak,
+        outstanding,false,__ATOMIC_RELAXED,__ATOMIC_RELAXED)) {}
+    uint64_t stamp=0;
+    if (!(packets & 255)) clock_get_uptime(&stamp);
+    __atomic_store_n(&fTx5Stamp[token-1],stamp,__ATOMIC_RELAXED);
+    __atomic_store_n(&fTx5Published[token-1],true,__ATOMIC_RELEASE);
+    __atomic_fetch_add(&fTx2IStats[5],1U,__ATOMIC_RELAXED);
 }
 void ItlIwx::tx2IRetire(struct iwx_tx_data *data, bool normal)
 {
@@ -548,23 +706,38 @@ void ItlIwx::tx2IRetire(struct iwx_tx_data *data, bool normal)
         tx2IError(token, 14, uint32_t(kIOReturnBadArgument)); return;
     }
     Tx2IBacking &backing = fTx2I[token - 1];
+    const bool published=__atomic_exchange_n(&fTx5Published[token-1],false,__ATOMIC_ACQ_REL);
+    const uint64_t stamp=__atomic_exchange_n(&fTx5Stamp[token-1],0ULL,__ATOMIC_RELAXED);
+    if (published) __atomic_fetch_sub(&fTx5Telemetry[4],1ULL,__ATOMIC_RELAXED);
     uint32_t expected = Tx2IInflight;
-    // IRQ TX/BA retirement and packet publication share the main workloop gate.
-    // Ungated reset can win the token exchange; it always quarantines, never frees.
-    if (normal && __atomic_compare_exchange_n(&backing.state, &expected, uint32_t(Tx2IFree),
-                                               false, __ATOMIC_ACQ_REL, __ATOMIC_RELAXED)) {
-        const uint32_t n = __atomic_add_fetch(&fTx2IStats[6], 1U, __ATOMIC_RELAXED);
-        const unsigned kind = data->type == IEEE80211_FC0_TYPE_DATA ? 25 :
-            (data->type == IEEE80211_FC0_TYPE_MGT ? 26 : 27);
-        const uint32_t typed = __atomic_add_fetch(&fTx2IStats[kind], 1U, __ATOMIC_RELAXED);
-        if (n == 1 || n == 16 || n == 256 || n == 1024) tx2IReport(4);
-        else if (kind == 25 && typed == 1) tx2IReport(8);
-        return;
+    // Completion/publication/reset share the main gate. An ungated abort may
+    // claim the token, but can only quarantine; it never writes the free-list.
+    if (normal && getMainWorkLoop()->inGate() &&
+        __atomic_compare_exchange_n(&backing.state, &expected, uint32_t(Tx2IFree),
+                                     false, __ATOMIC_ACQ_REL, __ATOMIC_RELAXED)) {
+        if (published) {
+            __atomic_fetch_add(&fTx5Telemetry[2],1ULL,__ATOMIC_RELAXED);
+            __atomic_fetch_add(&fTx5Telemetry[3],uint64_t(backing.length),__ATOMIC_RELAXED);
+            if (stamp) {
+                uint64_t now; clock_get_uptime(&now);
+                const uint64_t age=now-stamp;
+                __atomic_fetch_add(&fTx5Telemetry[16],1ULL,__ATOMIC_RELAXED);
+                __atomic_fetch_add(&fTx5Telemetry[17],age,__ATOMIC_RELAXED);
+                uint64_t peak=__atomic_load_n(&fTx5Telemetry[18],__ATOMIC_RELAXED);
+                while (peak<age && !__atomic_compare_exchange_n(&fTx5Telemetry[18],&peak,
+                    age,false,__ATOMIC_RELAXED,__ATOMIC_RELAXED)) {}
+            }
+        }
+        __atomic_store_n(&backing.owner,static_cast<iwx_tx_data *>(nullptr),__ATOMIC_RELEASE);
+        __atomic_fetch_add(&fTx2IStats[6],1U,__ATOMIC_RELAXED);
+        tx5Return(token); return;
     }
+    if (published) __atomic_fetch_add(&fTx5Telemetry[14],1ULL,__ATOMIC_RELAXED);
     __atomic_fetch_or(&fTx2JAdmission, kTx2JClosed, __ATOMIC_ACQ_REL);
     __atomic_store_n(&fTx2IBlocked, 1U, __ATOMIC_RELEASE);
     const uint32_t old = __atomic_exchange_n(&backing.state, uint32_t(Tx2IQuarantined), __ATOMIC_ACQ_REL);
     if (old != Tx2IQuarantined) {
+        __atomic_fetch_add(&fTx5Telemetry[15],1ULL,__ATOMIC_RELAXED);
         const uint32_t n = __atomic_add_fetch(&fTx2IStats[7], 1U, __ATOMIC_RELAXED);
         if (n == 1) tx2IReport(5);
     }
@@ -660,20 +833,36 @@ void ItlIwx::flow2JPublish()
     XYLog("KGP_FLOW_2J published=%u\n", unsigned(ok));
 }
 
+bool ItlIwx::tx5Release(struct iwx_dma_info *dma)
+{
+    // Final HAL cleanup, after positive terminal or an unpublished/free lease.
+    // Any failed retirement keeps remaining references; never guess completion.
+    if (dma->cmd) {
+        if (dma->cmd->complete(true,false)!=kIOReturnSuccess) return false;
+        __atomic_fetch_add(&fTx5Telemetry[13],1ULL,__ATOMIC_RELAXED);
+        if (dma->cmd->clearMemoryDescriptor(false)!=kIOReturnSuccess) return false;
+        dma->cmd->release(); dma->cmd=nullptr;
+    }
+    if (dma->buffer) {
+        if (dma->buffer->complete()!=kIOReturnSuccess) return false;
+        dma->buffer->release(); dma->buffer=nullptr;
+    }
+    dma->vaddr=nullptr; dma->paddr=0; dma->size=0;
+    return true;
+}
 void ItlIwx::tx2IFree()
 {
     __atomic_fetch_or(&fTx2JAdmission, kTx2JClosed, __ATOMIC_ACQ_REL);
     __atomic_store_n(&fTx2IBlocked, 1U, __ATOMIC_RELEASE);
     for (unsigned i = 0; i < kTx2ICount; ++i) {
         uint32_t expected = Tx2IFree;
-        if (__atomic_compare_exchange_n(&fTx2I[i].state, &expected, uint32_t(Tx2IEmpty),
-                                         false, __ATOMIC_ACQ_REL, __ATOMIC_RELAXED)) {
-            iwx_dma_contig_free(&fTx2I[i].dma);
-            ++fTx2IStats[13];
-        } else if (fTx2I[i].dma.cmd) {
-            // Intentional bounded retention through HAL destruction. These are
-            // standard SDK objects with no callback into this kext. Reboot is the
-            // experiment's recovery boundary; never release an unproven mapping.
+        const bool unowned=__atomic_compare_exchange_n(&fTx2I[i].state,&expected,
+            uint32_t(Tx2IEmpty),false,__ATOMIC_ACQ_REL,__ATOMIC_RELAXED);
+        if (unowned || dma5Terminal()) {
+            if (tx5Release(&fTx2I[i].dma)) ++fTx2IStats[13];
+            else { ++fTx2IStats[21]; ++fTx5Telemetry[22]; }
+        } else if (fTx2I[i].dma.cmd || fTx2I[i].dma.buffer) {
+            // Bounded fail-closed retention, no callback into the dead HAL.
             ++fTx2IStats[21];
         }
     }
@@ -685,6 +874,9 @@ void ItlIwx::tx2IFree()
 void ItlIwx::path2L(unsigned event, uint32_t result, uint32_t detail, uint32_t fc0)
 {
     if (com.sc_device_family < IWX_DEVICE_FAMILY_AX210) return;
+    // First observations and every 256th ordinary success; failures stay visible.
+    const uint64_t sample=__atomic_add_fetch(&fTx5Telemetry[19],1ULL,__ATOMIC_RELAXED);
+    if (!result && sample>32 && (sample & 255)) return;
     uint32_t expected = 0;
     if (!__atomic_compare_exchange_n(&fPath2LBusy, &expected, 1U, false,
                                       __ATOMIC_ACQUIRE, __ATOMIC_RELAXED)) {
@@ -977,7 +1169,7 @@ int ItlIwx::cmd2KPrepare(unsigned idx, uint32_t serial, uint32_t epoch, mbuf_t p
     }
     if (!b.dma.cmd) {
         unsigned stage = 0;
-        IOReturn result = allocatePacketBacking2H(&b.dma, kCmd2KSize, PAGE_SIZE, &stage);
+        IOReturn result = allocatePacketBacking2H(&b.dma, kCmd2KSize, PAGE_SIZE, &stage, fDma5Mapper);
         if (result != kIOReturnSuccess) { cmd2KError(idx, stage, uint32_t(result)); return ENOMEM; }
         __atomic_fetch_add(&fCmd2KStats[2], 1U, __ATOMIC_RELAXED);
     }
@@ -1137,6 +1329,686 @@ void ItlIwx::cmd2KReport(unsigned reason)
           reason, wire.word[2], wire.word[3], wire.word[4], wire.word[5], wire.word[7], wire.word[11]);
 }
 
+// B1-ZC5 BEGIN: ZC4 supply plus bounded retention of completed mapped storage.
+class KgpRxZcLife : public OSObject {
+    OSDeclareDefaultStructors(KgpRxZcLife)
+public:
+    uint64_t live = 0, created = 0, freed = 0, callbacks = 0, detached = 0;
+    uint32_t closeState = 0; // 0 live, 1 closing, 2 clean, 3 retained, 4 cleanup failure
+    static KgpRxZcLife *create() {
+        auto *p = new KgpRxZcLife;
+        if (p && !p->init()) { p->release(); return nullptr; }
+        return p;
+    }
+};
+OSDefineMetaClassAndStructors(KgpRxZcLife, OSObject)
+
+class KgpRxZcStorage : public OSObject {
+    OSDeclareDefaultStructors(KgpRxZcStorage)
+public:
+    caddr_t bytes = nullptr;
+    size_t size = IWX_RBUF_SIZE;
+    uint32_t returned = 1, detached = 0;
+    KgpRxZcLife *life = nullptr;
+    static KgpRxZcStorage *create(KgpRxZcLife *l) {
+        auto *s = new KgpRxZcStorage;
+        if (!s) return nullptr;
+        s->life = l; l->retain();
+        if (!s->init()) { s->release(); return nullptr; }
+        const int allocation = mbuf_alloccluster(MBUF_DONTWAIT, &s->size, &s->bytes);
+        if (s->bytes) {
+            __atomic_fetch_add(&l->live, 1ULL, __ATOMIC_RELAXED);
+            __atomic_fetch_add(&l->created, 1ULL, __ATOMIC_RELAXED);
+        }
+        if (allocation || !s->bytes || s->size != IWX_RBUF_SIZE || (uintptr_t(s->bytes) & (PAGE_SIZE - 1))) {
+            s->release(); return nullptr;
+        }
+        memset(s->bytes, 0, s->size); // Construction only, no received-payload copy.
+        return s;
+    }
+    static void returnedCluster(caddr_t, u_int, caddr_t arg) {
+        auto *s = reinterpret_cast<KgpRxZcStorage *>(arg);
+        __atomic_fetch_add(&s->life->callbacks, 1ULL, __ATOMIC_RELAXED);
+        __atomic_store_n(&s->returned, 1U, __ATOMIC_RELEASE);
+        s->release(); // No HAL, pool, work item, mapping or ring reference.
+    }
+    void free() override {
+        if (bytes) {
+            mbuf_freecluster(bytes, size);
+            __atomic_fetch_sub(&life->live, 1ULL, __ATOMIC_RELAXED);
+            __atomic_fetch_add(&life->freed, 1ULL, __ATOMIC_RELAXED);
+        }
+        if (__atomic_load_n(&detached, __ATOMIC_RELAXED))
+            __atomic_fetch_sub(&life->detached, 1ULL, __ATOMIC_RELAXED);
+        if (life) life->release();
+        OSObject::free();
+    }
+};
+OSDefineMetaClassAndStructors(KgpRxZcStorage, OSObject)
+
+class KgpRxZcPool : public OSObject {
+    OSDeclareDefaultStructors(KgpRxZcPool)
+public:
+    enum { count = IWX_RX_MQ_RING_COUNT * 4, none = count,
+           lowWater = IWX_RX_MQ_RING_COUNT * 2, batch = 64, cacheLimit = count, cacheWarm = count / 2 };
+    enum { Empty, Ready, Posted, Complete, Retired, Working, Quarantined };
+    struct Entry {
+        KgpRxZcStorage *storage;
+        mbuf_t view;
+        IOMemoryDescriptor *memory;
+        IODMACommand *command;
+        uint64_t address;
+        unsigned state;
+        bool memoryPrepared, commandPrepared;
+    };
+    Entry *entry = nullptr, *cache = nullptr;
+    IOMapper *mapper = nullptr;
+    IOService *mappingProvider = nullptr;
+    unsigned cacheCount=0, cacheCursor=0; // Sole worker/setup/cleanup ownership.
+    uint64_t cacheStats[16]={}; // Atomic observer counters; class counts are worker samples.
+    uint64_t txWire[40]={};
+    bool telemetryPending=false;
+
+    KgpRxZcLife *life = nullptr;
+    IOSimpleLock *lock = nullptr;
+    thread_call_t call = nullptr;
+    unsigned ready[count] = {}, retired[count] = {};
+    unsigned readyHead = 0, readyCount = 0, retireHead = 0, retireCount = 0;
+    bool scheduled = false, closing = false, deferredClose = false, cleanClose = false;
+    uint32_t fault = 0;
+    uint64_t runs = 0, supplied = 0, reused = 0, renewed = 0;
+    uint64_t allocationFailures = 0, mappingFailures = 0, headerFailures = 0;
+    uint64_t retries = 0, pressure = 0, retirePeak = 0, readyMin = count;
+    unsigned working = 0;
+    iwx_dma_info ringDMA[3] = {};
+    bool ringCommandDone[3] = {};
+
+    void fail(uint32_t reason) {
+        uint32_t expected = 0;
+        __atomic_compare_exchange_n(&fault, &expected, reason, false,
+                                    __ATOMIC_ACQ_REL, __ATOMIC_RELAXED);
+    }
+    uint32_t failed() const { return __atomic_load_n(&fault, __ATOMIC_ACQUIRE); }
+
+    // Caller owns this entry exclusively (setup, worker, or fenced final cleanup).
+    bool releaseEntry(Entry &e) {
+        if (e.command) {
+            if (e.commandPrepared) {
+                // Completion already established before RETIRED; no late copy-back.
+                if (e.command->complete(true, false) != kIOReturnSuccess) { fail(13); return false; }
+                e.commandPrepared = false;
+                __atomic_fetch_add(&cacheStats[1],1ULL,__ATOMIC_RELAXED);
+            }
+            if (e.command->clearMemoryDescriptor(false) != kIOReturnSuccess) { fail(14); return false; }
+            e.command->release(); e.command = nullptr;
+        }
+        if (e.memory) {
+            if (e.memoryPrepared) {
+                if (e.memory->complete() != kIOReturnSuccess) { fail(15); return false; }
+                e.memoryPrepared = false;
+            }
+            e.memory->release(); e.memory = nullptr;
+        }
+        if (e.view) { mbuf_freem(e.view); e.view = nullptr; }
+        if (e.storage) {
+            // Pool drops ownership only AFTER unmapping. The stack lease owns
+            // storage independently until the KPI's final external-cluster free.
+            if (!__atomic_load_n(&e.storage->returned, __ATOMIC_ACQUIRE)) {
+                __atomic_store_n(&e.storage->detached, 1U, __ATOMIC_RELAXED);
+                __atomic_fetch_add(&life->detached, 1ULL, __ATOMIC_RELAXED);
+            }
+            e.storage->release(); e.storage = nullptr;
+        }
+        e.address = 0;
+        return true;
+    }
+
+    void cacheCountChanged() {
+        __atomic_store_n(&cacheStats[2],uint64_t(cacheCount),__ATOMIC_RELEASE);
+        if (cacheCount>__atomic_load_n(&cacheStats[3],__ATOMIC_RELAXED))
+            __atomic_store_n(&cacheStats[3],uint64_t(cacheCount),__ATOMIC_RELAXED);
+    }
+    bool retainCompleted(Entry &e) {
+        if (!e.storage || !e.commandPrepared || e.view) return false;
+        if (cacheCount==cacheLimit) {
+            __atomic_fetch_add(&cacheStats[9],1ULL,__ATOMIC_RELAXED); return false;
+        }
+        cache[cacheCount++]=e; // Only completed, off-ring records reach this worker.
+        cache[cacheCount-1].state=Retired;
+        memset(&e,0,sizeof(e)); e.state=Working;
+        __atomic_fetch_add(&cacheStats[8],1ULL,__ATOMIC_RELAXED);
+        cacheCountChanged(); return true;
+    }
+    bool takeReturned(Entry &e) {
+        const unsigned attempts=MIN(unsigned(batch),cacheCount);
+        for (unsigned n=0;n<attempts;++n) {
+            if (cacheCursor>=cacheCount) cacheCursor=0;
+            const unsigned i=cacheCursor++;
+            __atomic_fetch_add(&cacheStats[11],1ULL,__ATOMIC_RELAXED);
+            if (!__atomic_load_n(&cache[i].storage->returned,__ATOMIC_ACQUIRE)) continue;
+            e=cache[i]; e.state=Working;
+            cache[i]=cache[--cacheCount]; memset(&cache[cacheCount],0,sizeof(Entry));
+            cacheCountChanged();
+            __atomic_fetch_add(&cacheStats[6],1ULL,__ATOMIC_RELAXED); return true;
+        }
+        __atomic_fetch_add(&cacheStats[7],1ULL,__ATOMIC_RELAXED);
+        return false; // Optional cache miss NEVER waits for a stack reference.
+    }
+    void shrinkReturned() {
+        for (unsigned n=0;n<batch && cacheCount>cacheWarm;++n) {
+            if (cacheCursor>=cacheCount) cacheCursor=0;
+            const unsigned i=cacheCursor++;
+            if (!__atomic_load_n(&cache[i].storage->returned,__ATOMIC_ACQUIRE)) continue;
+            if (!releaseEntry(cache[i])) return;
+            cache[i]=cache[--cacheCount]; memset(&cache[cacheCount],0,sizeof(Entry));
+            __atomic_fetch_add(&cacheStats[10],1ULL,__ATOMIC_RELAXED);
+            cacheCountChanged();
+        }
+    }
+    void sampleCache() {
+        // Once per 256 worker runs, not in the packet gate. This sampled split
+        // may lag callbacks; total mapping/cache conservation uses live counters.
+        if (runs & 255) return;
+        uint64_t returned=0;
+        for (unsigned i=0;i<cacheCount;++i)
+            returned+=!!__atomic_load_n(&cache[i].storage->returned,__ATOMIC_ACQUIRE);
+        __atomic_store_n(&cacheStats[4],uint64_t(cacheCount)-returned,__ATOMIC_RELAXED);
+        __atomic_store_n(&cacheStats[5],returned,__ATOMIC_RELAXED);
+        __atomic_store_n(&cacheStats[12],runs,__ATOMIC_RELEASE);
+    }
+    void snapshotCache(uint64_t *v) {
+        v[0]=5; v[1]=cacheLimit; v[2]=count;
+        for (unsigned i=0;i<16;++i) v[3+i]=__atomic_load_n(&cacheStats[i],__ATOMIC_ACQUIRE);
+    }
+
+    void queueTelemetry(const uint64_t *wire) {
+        IOSimpleLockLock(lock);
+        if (!closing) {
+            for (unsigned i=0;i<40;++i) txWire[i]=wire[i];
+            telemetryPending=true;
+            if (!scheduled && call && !failed()) {
+                scheduled=true; thread_call_enter(call);
+            }
+        }
+        IOSimpleLockUnlock(lock);
+    }
+    void publishTelemetry() {
+        uint64_t wire[40]={};
+        IOSimpleLockLock(lock);
+        const bool publish=telemetryPending;
+        if (publish) for (unsigned i=0;i<40;++i) wire[i]=txWire[i];
+        telemetryPending=false;
+        IOSimpleLockUnlock(lock);
+        if (publish && mappingProvider) {
+            mappingProvider->setProperty("KGP_TX_ZC5",wire,sizeof(wire));
+            uint64_t cacheWire[20]={}; snapshotCache(cacheWire);
+            mappingProvider->setProperty("KGP_RX_ZC5_CACHE",cacheWire,sizeof(cacheWire));
+        }
+    }
+
+    mbuf_t view(KgpRxZcStorage *s) {
+        if (!s || !__atomic_load_n(&s->returned, __ATOMIC_ACQUIRE)) { fail(12); return nullptr; }
+        s->retain();
+        __atomic_store_n(&s->returned, 0U, __ATOMIC_RELEASE);
+        mbuf_t m = nullptr;
+        if (mbuf_attachcluster(MBUF_DONTWAIT, MBUF_TYPE_DATA, &m, s->bytes,
+            KgpRxZcStorage::returnedCluster, s->size, reinterpret_cast<caddr_t>(s))) {
+            __atomic_store_n(&s->returned, 1U, __ATOMIC_RELEASE);
+            s->release(); __atomic_fetch_add(&headerFailures, 1ULL, __ATOMIC_RELAXED);
+            return nullptr;
+        }
+        if (!m || mbuf_next(m) || !(mbuf_flags(m) & MBUF_PKTHDR) ||
+            !(mbuf_flags(m) & MBUF_EXT) || mbuf_data(m) != s->bytes) {
+            if (m) mbuf_freem(m);
+            fail(12); return nullptr;
+        }
+        mbuf_setlen(m, IWX_RBUF_SIZE); mbuf_pkthdr_setlen(m, IWX_RBUF_SIZE);
+        return m;
+    }
+
+    // NO workloop/queue lock is held here. Return 0 ready, 1 transient pressure,
+    // 2 unsafe cleanup/invariant failure. Never prepare in the RX callback.
+    unsigned replenish(Entry &e) {
+        if (e.storage && e.commandPrepared &&
+            __atomic_load_n(&e.storage->returned, __ATOMIC_ACQUIRE)) {
+            e.view = view(e.storage);
+            if (e.view) { __atomic_fetch_add(&reused, 1ULL, __ATOMIC_RELAXED); return 0; }
+            return failed() ? 2 : 1;
+        }
+        if (!(e.storage && e.commandPrepared && !e.view && retainCompleted(e)) && !releaseEntry(e)) return 2;
+        if (takeReturned(e)) {
+            e.view=view(e.storage);
+            if (e.view) { __atomic_fetch_add(&reused,1ULL,__ATOMIC_RELAXED); return 0; }
+            return failed()?2:1;
+        }
+        e.storage = KgpRxZcStorage::create(life);
+        if (!e.storage) { __atomic_fetch_add(&allocationFailures, 1ULL, __ATOMIC_RELAXED); return 1; }
+        e.memory = IOMemoryDescriptor::withAddressRange(mach_vm_address_t(e.storage->bytes),
+                            IWX_RBUF_SIZE, kIODirectionInOut | (mapper ? kIOMemoryMapperNone : 0), kernel_task);
+        if (!e.memory || e.memory->prepare() != kIOReturnSuccess) goto mapFail;
+        e.memoryPrepared = true;
+        e.command = IODMACommand::withSpecification(kIODMACommandOutputHost64,
+                            64, 0, IODMACommand::kMapped, 0, PAGE_SIZE, mapper);
+        if (!e.command || e.command->setMemoryDescriptor(e.memory, false) != kIOReturnSuccess) goto mapFail;
+        if (e.command->prepare() != kIOReturnSuccess) goto mapFail;
+        e.commandPrepared = true;
+        __atomic_fetch_add(&cacheStats[0],1ULL,__ATOMIC_RELAXED);
+        {
+            UInt64 off = 0; UInt32 n = 1; IODMACommand::Segment64 seg = {};
+            if (e.command->gen64IOVMSegments(&off, &seg, &n) != kIOReturnSuccess ||
+                n != 1 || off != IWX_RBUF_SIZE || seg.fLength != IWX_RBUF_SIZE ||
+                (seg.fIOVMAddr & (PAGE_SIZE - 1)) || e.command->getIOMemoryDescriptor() != e.memory)
+                goto mapFail;
+            e.address = seg.fIOVMAddr;
+        }
+        if (e.command->synchronize(kIODirectionOut) != kIOReturnSuccess) goto mapFail;
+        e.view = view(e.storage);
+        if (!e.view) return failed() ? 2 : 1;
+        __atomic_fetch_add(&renewed, 1ULL, __ATOMIC_RELAXED);
+        return 0;
+    mapFail:
+        __atomic_fetch_add(&mappingFailures, 1ULL, __ATOMIC_RELAXED);
+        return releaseEntry(e) ? 1 : 2;
+    }
+
+    static KgpRxZcPool *create(KgpRxZcLife *l, IOMapper *m = nullptr, IOService *provider = nullptr) {
+        auto *p = new KgpRxZcPool;
+        if (!p) return nullptr;
+        if (!p->init()) { p->release(); return nullptr; }
+        p->life = l; l->retain();
+        p->mapper=m; if (m) m->retain();
+        p->mappingProvider=provider; if (provider) provider->retain();
+        p->lock = IOSimpleLockAlloc();
+        p->entry = static_cast<Entry *>(IOMalloc(sizeof(Entry) * count));
+        if (p->entry) memset(p->entry, 0, sizeof(Entry) * count);
+        p->cache = static_cast<Entry *>(IOMalloc(sizeof(Entry)*cacheLimit));
+        if (p->cache) memset(p->cache,0,sizeof(Entry)*cacheLimit);
+        if (!p->lock || !p->entry || !p->cache) goto fail;
+        for (unsigned i = 0; i < count; ++i) {
+            if (p->replenish(p->entry[i]) != 0) goto fail;
+            p->entry[i].state = Ready; p->ready[p->readyCount++] = i;
+        }
+        p->call = thread_call_allocate_with_options(worker, p,
+                        THREAD_CALL_PRIORITY_KERNEL, THREAD_CALL_OPTIONS_ONCE);
+        if (!p->call) goto fail;
+        p->retain(); // Work-item lifetime; no HAL/workloop reference. Provider is retained above.
+        return p;
+    fail:
+        if (p->releaseResources()) p->release(); // Otherwise retain failed retirement.
+        return nullptr;
+    }
+
+    // All queue state uses this short spin lock. No allocation, map, unmap,
+    // mbuf free, wait, or provider property publication occurs while it is held.
+    void kickLocked(bool delayed = false) {
+        if (closing || failed() || scheduled || !call || (!retireCount && !telemetryPending)) return;
+        scheduled = true;
+        if (delayed) {
+            uint64_t deadline; clock_interval_to_deadline(10, 1000000, &deadline);
+            thread_call_enter_delayed(call, deadline); // Retry even with no more RX interrupts.
+        } else thread_call_enter(call);
+    }
+    unsigned take() {
+        IOSimpleLockLock(lock);
+        unsigned i = none;
+        if (!closing && !failed()) {
+            if (readyCount) {
+                i = ready[readyHead]; readyHead = (readyHead + 1) % count; --readyCount;
+                if (readyCount < readyMin) readyMin = readyCount;
+                if (entry[i].state != Ready || !entry[i].view) { fail(2); i = none; }
+                else entry[i].state = Posted;
+            } else ++pressure;
+            if (readyCount <= lowWater) kickLocked();
+        }
+        IOSimpleLockUnlock(lock);
+        return i;
+    }
+    void retire(unsigned i) {
+        IOSimpleLockLock(lock);
+        if (closing || i >= count || entry[i].state != Complete || retireCount >= count) {
+            fail(1);
+        } else {
+            entry[i].state = Retired;
+            retired[(retireHead + retireCount++) % count] = i;
+            if (retireCount > retirePeak) retirePeak = retireCount;
+            if (readyCount <= lowWater) kickLocked();
+        }
+        IOSimpleLockUnlock(lock);
+    }
+    static void worker(thread_call_param_t arg, thread_call_param_t) {
+        auto *p = static_cast<KgpRxZcPool *>(arg);
+        if (p->work()) p->finishDeferred(); // May release p; never touch it afterward.
+    }
+    bool work() {
+        __atomic_fetch_add(&runs, 1ULL, __ATOMIC_RELAXED);
+        bool retry = false;
+        for (unsigned n = 0; n < batch; ++n) {
+            IOSimpleLockLock(lock);
+            if (closing || failed() || !retireCount) { IOSimpleLockUnlock(lock); break; }
+            unsigned i = retired[retireHead]; retireHead = (retireHead + 1) % count; --retireCount;
+            if (entry[i].state != Retired) { fail(1); IOSimpleLockUnlock(lock); break; }
+            entry[i].state = Working; ++working;
+            IOSimpleLockUnlock(lock);
+            const unsigned result = replenish(entry[i]);
+            IOSimpleLockLock(lock);
+            --working;
+            if (result == 0) {
+                entry[i].state = Ready; ready[(readyHead + readyCount++) % count] = i; ++supplied;
+            } else if (result == 1) {
+                entry[i].state = Retired; retired[(retireHead + retireCount++) % count] = i;
+                ++retries; retry = true;
+            } else entry[i].state = Quarantined;
+            IOSimpleLockUnlock(lock);
+            if (result != 0) break;
+        }
+        IOSimpleLockLock(lock);
+        const bool idle=!retireCount && !closing;
+        IOSimpleLockUnlock(lock);
+        if (idle && !failed()) shrinkReturned();
+        sampleCache();
+        publishTelemetry();
+        IOSimpleLockLock(lock);
+        scheduled = false;
+        const bool finish = closing && deferredClose;
+        kickLocked(retry); // ONCE prevents concurrent invocations of this work item.
+        IOSimpleLockUnlock(lock);
+        return finish;
+    }
+
+    // Called only after the RX gate fenced handlers and made HAL RX inaccessible.
+    // The pool takes all ring leases/descriptors; asynchronous cleanup needs no HAL.
+    void adoptRing(iwx_rx_ring *ring, const unsigned *slots) {
+        ringDMA[0] = ring->free_desc_dma; memset(&ring->free_desc_dma, 0, sizeof(ring->free_desc_dma));
+        ringDMA[1] = ring->stat_dma; memset(&ring->stat_dma, 0, sizeof(ring->stat_dma));
+        ringDMA[2] = ring->used_desc_dma; memset(&ring->used_desc_dma, 0, sizeof(ring->used_desc_dma));
+        ring->desc = nullptr; ring->stat = nullptr;
+        for (unsigned s = 0; s < IWX_RX_MQ_RING_COUNT; ++s) {
+            if (ring->data[s].m) {
+                unsigned i = slots[s];
+                if (i >= count || entry[i].view) { fail(17); continue; }
+                entry[i].view = ring->data[s].m; ring->data[s].m = nullptr;
+            }
+        }
+    }
+    bool releaseResources() {
+        if (entry) {
+            for (unsigned i = 0; i < count; ++i)
+                if (!releaseEntry(entry[i])) return false;
+        }
+        while (cacheCount) {
+            if (!releaseEntry(cache[cacheCount-1])) return false;
+            --cacheCount; cacheCountChanged();
+        }
+        for (unsigned i = 0; i < 3; ++i) {
+            auto &d = ringDMA[i];
+            if (d.cmd) {
+                if (!ringCommandDone[i]) {
+                    if (d.cmd->complete(true, false) != kIOReturnSuccess) { fail(18); return false; }
+                    ringCommandDone[i] = true;
+                }
+                if (d.cmd->clearMemoryDescriptor(false) != kIOReturnSuccess) { fail(19); return false; }
+                d.cmd->release(); d.cmd = nullptr;
+            }
+            if (d.buffer) {
+                if (d.buffer->complete() != kIOReturnSuccess) { fail(20); return false; }
+                d.buffer->release(); d.buffer = nullptr;
+            }
+            d.vaddr = nullptr;
+        }
+        return true;
+    }
+    // All terminal cleanup runs on the independent ONCE work item. This uses
+    // exported Mach KPI only; thread_call_cancel_wait is not an exported KPI.
+    bool failedCleanup() const { return failed() >= 13; }
+    void requestDeferred(bool clean) {
+        IOSimpleLockLock(lock);
+        closing = true; cleanClose = clean; deferredClose = true;
+        __atomic_store_n(&life->closeState, 1U, __ATOMIC_RELEASE);
+        // ONCE serializes this close request with any current refill. All later
+        // schedules are forbidden by closing, including worker self-retries.
+        thread_call_enter(call);
+        IOSimpleLockUnlock(lock);
+        // Initial pool reference has transferred to finishDeferred, not released.
+    }
+    void finishDeferred() {
+        thread_call_cancel(call); // Remove the ONCE follow-up; no producer can re-enter.
+        if (!thread_call_free(call)) { fail(16); return; }
+        call = nullptr;
+        const bool ok = cleanClose && !failedCleanup() && releaseResources();
+        __atomic_store_n(&life->closeState, ok ? 2U : cleanClose ? 4U : 3U, __ATOMIC_RELEASE);
+        if (ok) release(); // Transferred owner reference; keep it on uncertainty/error.
+        release(); // Worker reference last. No p access follows this call.
+    }
+    void snapshot(uint64_t *v) {
+        IOSimpleLockLock(lock);
+        v[0]=readyCount; v[1]=retireCount; v[2]=working; v[3]=scheduled;
+        v[4]=supplied; v[5]=pressure; v[6]=retries; v[7]=retirePeak; v[8]=readyMin;
+        IOSimpleLockUnlock(lock);
+        v[9]=__atomic_load_n(&runs,__ATOMIC_RELAXED);
+        v[10]=__atomic_load_n(&reused,__ATOMIC_RELAXED);
+        v[11]=__atomic_load_n(&renewed,__ATOMIC_RELAXED);
+        v[12]=__atomic_load_n(&allocationFailures,__ATOMIC_RELAXED);
+        v[13]=__atomic_load_n(&mappingFailures,__ATOMIC_RELAXED);
+        v[14]=__atomic_load_n(&headerFailures,__ATOMIC_RELAXED);
+        v[15]=failed();
+    }
+    void free() override {
+        if (entry) IOFree(entry, sizeof(Entry) * count);
+        if (cache) IOFree(cache,sizeof(Entry)*cacheLimit);
+        if (mapper) mapper->release();
+        if (mappingProvider) mappingProvider->release();
+        if (lock) IOSimpleLockFree(lock);
+        if (life) life->release();
+        OSObject::free();
+    }
+};
+OSDefineMetaClassAndStructors(KgpRxZcPool, OSObject)
+
+bool ItlIwx::rxZcSetup()
+{
+    if (fRxZcPool || !getMainWorkLoop() || getMainWorkLoop()->inGate() ||
+        (__atomic_load_n(&fRxZcClosing,__ATOMIC_ACQUIRE) && !fRxZcCleanHandoff)) return false;
+    if (fRxZcLife) { fRxZcLife->release(); fRxZcLife = nullptr; }
+    fRxZcLife = KgpRxZcLife::create();
+    if (!fRxZcLife) return false;
+    fRxZcPool = KgpRxZcPool::create(fRxZcLife, fDma5Mapper, fDma5Provider);
+    if (!fRxZcPool) { fRxZcLife->release(); fRxZcLife=nullptr; return false; }
+    for (unsigned s=0; s<IWX_RX_MQ_RING_COUNT; ++s) fRxZcSlot[s]=kRxZcNone;
+    fRxZcPublished=fRxZcTerminal=fRxZcRunning=fRxZcCleanHandoff=false;
+    fRxZcFault=fRxZcGeneration=fRxZcEpoch=0;
+    fRxZcSynced=fRxZcReplaced=fRxZcStarved=fRxZcNotif=0;
+    fRxZcLastReport=fRxZcSnapshots=fRxZcPropertyFailures=0;
+    fRxZcReportedFault=fRxZcPressure=false;
+    fRxZcEpisodes=fRxZcRecoveries=fRxZcBatchQueued=fRxZcBatchMax=0;
+    memset(fRxZcFirstPressure,0,sizeof(fRxZcFirstPressure));
+    memset(fRxZcLastRecovery,0,sizeof(fRxZcLastRecovery));
+    __atomic_store_n(&fRxZcClosing,0U,__ATOMIC_RELEASE);
+    return true;
+}
+
+void ItlIwx::rxZcTelemetry(const uint64_t *wire)
+{
+    if (!__atomic_load_n(&fRxZcClosing,__ATOMIC_ACQUIRE) && fRxZcPool)
+        fRxZcPool->queueTelemetry(wire);
+}
+
+bool ItlIwx::rxZcReplace(unsigned slot)
+{
+    if (__atomic_load_n(&fRxZcClosing,__ATOMIC_ACQUIRE) || !fRxZcPool || slot>=IWX_RX_MQ_RING_COUNT ||
+        rxZcFailed() || __atomic_load_n(&fPc1Fault,__ATOMIC_ACQUIRE)) return false;
+    const unsigned old=fRxZcSlot[slot];
+    if (old!=kRxZcNone && (!getMainWorkLoop()->inGate() || !fRxZcRunning ||
+        fRxZcGeneration!=unsigned(com.sc_generation) || fRxZcEpoch!=fPc1ResetEpoch ||
+        fRxZcPool->entry[old].state!=KgpRxZcPool::Complete)) { rxZcFail(3); return false; }
+    const unsigned fresh=fRxZcPool->take();
+    if (fresh==kRxZcNone) {
+        ++fRxZcStarved;
+        if (!fRxZcPressure) {
+            fRxZcPressure=true; ++fRxZcEpisodes;
+            if (!fRxZcFirstPressure[0]) rxZcPressureRecord(fRxZcFirstPressure,1);
+        }
+        return false; // Keep the completed packet on-ring; inherited caller drops safely.
+    }
+    auto &e=fRxZcPool->entry[fresh];
+    com.rxq.data[slot].m=e.view; e.view=nullptr;
+    fRxZcSlot[slot]=fresh;
+    iwx_update_rx_desc(&com,&com.rxq,slot);
+    if (old!=kRxZcNone) { fRxZcPool->retire(old); ++fRxZcReplaced; }
+    if (fRxZcPressure) {
+        fRxZcPressure=false; ++fRxZcRecoveries;
+        rxZcPressureRecord(fRxZcLastRecovery,2);
+    }
+    return !rxZcFailed();
+}
+
+bool ItlIwx::rxZcArm()
+{
+    if (__atomic_load_n(&fRxZcClosing,__ATOMIC_ACQUIRE) || !getMainWorkLoop()->inGate() ||
+        !fRxZcPool || rxZcFailed() || __atomic_load_n(&fPc1Fault,__ATOMIC_ACQUIRE) ||
+        (fRxZcPublished && (!fRxZcTerminal || fPc1TerminalEpoch!=fPc1ResetEpoch))) return false;
+    for (unsigned s=0; s<IWX_RX_MQ_RING_COUNT; ++s) {
+        unsigned i=fRxZcSlot[s];
+        if (i>=kRxZcCount || fRxZcPool->entry[i].state!=KgpRxZcPool::Posted ||
+            !com.rxq.data[s].m || mbuf_data(com.rxq.data[s].m)!=fRxZcPool->entry[i].storage->bytes) return false;
+    }
+    fRxZcGeneration=unsigned(com.sc_generation); fRxZcEpoch=fPc1ResetEpoch;
+    fRxZcPublished=true; fRxZcTerminal=false; fRxZcRunning=true;
+    rxZcReport(1); return true;
+}
+
+bool ItlIwx::rxZcSync(unsigned slot, mbuf_t packet)
+{
+    if (__atomic_load_n(&fRxZcClosing,__ATOMIC_ACQUIRE) || !getMainWorkLoop()->inGate() ||
+        !fRxZcPool || !fRxZcRunning || rxZcFailed() || __atomic_load_n(&fPc1Fault,__ATOMIC_ACQUIRE) ||
+        fRxZcGeneration!=unsigned(com.sc_generation) || fRxZcEpoch!=fPc1ResetEpoch || slot>=IWX_RX_MQ_RING_COUNT) {
+        rxZcFail(4); return false;
+    }
+    unsigned i=fRxZcSlot[slot];
+    if (i>=kRxZcCount) { rxZcFail(5); return false; }
+    auto &e=fRxZcPool->entry[i];
+    if (e.state!=KgpRxZcPool::Posted || !packet || mbuf_next(packet) || mbuf_len(packet)!=IWX_RBUF_SIZE ||
+        mbuf_data(packet)!=e.storage->bytes || e.command->getIOMemoryDescriptor()!=e.memory) {
+        rxZcFail(5); return false;
+    }
+    if (e.command->synchronize(kIODirectionIn)!=kIOReturnSuccess) { rxZcFail(6); return false; }
+    e.state=KgpRxZcPool::Complete; ++fRxZcSynced; return true;
+}
+
+bool ItlIwx::rxZcRepost(unsigned slot)
+{
+    if (__atomic_load_n(&fRxZcClosing,__ATOMIC_ACQUIRE) || !fRxZcPool || !fRxZcRunning || rxZcFailed() ||
+        __atomic_load_n(&fPc1Fault,__ATOMIC_ACQUIRE) || fRxZcGeneration!=unsigned(com.sc_generation) ||
+        fRxZcEpoch!=fPc1ResetEpoch || slot>=IWX_RX_MQ_RING_COUNT) return false;
+    unsigned i=fRxZcSlot[slot];
+    if (i>=kRxZcCount) { rxZcFail(7); return false; }
+    auto &e=fRxZcPool->entry[i];
+    if (e.state==KgpRxZcPool::Complete) e.state=KgpRxZcPool::Posted;
+    if (e.state!=KgpRxZcPool::Posted) { rxZcFail(8); return false; }
+    return true;
+}
+
+void ItlIwx::rxZcTerminal()
+{
+    if (__atomic_load_n(&fRxZcClosing,__ATOMIC_ACQUIRE) || !fRxZcPool) return;
+    fRxZcRunning=false;
+    fRxZcTerminal=getMainWorkLoop()->inGate() && fPc1LastMaster && fPc1Suspended &&
+        !__atomic_load_n(&fPc1Fault,__ATOMIC_ACQUIRE);
+    if (!fRxZcTerminal) { rxZcFail(9); return; }
+    for (unsigned s=0; s<IWX_RX_MQ_RING_COUNT; ++s) {
+        unsigned i=fRxZcSlot[s];
+        if (i>=kRxZcCount) { rxZcFail(10); return; }
+        if (fRxZcPool->entry[i].state==KgpRxZcPool::Complete) fRxZcPool->entry[i].state=KgpRxZcPool::Posted;
+    }
+}
+
+IOReturn ItlIwx::rxZcArmAction(OSObject *owner,void *,void *,void *,void *)
+{
+    return static_cast<ItlIwx *>(owner)->rxZcArm()?kIOReturnSuccess:kIOReturnNotReady;
+}
+IOReturn ItlIwx::rxZcCloseAction(OSObject *owner,void *,void *,void *,void *)
+{
+    auto *that=static_cast<ItlIwx *>(owner);
+    that->fRxZcRunning=false;
+    const bool terminal=!that->fRxZcPublished || (that->fRxZcTerminal && that->fPc1Suspended &&
+        that->fPc1LastMaster && that->fPc1TerminalEpoch && that->fPc1TerminalEpoch==that->fPc1ResetEpoch &&
+        !__atomic_load_n(&that->fPc1Fault,__ATOMIC_ACQUIRE));
+    that->fRxZcPool->adoptRing(&that->com.rxq,that->fRxZcSlot);
+    that->rxZcReport(terminal?3:4);
+    return terminal?kIOReturnSuccess:kIOReturnNotReady;
+}
+
+bool ItlIwx::rxZcFailed() const
+{
+    return __atomic_load_n(&fRxZcFault,__ATOMIC_ACQUIRE) || (fRxZcPool && fRxZcPool->failed());
+}
+void ItlIwx::rxZcFail(uint32_t reason)
+{
+    uint32_t expected=0;
+    __atomic_compare_exchange_n(&fRxZcFault,&expected,reason,false,__ATOMIC_ACQ_REL,__ATOMIC_RELAXED);
+}
+
+bool ItlIwx::rxZcFree()
+{
+    if (!fRxZcPool) return true;
+    if (__atomic_exchange_n(&fRxZcClosing,1U,__ATOMIC_ACQ_REL)) return false;
+    auto *pool=fRxZcPool;
+    auto *wl=getMainWorkLoop();
+    if (!wl) {
+        pool->requestDeferred(false); fRxZcPool=nullptr;
+        fRxZcLife->release(); fRxZcLife=nullptr;
+        return false; // No RX fence/terminal proof: retain all; worker has no HAL reference.
+    }
+    const bool gated=wl->inGate();
+    const IOReturn result=gated ? rxZcCloseAction(this,nullptr,nullptr,nullptr,nullptr) :
+                                wl->runAction(rxZcCloseAction,this);
+    const bool clean=result==kIOReturnSuccess;
+    fRxZcPool=nullptr; // Closed gate fence ensures no future HAL RX can dereference it.
+    pool->requestDeferred(clean); // Ordered cleanup, never waits for the RX gate.
+    fRxZcCleanHandoff=clean; // Fresh instance may start; old worker owns old resources.
+    rxZcReport(5); // Report closing/retained handoff; worker finishes without a HAL reference.
+    fRxZcLife->release(); fRxZcLife=nullptr; // Pool/late stack leases retain their own references.
+    return fRxZcCleanHandoff;
+}
+
+void ItlIwx::rxZcPressureRecord(uint64_t *v,unsigned event)
+{
+    v[0]=4; v[1]=event; v[2]=time2GNow();
+    if (fRxZcPool) fRxZcPool->snapshot(v+3);
+    v[19]=fRxZcReplaced; v[20]=fRxZcStarved;
+    v[21]=__atomic_load_n(&fPc1Fault,__ATOMIC_ACQUIRE); v[22]=fRxZcFault;
+    v[23]=fRxZcLife?__atomic_load_n(&fRxZcLife->detached,__ATOMIC_RELAXED):0;
+}
+void ItlIwx::rxZcReport(unsigned reason)
+{
+    if (!pci.pa_tag) return;
+    const uint64_t now=time2GNow(); const bool fault=rxZcFailed();
+    if (!reason && !(fault && !fRxZcReportedFault) && now-fRxZcLastReport<1000000000ULL) return;
+    fRxZcReportedFault|=fault; fRxZcLastReport=now;
+    uint64_t v[64]={};
+    v[0]=4; v[1]=++fRxZcSnapshots; v[2]=reason; v[3]=fRxZcFault;
+    v[4]=fRxZcRunning; v[5]=fRxZcPublished; v[6]=fRxZcTerminal; v[7]=fRxZcClosing;
+    v[8]=fRxZcSynced; v[9]=fRxZcReplaced; v[10]=fRxZcStarved;
+    v[11]=fRxZcGeneration; v[12]=fRxZcEpoch; v[13]=fPc1ResetEpoch; v[14]=fPc1TerminalEpoch;
+    v[15]=__atomic_load_n(&fPc1Fault,__ATOMIC_ACQUIRE); v[16]=fPc1Suspended;
+    v[17]=now; v[18]=fRxZcNotif; v[19]=fRxZcEpisodes; v[20]=fRxZcRecoveries; v[21]=fRxZcPressure;
+    v[22]=fRxZcBatchQueued; v[23]=fRxZcBatchMax;
+    if (fRxZcPool) fRxZcPool->snapshot(v+24);
+    if (fRxZcLife) {
+        v[40]=__atomic_load_n(&fRxZcLife->live,__ATOMIC_RELAXED);
+        v[41]=__atomic_load_n(&fRxZcLife->created,__ATOMIC_RELAXED);
+        v[42]=__atomic_load_n(&fRxZcLife->freed,__ATOMIC_RELAXED);
+        v[43]=__atomic_load_n(&fRxZcLife->callbacks,__ATOMIC_RELAXED);
+        v[44]=__atomic_load_n(&fRxZcLife->detached,__ATOMIC_RELAXED);
+        v[45]=__atomic_load_n(&fRxZcLife->closeState,__ATOMIC_ACQUIRE);
+    }
+    v[46]=kRxZcCount; v[47]=IWX_RX_MQ_RING_COUNT; v[48]=fRxZcPool!=nullptr;
+    v[49]=fRxZcCleanHandoff; v[50]=fRxZcPropertyFailures;
+    if (!pci.pa_tag->setProperty("KGP_RX_ZC4",v,sizeof(v))) ++fRxZcPropertyFailures;
+    if (fRxZcFirstPressure[0] && !pci.pa_tag->setProperty("KGP_RX_ZC4_FIRST_PRESSURE",fRxZcFirstPressure,sizeof(fRxZcFirstPressure))) ++fRxZcPropertyFailures;
+    if (fRxZcLastRecovery[0] && !pci.pa_tag->setProperty("KGP_RX_ZC4_LAST_RECOVERY",fRxZcLastRecovery,sizeof(fRxZcLastRecovery))) ++fRxZcPropertyFailures;
+}
+// B1-ZC5 END
+
 bool ItlIwx::rx2HAllocate(unsigned slot)
 {
     fRxMap2H[0] = 1;
@@ -1257,6 +2129,7 @@ void ItlIwx::alive2FTerminal(IOPCIDevice *provider, bool attached)
 
 bool ItlIwx::attach(IOPCIDevice *device)
 {
+    boot5Mark(1, "IWX attach entered");
     const bool captureAttach2G = fAlive2F.word[0] == 0;
     if (captureAttach2G) {
         fAlive2FOwner = current_thread();
@@ -1270,6 +2143,7 @@ bool ItlIwx::attach(IOPCIDevice *device)
     const bool attached2G = iwx_attach(&com, &pci);
     time2GMark(8);
     if (!attached2G) {
+        boot5Mark(fBoot5Stage, "IWX attach failed", -1);
         alive2FResult(1, -1); // Synthetic outer Boolean failure; first error wins.
         alive2FStep(9);
         detach(device);
@@ -1287,12 +2161,14 @@ bool ItlIwx::attach(IOPCIDevice *device)
         return false;
     }
     if (captureAttach2G) alive2FTerminal(device, true);
+    boot5Mark(90, "IWX attach completed");
     return true;
 }
 
 void ItlIwx::
 detach(IOPCIDevice *device)
 {
+    boot5RemoveInterrupt();
     drain2MRemove(); // fence deferred callbacks before any queue/backing free
     tx2IStop(3);
     flow2J(3, 0); flow2JPublish();
@@ -1303,6 +2179,7 @@ detach(IOPCIDevice *device)
     
     for (int txq_i = 0; txq_i < nitems(sc->txq); txq_i++)
         iwx_free_tx_ring(sc, &sc->txq[txq_i]);
+    if (dma5Terminal()) iwx_free_tx_ring(sc,&sc->sc_tvqm_ring);
     if (timeDetach2H) fDetach2H[2] = time2GNow();
     iwx_free_rx_ring(sc, &sc->rxq);
     if (timeDetach2H) fDetach2H[3] = time2GNow();
@@ -1310,11 +2187,11 @@ detach(IOPCIDevice *device)
     if (timeDetach2H) fDetach2H[4] = time2GNow();
     iwx_dma_contig_free(&com.ctxt_info_dma);
     if (timeDetach2H) fDetach2H[5] = time2GNow();
-    ieee80211_ifdetach(ifp);
+    if (fBoot5IfAttached) { fBoot5IfAttached = false; ieee80211_ifdetach(ifp); }
     if (timeDetach2H) fDetach2H[6] = time2GNow();
-    taskq_destroy(systq);
+    if (fBoot5TaskqInitialized) { fBoot5TaskqInitialized = false; taskq_destroy(systq); }
     if (timeDetach2H) fDetach2H[7] = time2GNow();
-    taskq_destroy(com.sc_nswq);
+    if (com.sc_nswq) { taskq_destroy(com.sc_nswq); com.sc_nswq = nullptr; }
     if (timeDetach2H) fDetach2H[8] = time2GNow();
     releaseAll();
     if (timeDetach2H) fDetach2H[9] = time2GNow();
@@ -1323,6 +2200,7 @@ detach(IOPCIDevice *device)
 void ItlIwx::
 releaseAll()
 {
+    boot5RemoveInterrupt();
     drain2MRemove();
     pci_intr_handle *intrHandler = com.ih;
     
@@ -1350,6 +2228,14 @@ void ItlIwx::free()
     if (fDrain2MLock) { IOSimpleLockFree(fDrain2MLock); fDrain2MLock = nullptr; }
     tx2IFree();
     cmd2KFree();
+    bool retained=fDma5Published && !dma5Terminal();
+    for (unsigned i=0;i<kTx2ICount;++i) retained|=fTx2I[i].dma.cmd!=nullptr || fTx2I[i].dma.buffer!=nullptr;
+    for (unsigned i=0;i<kCmd2KCount;++i) retained|=fCmd2K[i].dma.cmd!=nullptr || fCmd2K[i].dma.buffer!=nullptr;
+    if (fDma5Mapper) { fDma5Mapper->release(); fDma5Mapper=nullptr; }
+    // Quarantined commands retain the mapper. Also retain its PCI provider if
+    // backing still exists after an uncertain terminal.
+    if (fDma5Provider && !retained) fDma5Provider->release();
+    fDma5Provider=nullptr;
     XYLog("%s\n", __FUNCTION__);
     super::free();
 }
@@ -2270,6 +3156,10 @@ iwx_ctxt_info_gen3_init(struct iwx_softc *sc, const struct iwx_fw_sects *fws)
     uint32_t control_flags = 0;
     int err;
     
+    if (dma5Terminal()) iwx_free_tx_ring(sc,&sc->sc_tvqm_ring);
+    if (dma5Mapped() && getMainWorkLoop()->runAction(rxZcArmAction, this) != kIOReturnSuccess) return ENXIO;
+    fDma5Published=true;
+
     /* Allocate prph scratch. */
     err = iwx_dma_contig_alloc(sc->sc_dmat, &sc->prph_scratch_dma,
                                sizeof(struct iwx_prph_scratch), 0);
@@ -3494,14 +4384,14 @@ iwx_clear_bits_prph(struct iwx_softc *sc, uint32_t reg, uint32_t bits)
     iwx_set_bits_mask_prph(sc, reg, 0, ~bits);
 }
 
-bool allocDmaMemory2(struct iwx_dma_info *dma, size_t size, int alignment)
+bool allocDmaMemory2(struct iwx_dma_info *dma, size_t size, int alignment, IOMapper *mapper)
 {
     IOBufferMemoryDescriptor *bmd;
     IODMACommand::Segment64 seg;
     UInt64 ofs = 0;
     UInt32 numSegs = 1;
     
-    bmd = IOBufferMemoryDescriptor::inTaskWithPhysicalMask(kernel_task, kIODirectionInOut | kIOMemoryPhysicallyContiguous | kIOMapInhibitCache, size, DMA_BIT_MASK(64));
+    bmd = IOBufferMemoryDescriptor::inTaskWithPhysicalMask(kernel_task, kIODirectionInOut | (mapper ? (kIOMemoryHostPhysicallyContiguous | kIOMemoryMapperNone) : kIOMemoryPhysicallyContiguous) | kIOMapInhibitCache, size, DMA_BIT_MASK(64));
     
     if (bmd == NULL) {
         XYLog("%s alloc DMA memory failed.\n", __FUNCTION__);
@@ -3514,7 +4404,7 @@ bool allocDmaMemory2(struct iwx_dma_info *dma, size_t size, int alignment)
         bmd = NULL;
         return false;
     }
-    IODMACommand *cmd = IODMACommand::withSpecification(kIODMACommandOutputHost64, 64, 0, IODMACommand::kMapped, 0, alignment);
+    IODMACommand *cmd = IODMACommand::withSpecification(kIODMACommandOutputHost64, 64, 0, IODMACommand::kMapped, 0, alignment, mapper);
     
     if (cmd == NULL) {
         XYLog("%s alloc IODMACommand memory failed.\n", __FUNCTION__);
@@ -3545,7 +4435,7 @@ int ItlIwx::
 iwx_dma_contig_alloc(bus_dma_tag_t tag, struct iwx_dma_info *dma,
                      bus_size_t size, bus_size_t alignment)
 {
-    if (!allocDmaMemory2(dma, size, alignment)) {
+    if (!allocDmaMemory2(dma, size, alignment, fDma5Mapper)) {
         return 1;
     }
     
@@ -3584,12 +4474,17 @@ static_assert(sizeof(iwx_rx_transfer_desc) == 16, "2G free descriptor stride");
 int ItlIwx::
 iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
 {
+    // BOOTFIX1 DEXTER ROUTE iwx_alloc_rx_ring: original body in its own label scope.
+    if (!dma5Mapped()) return dexterOriginal_iwx_alloc_rx_ring(sc, ring);
+
     bus_size_t size;
     int i, err;
     int rb_stts_size = sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 ? sizeof(uint16_t) : sizeof(iwx_rb_status);
     int rb_stts_align = sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 ? 0 : 16;
     
     ring->cur = 0;
+    if (dma5Mapped() && !rxZcSetup())
+        return ENOMEM;
     
     /* Allocate RX descriptors (256-byte aligned). */
     size = IWX_RX_MQ_RING_COUNT * (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 ? sizeof(struct iwx_rx_transfer_desc) : sizeof(uint64_t));
@@ -3624,6 +4519,10 @@ iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
         struct iwx_rx_data *data = &ring->data[i];
         
         memset(data, 0, sizeof(*data));
+        if (dma5Mapped()) {
+            if (!rxZcReplace(i)) { err = ENOMEM; goto fail; }
+            continue;
+        }
         err = bus_dmamap_create(sc->sc_dmat, IWX_RBUF_SIZE, 1,
                                 IWX_RBUF_SIZE, 0, BUS_DMA_NOWAIT,
                                 &data->map);
@@ -3633,13 +4532,14 @@ iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
             goto fail;
         }
         
-        if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 && !rx2HAllocate(i)) {
-            err = ENOMEM; // Original RX constructor error contract; detailed status is retained separately.
-            goto fail;
-        }
         err = iwx_rx_addbuf(sc, IWX_RBUF_SIZE, i);
         if (err)
             goto fail;
+    }
+    if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 &&
+        !pci.pa_tag->setProperty("KGP_RX_EXPERIMENT",
+            "AirportItlwm-Tahoe-B1-ZC5-BOOTFIX1")) {
+        err = ENOMEM; goto fail;
     }
     return 0;
     
@@ -3677,6 +4577,10 @@ iwx_disable_rx_dma(struct iwx_softc *sc)
 void ItlIwx::
 iwx_reset_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
 {
+    if (dma5Mapped()) {
+        if (__atomic_load_n(&fRxZcClosing, __ATOMIC_ACQUIRE)) return;
+        rxZcTerminal();
+    }
     ring->cur = 0;
     //    bus_dmamap_sync(sc->sc_dmat, ring->stat_dma.map, 0,
     //        ring->stat_dma.size, BUS_DMASYNC_PREWRITE);
@@ -3692,6 +4596,11 @@ iwx_reset_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
 void ItlIwx::
 iwx_free_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
 {
+    if (dma5Mapped()) {
+        rxZcFree(); // RX pool owns clean retirement or fail-closed retention, including ring DMA.
+        return;
+    }
+    if (sc->sc_device_family>=IWX_DEVICE_FAMILY_AX210 && !dma5Terminal()) return;
     int i;
     
     iwx_dma_contig_free(&ring->free_desc_dma);
@@ -3838,6 +4747,10 @@ iwx_reset_tx_ring(struct iwx_softc *sc, struct iwx_tx_ring *ring)
         return;
     }
 
+    if (!tx5RingReleasable(ring)) {
+        __atomic_fetch_or(&fTx2JAdmission,kTx2JClosed,__ATOMIC_ACQ_REL);
+        __atomic_store_n(&fTx2IBlocked,1U,__ATOMIC_RELEASE); return;
+    }
     const bool command2K = sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 && ring == &sc->txq[IWX_DQA_CMD_QUEUE];
     if (command2K) cmd2KResetBegin();
     int i;
@@ -3883,6 +4796,7 @@ iwx_reset_tx_ring(struct iwx_softc *sc, struct iwx_tx_ring *ring)
 void ItlIwx::
 iwx_free_tx_ring(struct iwx_softc *sc, struct iwx_tx_ring *ring)
 {
+    if (!tx5RingReleasable(ring)) return;
     const bool command2K = sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 && ring == &sc->txq[IWX_DQA_CMD_QUEUE];
     if (command2K) cmd2KResetBegin();
     int i;
@@ -4402,6 +5316,7 @@ iwx_stop_device(struct iwx_softc *sc, unsigned origin2J)
             }
             return;
         }
+        boot5ConventionalStop(); // lifecycle gate; original Dexter observes IFF_RUNNING
         ++fPc1ResetEpoch;fPc1TerminalEpoch=0;
         __atomic_store_n(&fPc1Suspended,1U,__ATOMIC_RELEASE);
     }
@@ -4452,6 +5367,7 @@ iwx_stop_device(struct iwx_softc *sc, unsigned origin2J)
             for(unsigned i=0;i<kTx2ICount;++i)
                 if (__atomic_load_n(&fTx2I[i].state,__ATOMIC_ACQUIRE)==Tx2IQuarantined) ++fPc1QuarantineCount;
         } else {
+            boot5ConventionalFault(); // retire callback dispatch, never packet-by-packet admission
             // Keep old rings/backing intact and make subsequent init fail closed.
             __atomic_store_n(&fPc1Fault,2U,__ATOMIC_RELEASE);
             __atomic_store_n(&fTx2IBlocked,1U,__ATOMIC_RELEASE);
@@ -4685,6 +5601,7 @@ iwx_tvqm_enable_txq(struct iwx_softc *sc, int tid, int ssn, uint32_t size)
     };
     struct iwx_tx_ring *ring = &sc->sc_tvqm_ring;
     
+    if (ring->desc_dma.cmd || ring->cmd_dma.cmd || ring->bc_tbl.cmd) return -EBUSY;
     memset(ring, 0, sizeof(*ring));
     iwx_tx_ring_init(sc, ring, size);
     /* Allocate TX descriptors (256-byte aligned). */
@@ -4769,9 +5686,15 @@ iwx_tvqm_enable_txq(struct iwx_softc *sc, int tid, int ssn, uint32_t size)
     }
     ring->cur = wr_idx;
     ring->qid = fwqid;
+    if (!tx5RingReleasable(&sc->txq[fwqid])) {
+        __atomic_fetch_or(&fTx2JAdmission,kTx2JClosed,__ATOMIC_ACQ_REL);
+        __atomic_store_n(&fTx2IBlocked,1U,__ATOMIC_RELEASE);
+        return -EBUSY; // Both rings retained; device stop is required.
+    }
     iwx_reset_tx_ring(sc, &sc->txq[fwqid]);
     iwx_free_tx_ring(sc, &sc->txq[fwqid]);
     memcpy(&sc->txq[fwqid], ring, sizeof(*ring));
+    memset(ring,0,sizeof(*ring)); // Ownership moved; no stale temporary alias.
     return fwqid;
 fail:
     iwx_reset_tx_ring(sc, ring);
@@ -6208,13 +7131,16 @@ iwx_config_ltr(struct iwx_softc *sc)
 void ItlIwx::
 iwx_update_rx_desc(struct iwx_softc *sc, struct iwx_rx_ring *ring, int idx)
 {
+    // BOOTFIX1 DEXTER ROUTE iwx_update_rx_desc: original body in its own label scope.
+    if (!dma5Mapped()) return dexterOriginal_iwx_update_rx_desc(sc, ring, idx);
+
     struct iwx_rx_data *data = &ring->data[idx];
     
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210) {
         struct iwx_rx_transfer_desc *bd = (struct iwx_rx_transfer_desc *)ring->desc;
         
-        // 2H: AX210 RX consumes prepared slot backing, never the packet cursor address.
-        bd[idx].addr = htole64(fRxBacking2H[idx].paddr);
+        // ZC5: mapped IOVA or the Dexter cursor address only in resolved mapper-free mode.
+        bd[idx].addr = htole64(dma5Mapped() ? fRxZcPool->entry[fRxZcSlot[idx]].address : data->map->dm_segs[0].location);
         bd[idx].rbid = htole16(idx & 0x0fff);
     } else
         ((uint64_t *)ring->desc)[idx] =
@@ -6227,6 +7153,11 @@ iwx_update_rx_desc(struct iwx_softc *sc, struct iwx_rx_ring *ring, int idx)
 int ItlIwx::
 iwx_rx_addbuf(struct iwx_softc *sc, int size, int idx)
 {
+    // BOOTFIX1 DEXTER ROUTE iwx_rx_addbuf: original body in its own label scope.
+    if (!dma5Mapped()) return dexterOriginal_iwx_rx_addbuf(sc, size, idx);
+
+    if (dma5Mapped())
+        return rxZcReplace(idx) ? 0 : ENOBUFS;
     struct iwx_rx_ring *ring = &sc->rxq;
     struct iwx_rx_data *data = &ring->data[idx];
     mbuf_t m;
@@ -7148,6 +8079,9 @@ iwx_clear_oactive(struct iwx_softc *sc, struct iwx_tx_ring *ring)
 void ItlIwx::
 iwx_rx_tx_ba_notif(struct iwx_softc *sc, struct iwx_rx_packet *pkt, struct iwx_rx_data *data)
 {
+    // BOOTFIX1 DEXTER ROUTE iwx_rx_tx_ba_notif: original body in its own label scope.
+    if (!dma5Mapped()) return dexterOriginal_iwx_rx_tx_ba_notif(sc, pkt, data);
+
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 &&
         __atomic_load_n(&fPc1Suspended,__ATOMIC_ACQUIRE)) {++fPc1DroppedCompletion;return;}
 
@@ -7195,11 +8129,20 @@ iwx_rx_tx_ba_notif(struct iwx_softc *sc, struct iwx_rx_packet *pkt, struct iwx_r
 void ItlIwx::
 iwx_ampdu_txq_advance(struct iwx_softc *sc, struct iwx_tx_ring *ring, int idx, bool normalCompletion2I)
 {
+    // BOOTFIX1 DEXTER ROUTE iwx_ampdu_txq_advance: original body in its own label scope.
+    if (!dma5Mapped()) return dexterOriginal_iwx_ampdu_txq_advance(sc, ring, idx);
+
     struct iwx_tx_data *txd;
 
     while (ring->tail != idx) {
         txd = &ring->data[ring->tail];
         if (txd->m != NULL) {
+            if (!dma5Mapped() && sc->sc_device_family>=IWX_DEVICE_FAMILY_AX210 && !normalCompletion2I) {
+                // Conventional mbuf is the hardware payload itself. A software
+                // flush without positive TX completion cannot release it.
+                __atomic_fetch_or(&fTx2JAdmission,kTx2JClosed,__ATOMIC_ACQ_REL);
+                __atomic_store_n(&fTx2IBlocked,1U,__ATOMIC_RELEASE); return;
+            }
             tx2IRetire(txd, normalCompletion2I);
             iwx_txd_done(sc, txd);
             iwx_clear_tx_desc(sc, ring, ring->tail);
@@ -7235,6 +8178,9 @@ void ItlIwx::
 iwx_rx_tx_cmd(struct iwx_softc *sc, struct iwx_rx_packet *pkt,
               struct iwx_rx_data *data)
 {
+    // BOOTFIX1 DEXTER ROUTE iwx_rx_tx_cmd: original body in its own label scope.
+    if (!dma5Mapped()) return dexterOriginal_iwx_rx_tx_cmd(sc, pkt, data);
+
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 &&
         __atomic_load_n(&fPc1Suspended,__ATOMIC_ACQUIRE)) {++fPc1DroppedCompletion;return;}
 
@@ -8035,6 +8981,9 @@ iwx_tx_update_byte_tbl(struct iwx_softc *sc, struct iwx_tx_ring *txq, int idx, u
 int ItlIwx::
 iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
 {
+    // BOOTFIX1 DEXTER ROUTE iwx_tx: original body in its own label scope.
+    if (!dma5Mapped()) return dexterOriginal_iwx_tx(sc, m, ni, ac);
+
     struct ieee80211com *ic = &sc->sc_ic;
     struct iwx_node *in = (struct iwx_node *)ni;
     struct iwx_tx_ring *ring;
@@ -8203,12 +9152,12 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
     /* Trim 802.11 header. */
     mbuf_adj(m, hdrlen);
     
-    if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210)
+    if (dma5Mapped())
         nsegs = tx2IPrepare(data, m, ring->qid, idx, &segs[0]);
     else
     nsegs = data->map->cursor->getPhysicalSegmentsWithCoalesce(m, &segs[0], IWX_TFH_NUM_TBS - 2);
     if (nsegs == 0) {
-        XYLog("%s: can't map mbuf (error %d)\n", DEVNAME(sc),
+        if (!dma5Mapped()) XYLog("%s: can't map mbuf (error %d)\n", DEVNAME(sc),
               nsegs);
         mbuf_freem(m);
         return ENOMEM;
@@ -8260,6 +9209,7 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
     
     iwx_tx_update_byte_tbl(sc, ring, idx, totlen, num_tbs);
     
+    if (dma5Mapped()) OSSynchronizeIO(); // coherent payload/descriptor stores precede MMIO
     /* Kick TX ring. */
     ring->cur = (ring->cur + 1) % getTxQueueSize();
     IWX_WRITE(sc, IWX_HBUS_TARG_WRPTR, ring->qid << 16 | ring->cur);
@@ -8268,9 +9218,10 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
     if (++ring->queued > ring->hi_mark) {
 //        XYLog("%s sc->qfullmsk is FULL qid=%d ring->cur=%d ring->queued=%d\n", __FUNCTION__, ring->qid, ring->cur, ring->queued);
         sc->qfullmsk |= 1 << ring->qid;
+        __atomic_fetch_add(&fTx5Telemetry[7],1ULL,__ATOMIC_RELAXED);
     }
     
-    if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210) tx2IPublished(data);
+    if (dma5Mapped()) tx2IPublished(data);
     return 0;
 }
 
@@ -11657,7 +12608,11 @@ iwx_init(struct _ifnet *ifp)
     
     ifq_clr_oactive(&ifp->if_snd);
     ifq_flush(&ifp->if_snd);
-    ifp->if_flags |= IFF_RUNNING;
+    if (!dma5Mapped()) {
+        // Publish conventional RUNNING under the same lifecycle gate as stop.
+        if (getMainWorkLoop()->runAction(boot5ConventionalRun, this,
+                reinterpret_cast<void *>(uintptr_t(generation))) != kIOReturnSuccess) return ENXIO;
+    } else ifp->if_flags |= IFF_RUNNING;
     drain2MArm(drainEpoch2M); // no later stop/reset may have superseded this init
     
     if (ic->ic_opmode == IEEE80211_M_MONITOR) {
@@ -11694,6 +12649,9 @@ iwx_init(struct _ifnet *ifp)
 IOReturn ItlIwx::
 _iwx_start_task(OSObject *target, void *arg0, void *arg1, void *arg2, void *arg3)
 {
+    // BOOTFIX1 DEXTER ROUTE _iwx_start_task: original body in its own label scope.
+    if (!container_of(static_cast<iwx_softc *>(static_cast<_ifnet *>(arg0)->if_softc), ItlIwx, com)->dma5Mapped()) return dexterOriginal__iwx_start_task(target, arg0, arg1, arg2, arg3);
+
     struct _ifnet *ifp = (struct _ifnet *)arg0;
     struct iwx_softc *sc = (struct iwx_softc *)ifp->if_softc;
     ItlIwx *that = container_of(sc, ItlIwx, com);
@@ -11798,6 +12756,9 @@ _iwx_start_task(OSObject *target, void *arg0, void *arg1, void *arg2, void *arg3
 void ItlIwx::
 iwx_start(struct _ifnet *ifp)
 {
+    // BOOTFIX1 DEXTER ROUTE iwx_start: original body in its own label scope.
+    if (!container_of(static_cast<iwx_softc *>(ifp->if_softc), ItlIwx, com)->dma5Mapped()) return dexterOriginal_iwx_start(ifp);
+
     struct iwx_softc *sc = (struct iwx_softc*)ifp->if_softc;
     ItlIwx *that = container_of(sc, ItlIwx, com);
     Start2LContext context2L = {};
@@ -12275,6 +13236,9 @@ struct iwl_pnvm_init_complete_ntfy {
 void ItlIwx::
 iwx_rx_pkt(struct iwx_softc *sc, struct iwx_rx_data *data, struct mbuf_list *ml)
 {
+    // BOOTFIX1 DEXTER ROUTE iwx_rx_pkt: original body in its own label scope.
+    if (!dma5Mapped()) return dexterOriginal_iwx_rx_pkt(sc, data, ml);
+
     alive2FEvent(5);
     struct _ifnet *ifp = IC2IFP(&sc->sc_ic);
     struct iwx_rx_packet *pkt, *nextpkt;
@@ -12287,9 +13251,9 @@ iwx_rx_pkt(struct iwx_softc *sc, struct iwx_rx_data *data, struct mbuf_list *ml)
     //        BUS_DMASYNC_POSTREAD);
     
     m0 = data->m;
-    if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 &&
-        !rx2HCopy(sc->rxq.cur, m0))
-        return; // No raw-address fallback or parsing of an unsynchronized copy.
+    if (dma5Mapped() &&
+        !rxZcSync(sc->rxq.cur, m0))
+        return; // Never parse unsynchronized direct DMA storage.
     const int rxSlot2G = rx2GBegin(sc, data, m0);
     while (m0 && offset + minsz < IWX_RBUF_SIZE) {
         pkt = (struct iwx_rx_packet *)((uint8_t*)mbuf_data(m0) + offset);
@@ -12721,6 +13685,13 @@ iwx_rx_pkt(struct iwx_softc *sc, struct iwx_rx_data *data, struct mbuf_list *ml)
 void ItlIwx::
 iwx_notif_intr(struct iwx_softc *sc)
 {
+    // BOOTFIX1 DEXTER ROUTE iwx_notif_intr: original body in its own label scope.
+    if (!dma5Mapped()) return dexterOriginal_iwx_notif_intr(sc);
+
+    if (dma5Mapped() &&
+        __atomic_load_n(&fRxZcClosing, __ATOMIC_ACQUIRE)) return;
+    if (dma5Mapped()) ++fRxZcNotif;
+    if (sc->sc_device_family>=IWX_DEVICE_FAMILY_AX210 && __atomic_load_n(&fPc1Fault,__ATOMIC_ACQUIRE)) return;
     alive2FEvent(4);
     struct mbuf_list ml = MBUF_LIST_INITIALIZER();
     uint16_t hw;
@@ -12735,10 +13706,24 @@ iwx_notif_intr(struct iwx_softc *sc)
     hw &= (IWX_RX_MQ_RING_COUNT - 1);
     __atomic_store_n(&fRx2GHw, uint32_t(hw), __ATOMIC_RELAXED);
     DPRINTFN(3, ("%s hw=%d\n", __FUNCTION__, hw));
+    if (dma5Mapped() &&
+        (!fRxZcRunning || rxZcFailed() || __atomic_load_n(&fPc1Fault, __ATOMIC_ACQUIRE))) {
+        rxZcReport(0); return;
+    }
     while (sc->rxq.cur != hw) {
         struct iwx_rx_data *data = &sc->rxq.data[sc->rxq.cur];
+        if (dma5Mapped()) fRxZcBatchQueued = ml_len(&ml);
         iwx_rx_pkt(sc, data, &ml);
+        if (dma5Mapped() && !rxZcRepost(sc->rxq.cur)) {
+            if_input(&sc->sc_ic.ic_if, &ml);
+            rxZcReport(0);
+            return; // No new RX credits after sync/ownership/generation failure.
+        }
         sc->rxq.cur = (sc->rxq.cur + 1) % IWX_RX_MQ_RING_COUNT;
+    }
+    if (dma5Mapped()) {
+        fRxZcBatchQueued = ml_len(&ml);
+        if (fRxZcBatchQueued > fRxZcBatchMax) fRxZcBatchMax = fRxZcBatchQueued;
     }
     if_input(&sc->sc_ic.ic_if, &ml);
     
@@ -12748,11 +13733,16 @@ iwx_notif_intr(struct iwx_softc *sc)
      */
     hw = (hw == 0) ? IWX_RX_MQ_RING_COUNT - 1 : hw - 1;
     IWX_WRITE(sc, IWX_RFH_Q0_FRBDCB_WIDX_TRG, hw & ~7);
+    if (dma5Mapped()) rxZcReport(0);
+    dma5Report();
 }
 
 int ItlIwx::
 iwx_intr(OSObject *object, IOInterruptEventSource* sender, int count)
 {
+    // BOOTFIX1 DEXTER ROUTE iwx_intr: original body in its own label scope.
+    if (!static_cast<ItlIwx *>(object)->dma5Mapped()) return dexterOriginal_iwx_intr(object, sender, count);
+
 //    XYLog("Interrupt!!!\n");
     ItlIwx *that = (ItlIwx*)object;
     struct iwx_softc *sc = &that->com;
@@ -14279,6 +15269,9 @@ iwx_attach_hook(struct device *self)
 bool ItlIwx::
 intrFilter(OSObject *object, IOFilterInterruptEventSource *src)
 {
+    // BOOTFIX1 DEXTER ROUTE intrFilter: original body in its own label scope.
+    if (!static_cast<ItlIwx *>(object)->dma5Mapped()) return dexterOriginal_intrFilter(object, src);
+
     ItlIwx *that = (ItlIwx*)object;
     IWX_WRITE(&that->com, IWX_CSR_INT_MASK, 0);
     that->alive2FEvent(0);
@@ -14379,6 +15372,7 @@ iwx_attach(struct iwx_softc *sc, struct pci_attach_args *pa)
         XYLog("%s: can't establish interrupt\n", DEVNAME(sc));
         return false;
     }
+    fBoot5InterruptAdded = true;
     sc->sc_ih->enable();
     
     /* Clear pending interrupts. */
@@ -14493,6 +15487,9 @@ iwx_attach(struct iwx_softc *sc, struct pci_attach_args *pa)
     sc->sc_tx_with_siso_diversity = sc->sc_cfg->tx_with_siso_diversity;
     sc->sc_uhb_supported = sc->sc_cfg->uhb_supported;
     
+    if (!dma5Select()) return false;
+    boot5Mark(20, "command/ring DMA allocation entered");
+
     /* Allocate DMA memory for loading firmware. */
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210)
         err = iwx_dma_contig_alloc(sc->sc_dmat, &sc->ctxt_info_dma,
@@ -14523,13 +15520,18 @@ iwx_attach(struct iwx_softc *sc, struct pci_attach_args *pa)
         }
     }
     
+    boot5Mark(21, "command/TX ring DMA allocation completed");
+    boot5Mark(30, "RX initialization entered");
     err = iwx_alloc_rx_ring(sc, &sc->rxq);
     if (err) {
         XYLog("%s: could not allocate RX ring\n", DEVNAME(sc));
         goto fail4;
     }
     
+    boot5Mark(31, "RX initialization completed");
+    boot5Mark(40, "task/interface initialization entered");
     taskq_init();
+    fBoot5TaskqInitialized = true;
     sc->sc_nswq = taskq_create("iwxns", 1, IPL_NET, 0);
     if (sc->sc_nswq == NULL)
         goto fail4;
@@ -14582,6 +15584,7 @@ iwx_attach(struct iwx_softc *sc, struct pci_attach_args *pa)
     
     if_attach(ifp);
     ieee80211_ifattach(ifp, getController());
+    fBoot5IfAttached = true;
     ieee80211_media_init(ifp);
     
 #if NBPFILTER > 0
@@ -14626,11 +15629,16 @@ iwx_attach(struct iwx_softc *sc, struct pci_attach_args *pa)
      * firmware from disk. Postpone until mountroot is done.
      */
     //    config_mountroot(self, iwx_attach_hook);
+    boot5Mark(41, "task/interface initialization completed");
+    boot5Mark(50, "firmware preinit entered");
     if (alive2FResult(8, iwx_preinit(sc))) {
         goto fail5;
     }
+    boot5Mark(51, "firmware preinit completed");
+    boot5Mark(60, "TX payload initialization entered");
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 && !tx2IAllocate())
         goto fail5;
+    boot5Mark(61, "RX/TX initialization completed");
 
     return true;
     
@@ -14751,4 +15759,1160 @@ iwx_activate(struct iwx_softc *sc, int act)
     }
     
     return 0;
+}
+
+// BOOTFIX1 pinned original Dexter packet methods: bodies verbatim from
+// 51543d6cfecf8aae3f66792b0699f5a1bb16a368. Separate functions preserve goto labels.
+int ItlIwx::
+dexterOriginal_iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
+{
+    bus_size_t size;
+    int i, err;
+    int rb_stts_size = sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 ? sizeof(uint16_t) : sizeof(iwx_rb_status);
+    int rb_stts_align = sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 ? 0 : 16;
+    
+    ring->cur = 0;
+    
+    /* Allocate RX descriptors (256-byte aligned). */
+    size = IWX_RX_MQ_RING_COUNT * (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 ? sizeof(struct iwx_rx_transfer_desc) : sizeof(uint64_t));
+    err = iwx_dma_contig_alloc(sc->sc_dmat, &ring->free_desc_dma, size, 256);
+    if (err) {
+        XYLog("%s: could not allocate RX ring DMA memory\n",
+              DEVNAME(sc));
+        goto fail;
+    }
+    ring->desc = ring->free_desc_dma.vaddr;
+    
+    /* Allocate RX status area (16-byte aligned). */
+    err = iwx_dma_contig_alloc(sc->sc_dmat, &ring->stat_dma,
+                               rb_stts_size, rb_stts_align);
+    if (err) {
+        XYLog("%s: could not allocate RX status DMA memory\n",
+              DEVNAME(sc));
+        goto fail;
+    }
+    ring->stat = ring->stat_dma.vaddr;
+    
+    size = IWX_RX_MQ_RING_COUNT * (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 ? sizeof(struct iwx_rx_completion_desc) : sizeof(uint32_t));
+    err = iwx_dma_contig_alloc(sc->sc_dmat, &ring->used_desc_dma,
+                               size, 256);
+    if (err) {
+        XYLog("%s: could not allocate RX ring DMA memory\n",
+              DEVNAME(sc));
+        goto fail;
+    }
+    
+    for (i = 0; i < IWX_RX_MQ_RING_COUNT; i++) {
+        struct iwx_rx_data *data = &ring->data[i];
+        
+        memset(data, 0, sizeof(*data));
+        err = bus_dmamap_create(sc->sc_dmat, IWX_RBUF_SIZE, 1,
+                                IWX_RBUF_SIZE, 0, BUS_DMA_NOWAIT,
+                                &data->map);
+        if (err) {
+            XYLog("%s: could not create RX buf DMA map\n",
+                  DEVNAME(sc));
+            goto fail;
+        }
+        
+        err = iwx_rx_addbuf(sc, IWX_RBUF_SIZE, i);
+        if (err)
+            goto fail;
+    }
+    return 0;
+    
+fail:    iwx_free_rx_ring(sc, ring);
+    return err;
+}
+
+void ItlIwx::
+dexterOriginal_iwx_update_rx_desc(struct iwx_softc *sc, struct iwx_rx_ring *ring, int idx)
+{
+    struct iwx_rx_data *data = &ring->data[idx];
+    
+    if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210) {
+        struct iwx_rx_transfer_desc *bd = (struct iwx_rx_transfer_desc *)ring->desc;
+        
+        bd[idx].addr = htole64(data->map->dm_segs[0].location);
+        bd[idx].rbid = htole16(idx & 0x0fff);
+    } else
+        ((uint64_t *)ring->desc)[idx] =
+        htole64(data->map->dm_segs[0].location | (idx & 0x0fff));
+    //    bus_dmamap_sync(sc->sc_dmat, ring->free_desc_dma.map,
+    //        idx * sizeof(uint64_t), sizeof(uint64_t),
+    //        BUS_DMASYNC_PREWRITE);
+}
+
+int ItlIwx::
+dexterOriginal_iwx_rx_addbuf(struct iwx_softc *sc, int size, int idx)
+{
+    struct iwx_rx_ring *ring = &sc->rxq;
+    struct iwx_rx_data *data = &ring->data[idx];
+    mbuf_t m;
+    int err;
+    int fatal = 0;
+    
+    m = getController()->allocatePacket(size);
+    
+    //    m = m_gethdr(M_DONTWAIT, MT_DATA);
+    //    if (m == NULL)
+    //        return ENOBUFS;
+    //
+    //    if (size <= MCLBYTES) {
+    //        MCLGET(m, M_DONTWAIT);
+    //    } else {
+    //        MCLGETI(m, M_DONTWAIT, NULL, IWX_RBUF_SIZE);
+    //    }
+    //    if ((m->m_flags & M_EXT) == 0) {
+    //        m_freem(m);
+    //        return ENOBUFS;
+    //    }
+    //
+    //    if (data->m != NULL) {
+    //        bus_dmamap_unload(sc->sc_dmat, data->map);
+    //        fatal = 1;
+    //    }
+    //
+    //    m->m_len = m->m_pkthdr.len = m->m_ext.ext_size;
+    //    err = bus_dmamap_load_mbuf(sc->sc_dmat, data->map, m,
+    //        BUS_DMA_READ|BUS_DMA_NOWAIT);
+    if (m == NULL) {
+        XYLog("could not allocate RX mbuf\n");
+        return ENOMEM;
+    }
+    data->map->dm_nsegs = data->map->cursor->getPhysicalSegments(m, &data->map->dm_segs[0], 1);
+    if (data->map->dm_nsegs == 0) {
+        /* XXX */
+        if (fatal)
+            panic("%s: could not load RX mbuf", DEVNAME(sc));
+        mbuf_freem(m);
+        return ENOMEM;
+    }
+    data->m = m;
+    //    bus_dmamap_sync(sc->sc_dmat, data->map, 0, size, BUS_DMASYNC_PREREAD);
+    
+    /* Update RX descriptor. */
+    iwx_update_rx_desc(sc, ring, idx);
+    
+    return 0;
+}
+
+void ItlIwx::
+dexterOriginal_iwx_rx_pkt(struct iwx_softc *sc, struct iwx_rx_data *data, struct mbuf_list *ml)
+{
+    struct _ifnet *ifp = IC2IFP(&sc->sc_ic);
+    struct iwx_rx_packet *pkt, *nextpkt;
+    uint32_t offset = 0, nextoff = 0, nmpdu = 0, len;
+    mbuf_t m0, m;
+    const size_t minsz = sizeof(pkt->len_n_flags) + sizeof(pkt->hdr);
+    int qid, idx, code, handled = 1;
+    
+    //    bus_dmamap_sync(sc->sc_dmat, data->map, 0, IWX_RBUF_SIZE,
+    //        BUS_DMASYNC_POSTREAD);
+    
+    m0 = data->m;
+    while (m0 && offset + minsz < IWX_RBUF_SIZE) {
+        pkt = (struct iwx_rx_packet *)((uint8_t*)mbuf_data(m0) + offset);
+        qid = pkt->hdr.qid;
+        idx = pkt->hdr.idx;
+        
+        code = IWX_WIDE_ID(pkt->hdr.group_id, pkt->hdr.cmd);
+        
+        DPRINTFN(3, ("%s gid=%d cmd=%d code=0x%02x qid=%d idx=%d packet_len=%d payload_len=%d\n", __FUNCTION__, pkt->hdr.group_id, pkt->hdr.cmd, code, qid, idx, iwx_rx_packet_len(pkt), iwx_rx_packet_payload_len(pkt)));
+        
+        if (!iwx_rx_pkt_valid(pkt))
+            break;
+        
+        /*
+         * XXX Intel inside (tm)
+         * Any commands in the LONG_GROUP could actually be in the
+         * LEGACY group. Firmware API versions >= 50 reject commands
+         * in group 0, forcing us to use this hack.
+         */
+        if (iwx_cmd_groupid(code) == IWX_LONG_GROUP) {
+            struct iwx_tx_ring *ring = &sc->txq[qid];
+            struct iwx_tx_data *txdata = &ring->data[idx];
+            if (txdata->flags & IWX_TXDATA_FLAG_CMD_IS_NARROW)
+                code = iwx_cmd_opcode(code);
+        }
+        
+        len = sizeof(pkt->len_n_flags) + iwx_rx_packet_len(pkt);
+        if (len < minsz || len > (IWX_RBUF_SIZE - offset))
+            break;
+        
+        if (code == IWX_REPLY_RX_MPDU_CMD && ++nmpdu == 1) {
+            /* Take mbuf m0 off the RX ring. */
+            if (iwx_rx_addbuf(sc, IWX_RBUF_SIZE, sc->rxq.cur)) {
+                ifp->netStat->inputErrors++;
+                break;
+            }
+            KASSERT(data->m != m0, "data->m != m0");
+        }
+        
+        switch (code) {
+            case IWX_REPLY_RX_PHY_CMD:
+                iwx_rx_rx_phy_cmd(sc, pkt, data);
+                break;
+                
+            case IWX_REPLY_RX_MPDU_CMD: {
+                size_t maxlen = IWX_RBUF_SIZE - offset - minsz;
+                nextoff = offset +
+                roundup(len, IWX_FH_RSCSR_FRAME_ALIGN);
+                nextpkt = (struct iwx_rx_packet *)
+                ((uint8_t*)mbuf_data(m0) + nextoff);
+                if (nextoff + minsz >= IWX_RBUF_SIZE ||
+                    !iwx_rx_pkt_valid(nextpkt)) {
+                    /* No need to copy last frame in buffer. */
+                    if (offset > 0)
+                        mbuf_adj(m0, offset);
+                    iwx_rx_mpdu_mq(sc, m0, pkt->data, maxlen, ml);
+                    m0 = NULL; /* stack owns m0 now; abort loop */
+                } else {
+                    /*
+                     * Create an mbuf which points to the current
+                     * packet. Always copy from offset zero to
+                     * preserve m_pkthdr.
+                     */
+                    mbuf_copym(m0, 0, MBUF_COPYALL, MBUF_DONTWAIT, &m);
+                    if (m == NULL) {
+                        ifp->netStat->inputErrors++;
+                        mbuf_freem(m0);
+                        m0 = NULL;
+                        break;
+                    }
+                    mbuf_adj(m, offset);
+                    iwx_rx_mpdu_mq(sc, m, pkt->data, maxlen, ml);
+                }
+                break;
+            }
+            case IWX_BA_NOTIF:
+                iwx_rx_tx_ba_notif(sc, pkt, data);
+                break;
+                
+            case IWX_TX_CMD:
+                iwx_rx_tx_cmd(sc, pkt, data);
+                break;
+                
+            case IWX_MISSED_BEACONS_NOTIFICATION:
+                iwx_rx_bmiss(sc, pkt, data);
+                break;
+                
+            case IWX_MFUART_LOAD_NOTIFICATION:
+                break;
+                
+            case IWX_ALIVE: {
+                struct iwx_alive_resp_v4 *resp4;
+                struct iwx_alive_resp_v5 *resp5;
+                
+                DPRINTF(("%s: firmware alive, size=%d\n", __FUNCTION__, iwx_rx_packet_payload_len(pkt)));
+                if (iwx_rx_packet_payload_len(pkt) == sizeof(*resp4)) {
+                    SYNC_RESP_STRUCT(resp4, pkt, struct iwx_alive_resp_v4 *);
+                    sc->sc_uc.uc_lmac_error_event_table[0] = le32toh(
+                                                                     resp4->lmac_data[0].dbg_ptrs.error_event_table_ptr);
+                    sc->sc_uc.uc_lmac_error_event_table[1] = le32toh(
+                                                                     resp4->lmac_data[1].dbg_ptrs.error_event_table_ptr);
+                    sc->sc_uc.uc_log_event_table = le32toh(
+                                                           resp4->lmac_data[0].dbg_ptrs.log_event_table_ptr);
+                    sc->sc_uc.uc_umac_error_event_table = le32toh(
+                                                                  resp4->umac_data.dbg_ptrs.error_info_addr);
+                    if (resp4->status == IWX_ALIVE_STATUS_OK)
+                        sc->sc_uc.uc_ok = 1;
+                    else
+                        sc->sc_uc.uc_ok = 0;
+                } else {
+                    SYNC_RESP_STRUCT(resp5, pkt, struct iwx_alive_resp_v5 *);
+                    sc->sc_uc.uc_lmac_error_event_table[0] = le32toh(
+                                                                     resp5->lmac_data[0].dbg_ptrs.error_event_table_ptr);
+                    sc->sc_uc.uc_lmac_error_event_table[1] = le32toh(
+                                                                     resp5->lmac_data[1].dbg_ptrs.error_event_table_ptr);
+                    sc->sc_uc.uc_log_event_table = le32toh(
+                                                           resp5->lmac_data[0].dbg_ptrs.log_event_table_ptr);
+                    sc->sc_uc.uc_umac_error_event_table = le32toh(
+                                                                  resp5->umac_data.dbg_ptrs.error_info_addr);
+                    if (resp5->status == IWX_ALIVE_STATUS_OK)
+                        sc->sc_uc.uc_ok = 1;
+                    else
+                        sc->sc_uc.uc_ok = 0;
+                    
+                    sc->sku_id[0] = le32toh(resp5->sku_id.data[0]);
+                    sc->sku_id[1] = le32toh(resp5->sku_id.data[1]);
+                    sc->sku_id[2] = le32toh(resp5->sku_id.data[2]);
+                    
+                    XYLog("Got sku_id: 0x0%x 0x0%x 0x0%x\n",
+                                 sc->sku_id[0],
+                                 sc->sku_id[1],
+                                 sc->sku_id[2]);
+                }
+                
+                sc->sc_uc.uc_intr = 1;
+                wakeupOn(&sc->sc_uc);
+                break;
+            }
+                
+            case IWX_STATISTICS_NOTIFICATION: {
+                struct iwx_notif_statistics *stats;
+                struct iwx_notif_statistics_v11 *stats_v11;
+                if (isset(sc->sc_ucode_api, IWX_UCODE_TLV_API_NEW_RX_STATS)) {
+                    SYNC_RESP_STRUCT(stats, pkt, struct iwx_notif_statistics *);
+                    sc->sc_noise = iwx_get_noise((uint8_t *)&stats->rx.general.beacon_silence_rssi_a);
+                } else {
+                    SYNC_RESP_STRUCT(stats_v11, pkt, struct iwx_notif_statistics_v11 *);
+                    sc->sc_noise = iwx_get_noise((uint8_t *)&stats_v11->rx.general.beacon_silence_rssi_a);
+                }
+                break;
+            }
+                
+            case IWX_DTS_MEASUREMENT_NOTIFICATION:
+            case IWX_WIDE_ID(IWX_PHY_OPS_GROUP,
+                             IWX_DTS_MEASUREMENT_NOTIF_WIDE):
+            case IWX_WIDE_ID(IWX_PHY_OPS_GROUP,
+                             IWX_TEMP_REPORTING_THRESHOLDS_CMD):
+                break;
+                
+            case IWX_WIDE_ID(IWX_PHY_OPS_GROUP,
+                             IWX_CT_KILL_NOTIFICATION): {
+                struct iwx_ct_kill_notif *notif;
+                SYNC_RESP_STRUCT(notif, pkt, struct iwx_ct_kill_notif *);
+                XYLog("%s: device at critical temperature (%u degC), "
+                       "stopping device\n",
+                       DEVNAME(sc), le16toh(notif->temperature));
+                sc->sc_flags |= IWX_FLAG_HW_ERR;
+                task_add(systq, &sc->init_task);
+                break;
+            }
+                
+            case IWX_WIDE_ID(IWX_REGULATORY_AND_NVM_GROUP,
+                IWX_NVM_GET_INFO):
+            case IWX_ADD_STA_KEY:
+            case IWX_PHY_CONFIGURATION_CMD:
+            case IWX_TX_ANT_CONFIGURATION_CMD:
+            case IWX_ADD_STA:
+            case IWX_MAC_CONTEXT_CMD:
+            case IWX_REPLY_SF_CFG_CMD:
+            case IWX_POWER_TABLE_CMD:
+            case IWX_LTR_CONFIG:
+            case IWX_PHY_CONTEXT_CMD:
+            case IWX_BINDING_CONTEXT_CMD:
+            case IWX_WIDE_ID(IWX_LONG_GROUP, IWX_SCAN_CFG_CMD):
+            case IWX_WIDE_ID(IWX_LONG_GROUP, IWX_SCAN_REQ_UMAC):
+            case IWX_WIDE_ID(IWX_LONG_GROUP, IWX_SCAN_ABORT_UMAC):
+            case IWX_WIDE_ID(IWX_MAC_CONF_GROUP, IWX_SESSION_PROTECTION_CMD):
+            case IWX_REPLY_BEACON_FILTERING_CMD:
+            case IWX_MAC_PM_POWER_TABLE:
+            case IWX_TIME_QUOTA_CMD:
+            case IWX_REMOVE_STA:
+            case IWX_TXPATH_FLUSH:
+            case IWX_BT_CONFIG:
+            case IWX_MCC_UPDATE_CMD:
+            case IWX_TIME_EVENT_CMD:
+            case IWX_STATISTICS_CMD:
+            case IWX_SCD_QUEUE_CFG: {
+                size_t pkt_len;
+                
+                if (sc->sc_cmd_resp_pkt[idx] == NULL)
+                    break;
+                
+                //            bus_dmamap_sync(sc->sc_dmat, data->map, 0,
+                //                sizeof(*pkt), BUS_DMASYNC_POSTREAD);
+                
+                pkt_len = sizeof(pkt->len_n_flags) +
+                iwx_rx_packet_len(pkt);
+                
+                if ((pkt->hdr.group_id & IWX_CMD_FAILED_MSK) ||
+                    pkt_len < sizeof(*pkt) ||
+                    pkt_len > sc->sc_cmd_resp_len[idx]) {
+                    ::free(sc->sc_cmd_resp_pkt[idx]);
+                    sc->sc_cmd_resp_pkt[idx] = NULL;
+                    break;
+                }
+                
+                //            bus_dmamap_sync(sc->sc_dmat, data->map, sizeof(*pkt),
+                //                pkt_len - sizeof(*pkt), BUS_DMASYNC_POSTREAD);
+                memcpy(sc->sc_cmd_resp_pkt[idx], pkt, pkt_len);
+                break;
+            }
+                
+            case IWX_WIDE_ID(IWX_REGULATORY_AND_NVM_GROUP, IWX_PNVM_INIT_COMPLETE_NTFY):
+                wakeupOn(&sc->sc_init_complete);
+                struct iwl_pnvm_init_complete_ntfy *pnvm_ntf;
+                SYNC_RESP_STRUCT(pnvm_ntf, pkt, struct iwl_pnvm_init_complete_ntfy *);
+                XYLog("PNVM complete notification received with status 0x%0x\n", le32toh(pnvm_ntf->status));
+                break;
+                
+            case IWX_INIT_COMPLETE_NOTIF:
+                sc->sc_init_complete |= IWX_INIT_COMPLETE;
+                wakeupOn(&sc->sc_init_complete);
+                break;
+                
+            case IWX_SCAN_COMPLETE_UMAC: {
+                struct iwx_umac_scan_complete *notif;
+                SYNC_RESP_STRUCT(notif, pkt, struct iwx_umac_scan_complete *);
+                iwx_endscan(sc);
+                break;
+            }
+                
+            case IWX_SCAN_ITERATION_COMPLETE_UMAC: {
+                struct iwx_umac_scan_iter_complete_notif *notif;
+                SYNC_RESP_STRUCT(notif, pkt, struct iwx_umac_scan_iter_complete_notif *);
+                iwx_endscan(sc);
+                break;
+            }
+                
+            case IWX_MCC_CHUB_UPDATE_CMD: {
+                struct iwx_mcc_chub_notif *notif;
+                SYNC_RESP_STRUCT(notif, pkt, struct iwx_mcc_chub_notif *);
+                iwx_mcc_update(sc, notif);
+                break;
+            }
+                
+            case IWX_REPLY_ERROR: {
+                struct iwx_error_resp *resp;
+                SYNC_RESP_STRUCT(resp, pkt, struct iwx_error_resp *);
+                XYLog("%s: firmware error 0x%x, cmd 0x%x\n",
+                      DEVNAME(sc), le32toh(resp->error_type),
+                      resp->cmd_id);
+                break;
+            }
+                
+            case IWX_TIME_EVENT_NOTIFICATION: {
+                struct iwx_time_event_notif *notif;
+                uint32_t action;
+                SYNC_RESP_STRUCT(notif, pkt, struct iwx_time_event_notif *);
+                
+                if (sc->sc_time_event_uid != le32toh(notif->unique_id))
+                    break;
+                action = le32toh(notif->action);
+                if (action & IWX_TE_V2_NOTIF_HOST_EVENT_END)
+                    sc->sc_flags &= ~IWX_FLAG_TE_ACTIVE;
+                break;
+            }
+                
+            case IWX_WIDE_ID(IWX_SYSTEM_GROUP,
+                             IWX_FSEQ_VER_MISMATCH_NOTIFICATION):
+                break;
+                
+                /*
+                 * Firmware versions 21 and 22 generate some DEBUG_LOG_MSG
+                 * messages. Just ignore them for now.
+                 */
+            case IWX_DEBUG_LOG_MSG:
+                break;
+                
+            case IWX_MCAST_FILTER_CMD:
+                break;
+                
+            case IWX_WIDE_ID(IWX_DATA_PATH_GROUP, IWX_DQA_ENABLE_CMD):
+                break;
+                
+            case IWX_WIDE_ID(IWX_SYSTEM_GROUP, IWX_SOC_CONFIGURATION_CMD):
+                break;
+                
+            case IWX_WIDE_ID(IWX_SYSTEM_GROUP, IWX_INIT_EXTENDED_CFG_CMD):
+                break;
+                
+            case IWX_WIDE_ID(IWX_SYSTEM_GROUP, IWX_SHARED_MEM_CFG_CMD):
+                break;
+                
+            case IWX_WIDE_ID(IWX_REGULATORY_AND_NVM_GROUP,
+                             IWX_NVM_ACCESS_COMPLETE):
+                break;
+                
+            case IWX_WIDE_ID(IWX_DATA_PATH_GROUP, IWX_RX_NO_DATA_NOTIF):
+                break; /* happens in monitor mode; ignore for now */
+            case IWX_WIDE_ID(IWX_DATA_PATH_GROUP, IWX_TLC_MNG_CONFIG_CMD):
+                break;
+                
+            case IWX_WIDE_ID(IWX_DATA_PATH_GROUP,
+                             IWX_TLC_MNG_UPDATE_NOTIF): {
+                struct iwx_tlc_update_notif *notif;
+                SYNC_RESP_STRUCT(notif, pkt, struct iwx_tlc_update_notif *);
+                if (iwx_rx_packet_payload_len(pkt) == sizeof(*notif))
+                    iwx_rs_update(sc, notif);
+                break;
+            }
+                
+            case IWX_WIDE_ID(IWX_MAC_CONF_GROUP, IWX_SESSION_PROTECTION_NOTIF): {
+                struct iwx_session_prot_notif *notif;
+                SYNC_RESP_STRUCT(notif, pkt, struct iwx_session_prot_notif *);
+                if (!notif->status) {
+                    XYLog("Session protection failure\n");
+                    sc->sc_flags &= ~IWX_FLAG_TE_ACTIVE;
+                    break;
+                }
+                if (!notif->start) {
+                    /*
+                     * By now, we should have finished association
+                     * and know the dtim period.
+                     */
+                    sc->sc_flags &= ~IWX_FLAG_TE_ACTIVE;
+                    XYLog("%s finish association\n", __FUNCTION__);
+                }
+                break;
+            }
+            
+            case IWX_WIDE_ID(IWX_LEGACY_GROUP, IWX_BAR_FRAME_RELEASE): {
+                struct iwx_bar_frame_release *release;
+                SYNC_RESP_STRUCT(release, pkt, struct iwx_bar_frame_release *);
+                unsigned int baid = le32_get_bits(release->ba_info,
+                                  IWX_BAR_FRAME_RELEASE_BAID_MASK);
+                unsigned int nssn = le32_get_bits(release->ba_info,
+                                  IWX_BAR_FRAME_RELEASE_NSSN_MASK);
+                unsigned int sta_id = le32_get_bits(release->sta_tid,
+                                    IWX_BAR_FRAME_RELEASE_STA_MASK);
+                unsigned int tid = le32_get_bits(release->sta_tid,
+                                 IWX_BAR_FRAME_RELEASE_TID_MASK);
+                struct iwx_rxba_data *baid_data;
+                
+                if (iwx_rx_packet_payload_len(pkt) < sizeof(*release))
+                    break;
+                
+                if (baid == IWX_RX_REORDER_DATA_INVALID_BAID || baid >= IWX_MAX_BAID)
+                    break;
+                
+                baid_data = &sc->sc_rxba_data[baid];
+                
+                if (!baid_data) {
+                    DPRINTFN(1, ("Got valid BAID %d but not allocated, invalid BAR release!\n",
+                     baid));
+                    break;
+                }
+                
+                if (tid != baid_data->tid || sta_id != baid_data->sta_id) {
+                    DPRINTFN(1, ("baid 0x%x is mapped to sta:%d tid:%d, but BAR release received for sta:%d tid:%d\n",
+                                 baid, baid_data->sta_id, baid_data->tid, sta_id,
+                                 tid));
+                    break;
+                }
+                
+                iwx_release_frames(sc, sc->sc_ic.ic_bss, baid_data, &baid_data->reorder_buf, nssn, ml);
+                
+                break;
+            }
+                
+            default:
+                handled = 0;
+                XYLog("%s: unhandled firmware response 0x%x/0x%x "
+                      "rx ring %d[%d]\n",
+                      DEVNAME(sc), code, pkt->len_n_flags,
+                      (qid & ~0x80), idx);
+                break;
+        }
+        
+        /*
+         * uCode sets bit 0x80 when it originates the notification,
+         * i.e. when the notification is not a direct response to a
+         * command sent by the driver.
+         * For example, uCode issues IWX_REPLY_RX when it sends a
+         * received frame to the driver.
+         */
+        if (handled && !(qid & (1 << 7))) {
+            iwx_cmd_done(sc, qid, idx, code);
+        }
+        
+        offset += roundup(len, IWX_FH_RSCSR_FRAME_ALIGN);
+        
+        if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210)
+            break;
+    }
+    
+    if (m0 && m0 != data->m && mbuf_type(m0) != MBUF_TYPE_FREE)
+        mbuf_freem(m0);
+}
+
+void ItlIwx::
+dexterOriginal_iwx_notif_intr(struct iwx_softc *sc)
+{
+    struct mbuf_list ml = MBUF_LIST_INITIALIZER();
+    uint16_t hw;
+    
+    //    bus_dmamap_sync(sc->sc_dmat, sc->rxq.stat_dma.map,
+    //        0, sc->rxq.stat_dma.size, BUS_DMASYNC_POSTREAD);
+    
+    if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210)
+        hw = le16toh(*(uint16_t *)(sc->rxq.stat)) & 0xfff;
+    else
+        hw = le16toh(((struct iwx_rb_status *)sc->rxq.stat)->closed_rb_num) & 0xfff;
+    hw &= (IWX_RX_MQ_RING_COUNT - 1);
+    DPRINTFN(3, ("%s hw=%d\n", __FUNCTION__, hw));
+    while (sc->rxq.cur != hw) {
+        struct iwx_rx_data *data = &sc->rxq.data[sc->rxq.cur];
+        iwx_rx_pkt(sc, data, &ml);
+        sc->rxq.cur = (sc->rxq.cur + 1) % IWX_RX_MQ_RING_COUNT;
+    }
+    if_input(&sc->sc_ic.ic_if, &ml);
+    
+    /*
+     * Tell the firmware what we have processed.
+     * Seems like the hardware gets upset unless we align the write by 8??
+     */
+    hw = (hw == 0) ? IWX_RX_MQ_RING_COUNT - 1 : hw - 1;
+    IWX_WRITE(sc, IWX_RFH_Q0_FRBDCB_WIDX_TRG, hw & ~7);
+}
+
+int ItlIwx::
+dexterOriginal_iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
+{
+    struct ieee80211com *ic = &sc->sc_ic;
+    struct iwx_node *in = (struct iwx_node *)ni;
+    struct iwx_tx_ring *ring;
+    struct iwx_tx_data *data;
+    struct iwx_tfh_tfd *desc;
+    struct iwx_device_cmd *cmd;
+    struct iwx_tx_cmd_gen2 *tx_gen2;
+    struct iwx_tx_cmd_gen3 *tx_gen3;
+    struct ieee80211_frame *wh;
+    struct ieee80211_key *k = NULL;
+    const struct iwx_rate *rinfo;
+    uint64_t paddr;
+    u_int hdrlen;
+    IOPhysicalSegment *seg;
+    IOPhysicalSegment segs[IWX_TFH_NUM_TBS - 2];
+    int nsegs = 0;
+    uint32_t flags = 0, rate_n_flags = 0;
+    uint16_t offload_assist = 0;
+    uint16_t cmd_size = 0;
+
+    uint16_t num_tbs;
+    uint8_t tid, type, subtype;
+    int i, totlen;
+    int qid = IWX_INVALID_QUEUE;
+    int idx;
+
+    wh = mtod(m, struct ieee80211_frame *);
+    type = wh->i_fc[0] & IEEE80211_FC0_TYPE_MASK;
+    subtype = wh->i_fc[0] & IEEE80211_FC0_SUBTYPE_MASK;
+    if (type == IEEE80211_FC0_TYPE_CTL)
+        hdrlen = sizeof(struct ieee80211_frame_min);
+    else
+        hdrlen = ieee80211_get_hdrlen(wh);
+    
+    tid = IWX_MGMT_TID;
+    qid = sc->first_data_qid;
+
+    /* Put QoS frames on the data queue which maps to their TID. */
+    if (ieee80211_has_qos(wh)) {
+        struct ieee80211_tx_ba *ba;
+        uint16_t qos = ieee80211_get_qos(wh);
+        uint8_t tid = qos & IEEE80211_QOS_TID;
+
+        ba = &ni->ni_tx_ba[tid];
+        if (!IEEE80211_IS_MULTICAST(wh->i_addr1) &&
+            type == IEEE80211_FC0_TYPE_DATA &&
+            subtype != IEEE80211_FC0_SUBTYPE_NODATA &&
+            sc->sc_tid_data[tid].qid != 0 &&
+            sc->sc_tid_data[tid].qid != IWX_INVALID_QUEUE &&
+            ba->ba_state == IEEE80211_BA_AGREED) {
+            qid = sc->sc_tid_data[tid].qid;
+        }
+    }
+
+    ring = &sc->txq[qid];
+    if (ring->ring_count == 0) {
+        mbuf_freem(m);
+        return EINVAL;
+    }
+    idx = (ring->cur & (ring->ring_count - 1));
+    desc = &ring->desc[idx];
+    memset(desc, 0, sizeof(*desc));
+    data = &ring->data[idx];
+    
+    cmd = &ring->cmd[idx];
+    cmd->hdr.cmd = IWX_TX_CMD;
+    cmd->hdr.group_id = 0;
+    cmd->hdr.qid = ring->qid;
+    cmd->hdr.idx = idx;
+    
+    rinfo = iwx_tx_fill_cmd(sc, in, wh, &flags, &rate_n_flags);
+    
+#if NBPFILTER > 0
+    if (sc->sc_drvbpf != NULL) {
+        struct iwx_tx_radiotap_header *tap = &sc->sc_txtap;
+        uint16_t chan_flags;
+        
+        tap->wt_flags = 0;
+        tap->wt_chan_freq = htole16(ni->ni_chan->ic_freq);
+        chan_flags = ni->ni_chan->ic_flags;
+        if (ic->ic_curmode != IEEE80211_MODE_11N)
+            chan_flags &= ~IEEE80211_CHAN_HT;
+        tap->wt_chan_flags = htole16(chan_flags);
+        if ((ni->ni_flags & IEEE80211_NODE_HT) &&
+            !IEEE80211_IS_MULTICAST(wh->i_addr1) &&
+            type == IEEE80211_FC0_TYPE_DATA &&
+            rinfo->ht_plcp != IWX_RATE_HT_SISO_MCS_INV_PLCP) {
+            tap->wt_rate = (0x80 | rinfo->ht_plcp);
+        } else
+            tap->wt_rate = rinfo->rate;
+        if ((ic->ic_flags & IEEE80211_F_WEPON) &&
+            (wh->i_fc[1] & IEEE80211_FC1_PROTECTED))
+            tap->wt_flags |= IEEE80211_RADIOTAP_F_WEP;
+        
+        bpf_mtap_hdr(sc->sc_drvbpf, tap, sc->sc_txtap_len,
+                     m, BPF_DIRECTION_OUT);
+    }
+#endif
+    
+    if (wh->i_fc[1] & IEEE80211_FC1_PROTECTED) {
+        k = ieee80211_get_txkey(ic, wh, ni);
+        if (k->k_cipher != IEEE80211_CIPHER_CCMP) {
+            if ((m = ieee80211_encrypt(ic, m, k)) == NULL)
+                return ENOBUFS;
+            /* 802.11 header may have moved. */
+            wh = mtod(m, struct ieee80211_frame *);
+            flags |= htole32(IWX_TX_FLAGS_ENCRYPT_DIS);
+        } else {
+            k->k_tsc++;
+            /* Hardware increments PN internally and adds IV. */
+        }
+    } else
+        flags |= htole32(IWX_TX_FLAGS_ENCRYPT_DIS);
+    //    totlen = m->m_pkthdr.len;
+    totlen = mbuf_pkthdr_len(m);
+    
+    if (hdrlen % 4)
+        offload_assist |= IWX_TX_CMD_OFFLD_PAD;
+    
+    if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210) {
+        tx_gen3 = (struct iwx_tx_cmd_gen3 *)cmd->data;
+        
+        cmd_size = sizeof(*tx_gen3);
+        memset(tx_gen3, 0, cmd_size);
+        
+        tx_gen3->len = htole16(totlen);
+        tx_gen3->offload_assist = htole32(offload_assist);
+        /* Copy 802.11 header in TX command. */
+        memcpy(((uint8_t *)tx_gen3) + sizeof(*tx_gen3), wh, hdrlen);
+        tx_gen3->flags = htole16(flags);
+        tx_gen3->rate_n_flags = htole32(rate_n_flags);
+    } else {
+        tx_gen2 = (struct iwx_tx_cmd_gen2 *)cmd->data;
+        
+        cmd_size = sizeof(*tx_gen2);
+        memset(tx_gen2, 0, cmd_size);
+        tx_gen2->len = htole16(totlen);
+        tx_gen2->offload_assist = htole16(offload_assist);
+        /* Copy 802.11 header in TX command. */
+        memcpy(((uint8_t *)tx_gen2) + sizeof(*tx_gen2), wh, hdrlen);
+        tx_gen2->flags = htole32(flags);
+        tx_gen2->rate_n_flags = htole32(rate_n_flags);
+    }
+    
+    /* Trim 802.11 header. */
+    mbuf_adj(m, hdrlen);
+    
+    nsegs = data->map->cursor->getPhysicalSegmentsWithCoalesce(m, &segs[0], IWX_TFH_NUM_TBS - 2);
+    if (nsegs == 0) {
+        XYLog("%s: can't map mbuf (error %d)\n", DEVNAME(sc),
+              nsegs);
+        mbuf_freem(m);
+        return ENOMEM;
+    }
+    data->m = m;
+    data->in = in;
+    data->type = type;
+
+    DPRINTFN(3, ("sending data: 嘤嘤嘤 tid=%d qid=%d idx=%d queued=%d len=%d nsegs=%d flags=0x%08x rate_n_flags=0x%08x offload_assist=%u\n",
+          tid, ring->qid, ring->cur, ring->queued, totlen, nsegs, le32toh(flags),
+          le32toh(rate_n_flags), offload_assist));
+    
+    /* Fill TX descriptor. */
+    num_tbs = 2 + nsegs;
+    desc->num_tbs = htole16(num_tbs);
+    
+    desc->tbs[0].tb_len = htole16(IWX_FIRST_TB_SIZE);
+    paddr = htole64(data->cmd_paddr);
+    memcpy(&desc->tbs[0].addr, &paddr, sizeof(paddr));
+    if (data->cmd_paddr >> 32 != (data->cmd_paddr + le32toh(desc->tbs[0].tb_len)) >> 32)
+        DPRINTF(("%s: TB0 crosses 32bit boundary\n", __func__));
+    desc->tbs[1].tb_len = htole16(_ALIGN(sizeof(struct iwx_cmd_header) +
+                                  cmd_size + hdrlen - IWX_FIRST_TB_SIZE, 4));
+    paddr = htole64(data->cmd_paddr + IWX_FIRST_TB_SIZE);
+    memcpy(&desc->tbs[1].addr, &paddr, sizeof(paddr));
+    
+    if (data->cmd_paddr >> 32 != (data->cmd_paddr + le32toh(desc->tbs[1].tb_len)) >> 32)
+        DPRINTF(("%s: TB1 crosses 32bit boundary\n", __func__));
+    
+    /* Other DMA segments are for data payload. */
+    for (i = 0; i < nsegs; i++) {
+        seg = &segs[i];
+        desc->tbs[i + 2].tb_len = htole16(seg->length);
+        paddr = htole64(seg->location);
+        memcpy(&desc->tbs[i + 2].addr, &paddr, sizeof(paddr));
+        if (data->cmd_paddr >> 32 != (data->cmd_paddr + le32toh(desc->tbs[i + 2].tb_len)) >> 32)
+            DPRINTF(("%s: TB%d crosses 32bit boundary\n", __func__, i + 2));
+//        XYLog("DMA segments index=%d location=0x%llx length=%llu", i, seg->location, seg->length);
+    }
+    
+    //    bus_dmamap_sync(sc->sc_dmat, data->map, 0, data->map->dm_mapsize,
+    //        BUS_DMASYNC_PREWRITE);
+    //    bus_dmamap_sync(sc->sc_dmat, ring->cmd_dma.map,
+    //        (char *)(void *)cmd - (char *)(void *)ring->cmd_dma.vaddr,
+    //        sizeof (*cmd), BUS_DMASYNC_PREWRITE);
+    //    bus_dmamap_sync(sc->sc_dmat, ring->desc_dma.map,
+    //        (char *)(void *)desc - (char *)(void *)ring->desc_dma.vaddr,
+    //        sizeof (*desc), BUS_DMASYNC_PREWRITE);
+    
+    iwx_tx_update_byte_tbl(sc, ring, idx, totlen, num_tbs);
+    
+    /* Kick TX ring. */
+    ring->cur = (ring->cur + 1) % getTxQueueSize();
+    IWX_WRITE(sc, IWX_HBUS_TARG_WRPTR, ring->qid << 16 | ring->cur);
+    
+    /* Mark TX ring as full if we reach a certain threshold. */
+    if (++ring->queued > ring->hi_mark) {
+//        XYLog("%s sc->qfullmsk is FULL qid=%d ring->cur=%d ring->queued=%d\n", __FUNCTION__, ring->qid, ring->cur, ring->queued);
+        sc->qfullmsk |= 1 << ring->qid;
+    }
+    
+    return 0;
+}
+
+void ItlIwx::
+dexterOriginal_iwx_rx_tx_ba_notif(struct iwx_softc *sc, struct iwx_rx_packet *pkt, struct iwx_rx_data *data)
+{
+    struct ieee80211com *ic = &sc->sc_ic;
+    struct iwx_compressed_ba_notif *ba_res = (struct iwx_compressed_ba_notif *)pkt->data;
+    uint8_t tid;
+    uint8_t qid;
+    int i;
+    struct iwx_tx_ring *ring;
+
+    sc->sc_tx_timer = 0;
+
+    if (le32toh(ba_res->flags) != IWX_BA_RESP_TX_BAR && le32toh(ba_res->flags) != IWX_BA_RESP_TX_AGG){
+        DPRINTFN(3, ("BA_NOTIFICATION flags %x, sent:%d, acked:%d, tfd_cnt:%d, query_frame_cnt:%d, retry_cnt:%d\n",
+              le32toh(ba_res->flags),
+              le16toh(ba_res->txed),
+              le16toh(ba_res->done),
+                     le16toh(ba_res->tfd_cnt),
+              ba_res->query_frame_cnt,
+              ba_res->retry_cnt));
+    }
+
+    if (ic->ic_state != IEEE80211_S_RUN)
+        return;
+
+    if (!le16toh(ba_res->tfd_cnt))
+        return;
+
+    /* Free per TID */
+    for (i = 0; i < le16toh(ba_res->tfd_cnt); i++) {
+        struct iwx_compressed_ba_tfd *ba_tfd = &ba_res->tfd[i];
+
+        tid = ba_tfd->tid;
+
+        qid = le16toh(ba_tfd->q_num);
+        ring = &sc->txq[qid];
+
+        sc->sc_tx_timer = 0;
+
+        iwx_ampdu_txq_advance(sc, ring, IWX_AGG_SSN_TO_TXQ_IDX(le16toh(ba_tfd->tfd_index), ring->ring_count));
+        iwx_clear_oactive(sc, ring);
+    }
+}
+
+void ItlIwx::
+dexterOriginal_iwx_rx_tx_cmd(struct iwx_softc *sc, struct iwx_rx_packet *pkt,
+              struct iwx_rx_data *data)
+{
+    uint32_t ssn;
+    int idx;
+    int tid;
+    struct iwx_tx_resp *tx_resp = (struct iwx_tx_resp *)pkt->data;
+    int qid = tx_resp->tx_queue;
+    struct iwx_tx_ring *ring = &sc->txq[qid];
+    struct iwx_tx_data *txd;
+
+    bus_dmamap_sync(sc->sc_dmat, data->map, 0, IWX_RBUF_SIZE,
+                    BUS_DMASYNC_POSTREAD);
+    
+    sc->sc_tx_timer = 0;
+
+    if (tx_resp->frame_count > 1) {
+        for (int i = 0; i < tx_resp->frame_count; i++) {
+            uint16_t fstatus = le16_to_cpu((&tx_resp->status)[i].status);
+
+            XYLog("status %s (0x%04x), try-count (%d) qid (%d) seq (0x%x)\n",
+                         iwx_get_agg_tx_status(fstatus),
+                         fstatus & IWX_AGG_TX_STATE_STATUS_MSK,
+                         (fstatus & IWX_AGG_TX_STATE_TRY_CNT_MSK) >>
+                         IWX_AGG_TX_STATE_TRY_CNT_POS,
+                         qid,
+                         le16_to_cpu((&tx_resp->status)[i].sequence));
+        }
+    } else {
+        tid = tx_resp->ra_tid & 0x0f;
+        memcpy(&ssn, &tx_resp->status + tx_resp->frame_count, sizeof(ssn));
+        ssn = le32toh(ssn) & 0xfff;
+        idx = IWX_AGG_SSN_TO_TXQ_IDX(ssn, ring->ring_count);
+        txd = &ring->data[idx];
+        iwx_rx_tx_cmd_single(sc, pkt, txd);
+        DPRINTFN(3, ("%s tid=%d ssn=%d idx=%d\n", __FUNCTION__, tid, ssn, idx));
+        iwx_ampdu_txq_advance(sc, ring, idx);
+        iwx_clear_oactive(sc, ring);
+    }
+}
+
+void ItlIwx::
+dexterOriginal_iwx_ampdu_txq_advance(struct iwx_softc *sc, struct iwx_tx_ring *ring, int idx)
+{
+    struct iwx_tx_data *txd;
+
+    while (ring->tail != idx) {
+        txd = &ring->data[ring->tail];
+        if (txd->m != NULL) {
+            iwx_txd_done(sc, txd);
+            iwx_clear_tx_desc(sc, ring, ring->tail);
+            ring->queued--;
+        }
+        ring->tail = (ring->tail + 1) % ring->ring_count;
+    }
+}
+
+IOReturn ItlIwx::
+dexterOriginal__iwx_start_task(OSObject *target, void *arg0, void *arg1, void *arg2, void *arg3)
+{
+    struct _ifnet *ifp = (struct _ifnet *)arg0;
+    struct iwx_softc *sc = (struct iwx_softc *)ifp->if_softc;
+    ItlIwx *that = container_of(sc, ItlIwx, com);
+    struct ieee80211com *ic = &sc->sc_ic;
+    struct ieee80211_node *ni;
+    struct ether_header *eh;
+    mbuf_t m;
+    int ac = EDCA_AC_BE; /* XXX */
+    
+    if (!(ifp->if_flags & IFF_RUNNING) ||  ifq_is_oactive(&ifp->if_snd)) {
+        return kIOReturnError;
+    }
+    
+    for (;;) {
+        /* why isn't this done per-queue? */
+        if (sc->qfullmsk != 0) {
+            ifq_set_oactive(&ifp->if_snd);
+            break;
+        }
+
+        /* Don't queue additional frames while flushing Tx queues. */
+        if (sc->sc_flags & IWX_FLAG_TXFLUSH)
+            break;
+        
+        /* need to send management frames even if we're not RUNning */
+        m = mq_dequeue(&ic->ic_mgtq);
+        if (m) {
+            //            ni = m->m_pkthdr.ph_cookie;
+            ni = (struct ieee80211_node *)mbuf_pkthdr_rcvif(m);
+            goto sendit;
+        }
+        
+        if (
+#ifndef AIRPORT
+            ic->ic_state != IEEE80211_S_RUN ||
+#endif
+            (ic->ic_xflags & IEEE80211_F_TX_MGMT_ONLY))
+            break;
+        
+        m = ifq_dequeue(&ifp->if_snd);
+        if (!m)
+            break;
+        if (mbuf_len(m) < sizeof (*eh) &&
+            mbuf_pullup(&m, sizeof (*eh)) != 0) {
+            ifp->netStat->outputErrors++;
+            continue;
+        }
+#if NBPFILTER > 0
+        if (ifp->if_bpf != NULL)
+            bpf_mtap(ifp->if_bpf, m, BPF_DIRECTION_OUT);
+#endif
+        if ((m = ieee80211_encap(ifp, m, &ni)) == NULL) {
+            ifp->netStat->outputErrors++;
+            continue;
+        }
+        
+    sendit:
+#if NBPFILTER > 0
+        if (ic->ic_rawbpf != NULL)
+            bpf_mtap(ic->ic_rawbpf, m, BPF_DIRECTION_OUT);
+#endif
+        if (that->iwx_tx(sc, m, ni, ac) != 0) {
+            ieee80211_release_node(ic, ni);
+            ifp->netStat->outputErrors++;
+            continue;
+        }
+        ifp->netStat->outputPackets++;
+        
+        if (ifp->if_flags & IFF_UP) {
+            sc->sc_tx_timer = 15;
+            ifp->if_timer = 1;
+        }
+    }
+    
+    return kIOReturnSuccess;
+}
+
+void ItlIwx::
+dexterOriginal_iwx_start(struct _ifnet *ifp)
+{
+    struct iwx_softc *sc = (struct iwx_softc*)ifp->if_softc;
+    ItlIwx *that = container_of(sc, ItlIwx, com);
+    that->getMainCommandGate()->attemptAction(_iwx_start_task, &that->com.sc_ic.ic_ac.ac_if);
+}
+
+int ItlIwx::
+dexterOriginal_iwx_intr(OSObject *object, IOInterruptEventSource* sender, int count)
+{
+//    XYLog("Interrupt!!!\n");
+    ItlIwx *that = (ItlIwx*)object;
+    struct iwx_softc *sc = &that->com;
+    int handled = 0;
+    int r1, r2, rv = 0;
+    
+//    IWX_WRITE(&that->com, IWX_CSR_INT_MASK, 0);
+    
+    if (sc->sc_flags & IWX_FLAG_USE_ICT) {
+        uint32_t *ict = (uint32_t *)sc->ict_dma.vaddr;
+        int tmp;
+        
+        tmp = htole32(ict[sc->ict_cur]);
+        if (!tmp)
+            goto out_ena;
+        
+        /*
+         * ok, there was something.  keep plowing until we have all.
+         */
+        r1 = r2 = 0;
+        while (tmp) {
+            r1 |= tmp;
+            ict[sc->ict_cur] = 0;
+            sc->ict_cur = (sc->ict_cur+1) % IWX_ICT_COUNT;
+            tmp = htole32(ict[sc->ict_cur]);
+        }
+        
+        /* this is where the fun begins.  don't ask */
+        if (r1 == 0xffffffff)
+            r1 = 0;
+        
+        /* i am not expected to understand this */
+        if (r1 & 0xc0000)
+            r1 |= 0x8000;
+        r1 = (0xff & r1) | ((0xff00 & r1) << 16);
+    } else {
+        r1 = IWX_READ(sc, IWX_CSR_INT);
+        if (r1 == 0xffffffff || (r1 & 0xfffffff0) == 0xa5a5a5a0)
+            goto out;
+        r2 = IWX_READ(sc, IWX_CSR_FH_INT_STATUS);
+    }
+    if (r1 == 0 && r2 == 0) {
+        goto out_ena;
+    }
+    
+    IWX_WRITE(sc, IWX_CSR_INT, r1 | ~sc->sc_intmask);
+    
+    if (r1 & IWX_CSR_INT_BIT_ALIVE) {
+        int i;
+        
+        /* Firmware has now configured the RFH. */
+        for (i = 0; i < IWX_RX_MQ_RING_COUNT; i++)
+            that->iwx_update_rx_desc(sc, &sc->rxq, i);
+        IWX_WRITE(sc, IWX_RFH_Q0_FRBDCB_WIDX_TRG, 8);
+    }
+    
+    handled |= (r1 & (IWX_CSR_INT_BIT_ALIVE /*| IWX_CSR_INT_BIT_SCD*/));
+    
+    if (r1 & IWX_CSR_INT_BIT_RF_KILL) {
+        handled |= IWX_CSR_INT_BIT_RF_KILL;
+        XYLog("%s RF_KILL has been toggled\n", __FUNCTION__);
+        that->iwx_check_rfkill(sc);
+        task_add(systq, &sc->init_task);
+        rv = 1;
+        goto out_ena;
+    }
+    
+    if (r1 & IWX_CSR_INT_BIT_SW_ERR) {
+#if 1 /* usually #ifdef IWX_DEBUG but always enabled for now */
+        int i;
+        
+        that->iwx_nic_error(sc);
+        
+        /* Dump driver status (TX and RX rings) while we're here. */
+        XYLog("driver status:\n");
+        for (i = 0; i < IWX_MAX_QUEUES; i++) {
+            struct iwx_tx_ring *ring = &sc->txq[i];
+            XYLog("  tx ring %2d: qid=%-2d cur=%-3d "
+                  "queued=%-3d\n",
+                  i, ring->qid, ring->cur, ring->queued);
+        }
+        XYLog("  rx ring: cur=%d\n", sc->rxq.cur);
+        XYLog("  802.11 state %s\n",
+              ieee80211_state_name[sc->sc_ic.ic_state]);
+#endif
+        
+        XYLog("%s: fatal firmware error\n", DEVNAME(sc));
+        if ((sc->sc_flags & IWX_FLAG_SHUTDOWN) == 0)
+            task_add(systq, &sc->init_task);
+        rv = 1;
+        goto out;
+        
+    }
+    
+    if (r1 & IWX_CSR_INT_BIT_HW_ERR) {
+        handled |= IWX_CSR_INT_BIT_HW_ERR;
+        XYLog("%s: hardware error, stopping device \n", DEVNAME(sc));
+        if ((sc->sc_flags & IWX_FLAG_SHUTDOWN) == 0) {
+            sc->sc_flags |= IWX_FLAG_HW_ERR;
+            task_add(systq, &sc->init_task);
+        }
+        rv = 1;
+        goto out;
+    }
+    
+    /* firmware chunk loaded */
+    if (r1 & IWX_CSR_INT_BIT_FH_TX) {
+        IWX_WRITE(sc, IWX_CSR_FH_INT_STATUS, IWX_CSR_FH_INT_TX_MASK);
+        handled |= IWX_CSR_INT_BIT_FH_TX;
+        
+        sc->sc_fw_chunk_done = 1;
+        that->wakeupOn(&sc->sc_fw);
+    }
+    
+    if (r1 & (IWX_CSR_INT_BIT_FH_RX | IWX_CSR_INT_BIT_SW_RX |
+              IWX_CSR_INT_BIT_RX_PERIODIC)) {
+        if (r1 & (IWX_CSR_INT_BIT_FH_RX | IWX_CSR_INT_BIT_SW_RX)) {
+            handled |= (IWX_CSR_INT_BIT_FH_RX | IWX_CSR_INT_BIT_SW_RX);
+            IWX_WRITE(sc, IWX_CSR_FH_INT_STATUS, IWX_CSR_FH_INT_RX_MASK);
+        }
+        if (r1 & IWX_CSR_INT_BIT_RX_PERIODIC) {
+            handled |= IWX_CSR_INT_BIT_RX_PERIODIC;
+            IWX_WRITE(sc, IWX_CSR_INT, IWX_CSR_INT_BIT_RX_PERIODIC);
+        }
+        
+        /* Disable periodic interrupt; we use it as just a one-shot. */
+        IWX_WRITE_1(sc, IWX_CSR_INT_PERIODIC_REG, IWX_CSR_INT_PERIODIC_DIS);
+        
+        /*
+         * Enable periodic interrupt in 8 msec only if we received
+         * real RX interrupt (instead of just periodic int), to catch
+         * any dangling Rx interrupt.  If it was just the periodic
+         * interrupt, there was no dangling Rx activity, and no need
+         * to extend the periodic interrupt; one-shot is enough.
+         */
+        if (r1 & (IWX_CSR_INT_BIT_FH_RX | IWX_CSR_INT_BIT_SW_RX))
+            IWX_WRITE_1(sc, IWX_CSR_INT_PERIODIC_REG,
+                        IWX_CSR_INT_PERIODIC_ENA);
+        
+        that->iwx_notif_intr(sc);
+    }
+    
+    rv = 1;
+    
+out_ena:
+    that->iwx_restore_interrupts(sc);
+out:
+    return rv;
+}
+
+bool ItlIwx::
+dexterOriginal_intrFilter(OSObject *object, IOFilterInterruptEventSource *src)
+{
+    ItlIwx *that = (ItlIwx*)object;
+    IWX_WRITE(&that->com, IWX_CSR_INT_MASK, 0);
+    return true;
 }

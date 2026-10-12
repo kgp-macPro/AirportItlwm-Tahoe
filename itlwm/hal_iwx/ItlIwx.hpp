@@ -141,6 +141,10 @@
 #include <HAL/ItlDriverInfo.hpp>
 #include <HAL/ItlDriverController.hpp>
 
+class IOMapper;
+class KgpRxZcPool;
+class KgpRxZcLife;
+
 class ItlIwx : public ItlHalService, ItlDriverInfo, ItlDriverController {
     OSDeclareDefaultStructors(ItlIwx)
     
@@ -514,6 +518,20 @@ public:
     void rx2GSnapshot();
     // 2H mapped packet backing uses the same iwx_dma_info ownership representation
     // as persistent ring DMA. RX slot policy is separate from future TX/command policy.
+    // Pinned Dexter methods; only method names differ, not packet algorithms.
+    int  dexterOriginal_iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring);
+    void  dexterOriginal_iwx_update_rx_desc(struct iwx_softc *sc, struct iwx_rx_ring *ring, int idx);
+    int  dexterOriginal_iwx_rx_addbuf(struct iwx_softc *sc, int size, int idx);
+    void  dexterOriginal_iwx_rx_pkt(struct iwx_softc *sc, struct iwx_rx_data *data, struct mbuf_list *ml);
+    void  dexterOriginal_iwx_notif_intr(struct iwx_softc *sc);
+    int  dexterOriginal_iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac);
+    void  dexterOriginal_iwx_rx_tx_ba_notif(struct iwx_softc *sc, struct iwx_rx_packet *pkt, struct iwx_rx_data *data);
+    void  dexterOriginal_iwx_rx_tx_cmd(struct iwx_softc *sc, struct iwx_rx_packet *pkt,               struct iwx_rx_data *data);
+    void  dexterOriginal_iwx_ampdu_txq_advance(struct iwx_softc *sc, struct iwx_tx_ring *ring, int idx);
+    static IOReturn  dexterOriginal__iwx_start_task(OSObject *target, void *arg0, void *arg1, void *arg2, void *arg3);
+    static void  dexterOriginal_iwx_start(struct _ifnet *ifp);
+    static int  dexterOriginal_iwx_intr(OSObject *object, IOInterruptEventSource* sender, int count);
+    static bool  dexterOriginal_intrFilter(OSObject *object, IOFilterInterruptEventSource *src);
     // 2I: ordinary TX only. Tokens fit pre-existing iwx_tx_data tail padding.
     enum { kTx2ICount = 1024, kTx2ISize = 8192 };
     enum { Tx2IEmpty = 0, Tx2IFree, Tx2ICopying, Tx2IInflight, Tx2IQuarantined };
@@ -523,6 +541,31 @@ public:
         uint32_t state;
         uint32_t length;
     } fTx2I[kTx2ICount] = {};
+    // ZC5: immutable attach-time mapper selection; never a physical fallback.
+    IOMapper *fDma5Mapper = nullptr;
+    IOPCIDevice *fDma5Provider = nullptr;
+    bool fDma5Selected = false, fDma5Published = false, fDma5UseMapped = false;
+    bool fBoot5InterruptAdded = false, fBoot5TaskqInitialized = false, fBoot5IfAttached = false;
+    unsigned fBoot5Stage = 0;
+    void boot5Mark(unsigned, const char *, int error = 0);
+    void boot5RemoveInterrupt();
+    void boot5ConventionalStop();
+    void boot5ConventionalFault();
+    static IOReturn boot5ConventionalRun(OSObject *, void *, void *, void *, void *);
+    static void boot5ClosedInterrupt(OSObject *, IOInterruptEventSource *, int);
+    bool dma5Select();
+    bool dma5Mapped() const { return fDma5Selected && fDma5UseMapped; }
+    bool dma5Terminal() const;
+    void dma5Report(bool force = false);
+    uint64_t fDma5LastReport = 0, fDma5Reports = 0, fDma5Notifs = 0;
+    // Prepared reserve: a ring slot exclusively owns its lease until retirement.
+    uint16_t fTx5Free[kTx2ICount] = {};
+    unsigned fTx5FreeCount = 0;
+    uint64_t fTx5Telemetry[32] = {}, fTx5Stamp[kTx2ICount] = {};
+    bool fTx5Published[kTx2ICount] = {};
+    void tx5Return(unsigned token);
+    bool tx5Release(struct iwx_dma_info *);
+    bool tx5RingReleasable(const struct iwx_tx_ring *) const;
     uint32_t fTx2IStats[32] = {};
     uint64_t fTx2IFirst[4] = {};
     uint32_t fTx2INext = 0;
@@ -628,6 +671,33 @@ public:
     void rx2HError(unsigned, unsigned, IOReturn);
     bool rx2HAllocate(unsigned);
     bool rx2HCopy(unsigned, mbuf_t);
+
+    // B1-ZC4: prepared replacement supply is independent of stack retention.
+    enum { kRxZcCount = IWX_RX_MQ_RING_COUNT * 4, kRxZcNone = kRxZcCount };
+    KgpRxZcPool *fRxZcPool = nullptr;
+    KgpRxZcLife *fRxZcLife = nullptr;
+    unsigned fRxZcSlot[IWX_RX_MQ_RING_COUNT] = {};
+    bool fRxZcPublished=false, fRxZcTerminal=false, fRxZcRunning=false, fRxZcCleanHandoff=false;
+    uint32_t fRxZcClosing=0, fRxZcFault=0, fRxZcGeneration=0, fRxZcEpoch=0;
+    uint64_t fRxZcSynced=0, fRxZcReplaced=0, fRxZcStarved=0, fRxZcNotif=0;
+    uint64_t fRxZcLastReport=0, fRxZcSnapshots=0, fRxZcPropertyFailures=0;
+    bool fRxZcReportedFault=false, fRxZcPressure=false;
+    uint64_t fRxZcEpisodes=0, fRxZcRecoveries=0, fRxZcBatchQueued=0, fRxZcBatchMax=0;
+    uint64_t fRxZcFirstPressure[24]={}, fRxZcLastRecovery[24]={};
+    bool rxZcSetup();
+    void rxZcTelemetry(const uint64_t *);
+    bool rxZcReplace(unsigned);
+    bool rxZcArm();
+    static IOReturn rxZcArmAction(OSObject *,void *,void *,void *,void *);
+    static IOReturn rxZcCloseAction(OSObject *,void *,void *,void *,void *);
+    bool rxZcFailed() const;
+    void rxZcFail(uint32_t);
+    bool rxZcSync(unsigned,mbuf_t);
+    bool rxZcRepost(unsigned);
+    void rxZcTerminal();
+    bool rxZcFree();
+    void rxZcPressureRecord(uint64_t *,unsigned);
+    void rxZcReport(unsigned);
 
     // PC1 control is serialized by the existing main workloop, not a new worker.
     struct Pc1Advance { iwx_tx_ring *ring; int index; unsigned generation; };
