@@ -29,6 +29,18 @@ struct _ifqueue {
     IOPacketQueue *queue;
 };
 
+// A private, single-use reservation; zero initialize, then commit OR cancel.
+// Holding it retains the queue across stop/flush; it never owns a packet.
+struct ifq_reservation {
+    IOPacketQueue *queue;
+    uint64_t epoch;
+};
+bool ifq_reserve(struct _ifqueue *, struct ifq_reservation *);
+bool ifq_commit(struct ifq_reservation *, mbuf_t);
+void ifq_cancel(struct ifq_reservation *);
+void ifq_start_pull(struct _ifqueue *);
+void ifq_stop_pull(struct _ifqueue *);
+
 void ifq_init(struct _ifqueue *ifq, struct _ifnet *ifp, unsigned int maxLen);
 
 void ifq_destroy(struct _ifqueue *ifq);

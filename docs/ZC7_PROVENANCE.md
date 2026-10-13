@@ -14,3 +14,20 @@ development evidence, not compiled runtime instrumentation. Internal marker beco
 AirportItlwm-Tahoe-B1-ZC7-PERF; bundle version remains 1.0.0 (experimental continuity).
 No measured overhead or speedup is claimed. Existing DMA/RX/TX/PC1 health stays.
 Licensing: existing project notices unchanged; no additional external attribution.
+
+## Pull admission — KGP-INDEPENDENT / APPLE/API-CONTRACT / audit-informed; external reuse: NO
+AirportItlwm::outputStart/outputPacket/outputReservedPacket/setLinkStatus; _ifq.cpp/h:
+new KgpOutputQueue and single-use reservation wrappers. One common queue spinlock
+serializes membership and reservations, including existing internal EAPOL enqueue.
+Reserve before macOS dequeue; commit or cancel once. Consumer never tests software
+wait state; ring oactive remains independent. Capacity return atomically clears
+waiter under the same lock, signals the retained interface outside lock. Published
+Apple IONetworkingFamily bb910e2b458939f6b1f53c0fa6907f258b431ea4 drainOutputQueue /
+signalOutputThread records a signal before NoResources return and retries, avoiding
+the check/sleep race. API behavior still requires physical legacy-stack qualification.
+Stop/flush increments epoch, closes pull admission; late reservations cannot enqueue.
+Internal EAPOL remains allowed before link-up. Reservations retain queue; wake holds
+interface reference, never calls HAL. No new periodic telemetry or per-packet logs.
+Invalid packet guards now return immediately, correcting inherited null/post-free fallthrough.
+Conceptual comparison with laobamac d695c97 only; no batches, helper bodies or WCL
+gate policy copied. Existing GPL licensing applies; no new external attribution.

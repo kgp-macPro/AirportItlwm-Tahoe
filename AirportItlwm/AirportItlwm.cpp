@@ -541,12 +541,14 @@ setLinkStatus(UInt32 status, const IONetworkMedium * activeMedium, UInt64 speed,
     if (fNetIf) {
         if (status & kIONetworkLinkActive) {
 #ifdef __PRIVATE_SPI__
+            ifq_start_pull(&ifq->if_snd);
             fNetIf->startOutputThread();
 #endif
             getCommandGate()->runAction(setLinkStateGated, (void *)kIO80211NetworkLinkUp, (void *)0);
             fNetIf->setLinkQualityMetric(100);
         } else if (!(status & kIONetworkLinkNoNetworkChange)) {
 #ifdef __PRIVATE_SPI__
+            ifq_stop_pull(&ifq->if_snd);
             fNetIf->stopOutputThread();
             fNetIf->flushOutputQueue();
 #endif
@@ -693,52 +695,52 @@ IOReturn AirportItlwm::getHardwareAddressForInterface(
 #ifdef __PRIVATE_SPI__
 IOReturn AirportItlwm::outputStart(IONetworkInterface *interface, IOOptionBits options)
 {
-    struct _ifnet *ifp = &fHalService->get80211Controller()->ic_ac.ac_if;
-    mbuf_t m = NULL;
-    if (ifq_is_oactive(&ifp->if_snd))
-        return kIOReturnNoResources;
-    while (kIOReturnSuccess == interface->dequeueOutputPackets(1, &m)) {
-        if (outputPacket(m, NULL)!= kIOReturnOutputSuccess ||
-            ifq_is_oactive(&ifp->if_snd))
+    auto *ifp = &fHalService->get80211Controller()->ic_ac.ac_if;
+    for (;;) {
+        if (ifq_is_oactive(&ifp->if_snd)) return kIOReturnNoResources;
+        ifq_reservation ticket = {};
+        if (!ifq_reserve(&ifp->if_snd, &ticket)) return kIOReturnNoResources;
+        mbuf_t m = nullptr;
+        const IOReturn result = interface->dequeueOutputPackets(1, &m);
+        if (result != kIOReturnSuccess) {
+            ifq_cancel(&ticket);
+            return result == kIOReturnNoFrames ? kIOReturnSuccess : result;
+        }
+        if (outputReservedPacket(m, &ticket) != kIOReturnOutputSuccess)
             return kIOReturnNoResources;
     }
-    return kIOReturnSuccess;
 }
 #endif
 
 UInt32 AirportItlwm::outputPacket(mbuf_t m, void *param)
 {
-//    XYLog("%s\n", __FUNCTION__);
-    IOReturn ret = kIOReturnOutputSuccess;
-    struct _ifnet *ifp = &fHalService->get80211Controller()->ic_ac.ac_if;
-    
-    if (fHalService->get80211Controller()->ic_state != IEEE80211_S_RUN || ifp->if_snd.queue == NULL) {
-        if (m && mbuf_type(m) != MBUF_TYPE_FREE)
-            freePacket(m);
+    // Push callers already transferred ownership; only pull callers can reserve
+    // before dequeue. Internal producers share the same bounded capacity lock.
+    return outputReservedPacket(m, nullptr);
+}
+
+UInt32 AirportItlwm::outputReservedPacket(mbuf_t m, struct ifq_reservation *ticket)
+{
+    auto *ic = fHalService->get80211Controller();
+    auto *ifp = &ic->ic_ac.ac_if;
+    const bool live = m && mbuf_type(m) != MBUF_TYPE_FREE;
+    if (!live || !(mbuf_flags(m) & MBUF_PKTHDR) ||
+        ic->ic_state != IEEE80211_S_RUN || !ifp->if_snd.queue) {
+        if (ticket) ifq_cancel(ticket);
+        if (live) freePacket(m);
+        if (ifp->netStat) ++ifp->netStat->outputErrors;
+        return kIOReturnOutputDropped; // No dereference after freeing/invalid m.
+    }
+    const bool accepted = ticket ? ifq_commit(ticket, m) : ifp->if_snd.queue->lockEnqueue(m);
+    if (!accepted) {
+        // Reserved failure means lifecycle cancellation (not ordinary pressure).
+        // The caller owns m until commit succeeds, so dispose exactly once.
+        freePacket(m);
+        if (ifp->netStat) ++ifp->netStat->outputErrors;
         return kIOReturnOutputDropped;
     }
-    if (m == NULL) {
-        XYLog("%s m==NULL!!\n", __FUNCTION__);
-        ifp->netStat->outputErrors++;
-        ret = kIOReturnOutputDropped;
-    }
-    if (!(mbuf_flags(m) & MBUF_PKTHDR) ){
-        XYLog("%s pkthdr is NULL!!\n", __FUNCTION__);
-        ifp->netStat->outputErrors++;
-        freePacket(m);
-        ret = kIOReturnOutputDropped;
-    }
-    if (mbuf_type(m) == MBUF_TYPE_FREE) {
-        XYLog("%s mbuf is FREE!!\n", __FUNCTION__);
-        ifp->netStat->outputErrors++;
-        ret = kIOReturnOutputDropped;
-    }
-    if (!ifp->if_snd.queue->lockEnqueue(m)) {
-        freePacket(m);
-        ret = kIOReturnOutputDropped;
-    }
     (*ifp->if_start)(ifp);
-    return ret;
+    return kIOReturnOutputSuccess;
 }
 
 UInt32 AirportItlwm::getFeatures() const
