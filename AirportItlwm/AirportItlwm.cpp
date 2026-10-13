@@ -550,6 +550,7 @@ setLinkStatus(UInt32 status, const IONetworkMedium * activeMedium, UInt64 speed,
             fNetIf->stopOutputThread();
             fNetIf->flushOutputQueue();
 #endif
+            if (auto *perf = fHalService->getPerf1()) perf->add(KgpPerf1::LinkFlushCalls);
             ifq_flush(&ifq->if_snd);
             mq_purge(&fHalService->get80211Controller()->ic_mgtq);
             getCommandGate()->runAction(setLinkStateGated, (void *)kIO80211NetworkLinkDown, (void *)fHalService->get80211Controller()->ic_deauth_reason);
@@ -694,14 +695,35 @@ IOReturn AirportItlwm::getHardwareAddressForInterface(
 IOReturn AirportItlwm::outputStart(IONetworkInterface *interface, IOOptionBits options)
 {
     struct _ifnet *ifp = &fHalService->get80211Controller()->ic_ac.ac_if;
+    KgpPerf1 *perf = fHalService->getPerf1();
+    if (perf) perf->add(KgpPerf1::OutputStartCalls);
     mbuf_t m = NULL;
-    if (ifq_is_oactive(&ifp->if_snd))
+    if (ifq_is_oactive(&ifp->if_snd)) {
+        if (perf) perf->add(KgpPerf1::OutputStartPreOactive);
         return kIOReturnNoResources;
-    while (kIOReturnSuccess == interface->dequeueOutputPackets(1, &m)) {
-        if (outputPacket(m, NULL)!= kIOReturnOutputSuccess ||
-            ifq_is_oactive(&ifp->if_snd))
-            return kIOReturnNoResources;
     }
+    for (;;) {
+        if (perf) perf->add(KgpPerf1::MacDequeueCalls);
+        const IOReturn dequeued = interface->dequeueOutputPackets(1, &m);
+        if (dequeued != kIOReturnSuccess) {
+            if (perf) perf->add(dequeued == kIOReturnNoFrames ? KgpPerf1::MacNoFrames : KgpPerf1::MacDequeueOther);
+            break;
+        }
+        if (perf) {
+            perf->add(KgpPerf1::MacDequeued);
+            if (m) perf->add(KgpPerf1::MacDequeuedBytes, mbuf_pkthdr_len(m));
+        }
+        // Preserve the original short-circuit return and ownership behavior.
+        if (outputPacket(m, NULL) != kIOReturnOutputSuccess) {
+            if (perf) perf->add(KgpPerf1::OutputStartDropped);
+            return kIOReturnNoResources;
+        }
+        if (ifq_is_oactive(&ifp->if_snd)) {
+            if (perf) perf->add(KgpPerf1::OutputStartPostOactive);
+            return kIOReturnNoResources;
+        }
+    }
+    if (perf) perf->add(KgpPerf1::OutputStartDrained);
     return kIOReturnSuccess;
 }
 #endif
@@ -710,34 +732,48 @@ UInt32 AirportItlwm::outputPacket(mbuf_t m, void *param)
 {
 //    XYLog("%s\n", __FUNCTION__);
     IOReturn ret = kIOReturnOutputSuccess;
+    KgpPerf1 *perf = fHalService->getPerf1();
+    if (perf) {
+        perf->add(KgpPerf1::OutputPacketCalls);
+        if (m && mbuf_type(m) != MBUF_TYPE_FREE && (mbuf_flags(m) & MBUF_PKTHDR))
+            perf->add(KgpPerf1::OutputPacketBytes, mbuf_pkthdr_len(m));
+    }
     struct _ifnet *ifp = &fHalService->get80211Controller()->ic_ac.ac_if;
     
     if (fHalService->get80211Controller()->ic_state != IEEE80211_S_RUN || ifp->if_snd.queue == NULL) {
         if (m && mbuf_type(m) != MBUF_TYPE_FREE)
             freePacket(m);
+        if (perf) { perf->add(KgpPerf1::OutputNotRun); perf->add(KgpPerf1::OutputDropped); }
         return kIOReturnOutputDropped;
     }
     if (m == NULL) {
+        if (perf) perf->add(KgpPerf1::OutputNull);
         XYLog("%s m==NULL!!\n", __FUNCTION__);
         ifp->netStat->outputErrors++;
         ret = kIOReturnOutputDropped;
     }
     if (!(mbuf_flags(m) & MBUF_PKTHDR) ){
+        if (perf) perf->add(KgpPerf1::OutputNoHeader);
         XYLog("%s pkthdr is NULL!!\n", __FUNCTION__);
         ifp->netStat->outputErrors++;
         freePacket(m);
         ret = kIOReturnOutputDropped;
     }
     if (mbuf_type(m) == MBUF_TYPE_FREE) {
+        if (perf) perf->add(KgpPerf1::OutputFree);
         XYLog("%s mbuf is FREE!!\n", __FUNCTION__);
         ifp->netStat->outputErrors++;
         ret = kIOReturnOutputDropped;
     }
     if (!ifp->if_snd.queue->lockEnqueue(m)) {
+        if (perf) perf->add(KgpPerf1::SoftwareRefused);
         freePacket(m);
         ret = kIOReturnOutputDropped;
     }
+    else if (perf) perf->add(KgpPerf1::SoftwareAccepted);
+    if (perf) perf->add(KgpPerf1::IfStartCalls);
     (*ifp->if_start)(ifp);
+    if (perf) perf->add(ret == kIOReturnOutputSuccess ? KgpPerf1::OutputSuccess : KgpPerf1::OutputDropped);
     return ret;
 }
 

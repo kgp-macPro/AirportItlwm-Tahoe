@@ -357,7 +357,7 @@ bool ItlIwx::dma5Select()
     if (selection) selection->release();
     if (!resolved) { boot5Mark(10, "device DMA policy unresolved; attach refused", 2); return false; }
     pci.pa_tag->setProperty("KGP_ZC5_DMA_MODE", mapped ? "mapped RX/TX" : "original Dexter RX/TX");
-    pci.pa_tag->setProperty("KGP_RX_EXPERIMENT", "AirportItlwm-Tahoe-B1-ZC5-BOOTFIX1");
+    pci.pa_tag->setProperty("KGP_RX_EXPERIMENT", "AirportItlwm-Tahoe-B1-ZC6-PERF1");
     boot5Mark(11, mapped ? "DMA routing completed: mapped" : "DMA routing completed: original Dexter");
     return true;
 }
@@ -412,6 +412,26 @@ bool ItlIwx::dma5Terminal() const
     return !fDma5Published || (fPc1Suspended && fPc1LastMaster && fPc1TerminalEpoch &&
         fPc1TerminalEpoch==fPc1ResetEpoch && !__atomic_load_n(&fPc1Fault,__ATOMIC_ACQUIRE));
 }
+
+// ZC6-PERF1: existing 1s watchdog, no new worker/timer, no packet-path allocation.
+// Atomic individual fields, NOT a transactional/flow-specific snapshot. Word3
+// publication sequence and word4 timestamp expose stale/disabled-watchdog state.
+void ItlIwx::perf1Publish()
+{
+    fPerf1.add(KgpPerf1::PublishCalls);
+    enum { words = 8 + KgpPerf1::Count + KgpPerf1::Queues*KgpPerf1::QueueWords + 32 };
+    uint64_t wire[words] = {6, 1, words, fPerf1.read(KgpPerf1::PublishCalls),
+        time2GNow(), unsigned(dma5Mapped()),
+        __atomic_load_n(&fPc1Fault, __ATOMIC_ACQUIRE),
+        __atomic_load_n(&fTx2IBlocked, __ATOMIC_ACQUIRE)};
+    fPerf1.snapshot(wire + 8);
+    // Existing mapped TX counters (including sampled age) retain their semantics.
+    for (unsigned i=0; i<32; ++i)
+        wire[words-32+i]=__atomic_load_n(&fTx5Telemetry[i], __ATOMIC_RELAXED);
+    if (!getController()->setProperty("KGP_ZC6_PERF1", wire, sizeof(wire)))
+        fPerf1.add(KgpPerf1::PublishFailures);
+}
+
 void ItlIwx::dma5Report(bool force)
 {
     if (!pci.pa_tag || (!force && (++fDma5Notifs & 255))) return;
@@ -1005,6 +1025,7 @@ bool ItlIwx::drain2MSetup()
 }
 void ItlIwx::drain2MRequest()
 {
+    fPerf1.add(KgpPerf1::DrainRequests);
     if (!fDrain2MLock) return;
     __atomic_fetch_add(&fDrain2MStats[1], 1U, __ATOMIC_RELAXED);
     const IOInterruptState irq = IOSimpleLockLockDisableInterrupt(fDrain2MLock);
@@ -1081,6 +1102,7 @@ void ItlIwx::drain2MRemove()
 void ItlIwx::drain2MAction(OSObject *owner, IOInterruptEventSource *sender, int)
 {
     ItlIwx *that = static_cast<ItlIwx *>(owner);
+    that->fPerf1.add(KgpPerf1::DrainRuns);
     __atomic_fetch_add(&that->fDrain2MStats[5], 1U, __ATOMIC_RELAXED);
     const IOInterruptState irq = IOSimpleLockLockDisableInterrupt(that->fDrain2MLock);
     const bool claimed = sender == that->fDrain2MEvent && that->fDrain2MPending &&
@@ -1096,6 +1118,7 @@ void ItlIwx::drain2MAction(OSObject *owner, IOInterruptEventSource *sender, int)
         _iwx_start_task, &that->com.sc_ic.ic_ac.ac_if, &context);
     __atomic_fetch_add(&that->fDrain2MStats[context.entered ? 7 : 8], 1U, __ATOMIC_RELAXED);
     __atomic_store_n(&that->fDrain2MStats[9], uint32_t(result), __ATOMIC_RELAXED);
+    that->fPerf1.add(context.entered ? KgpPerf1::DrainEntered : KgpPerf1::DrainMissed);
     that->path2L(2, uint32_t(result), context.entered ? 1U : 0U);
     that->path2LPublish();
     // No self-rescheduling loop. Another enqueue can signal new work; normal
@@ -4538,7 +4561,7 @@ iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
     }
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 &&
         !pci.pa_tag->setProperty("KGP_RX_EXPERIMENT",
-            "AirportItlwm-Tahoe-B1-ZC5-BOOTFIX1")) {
+            "AirportItlwm-Tahoe-B1-ZC6-PERF1")) {
         err = ENOMEM; goto fail;
     }
     return 0;
@@ -4741,6 +4764,7 @@ fail:    iwx_free_tx_ring(sc, ring);
 void ItlIwx::
 iwx_reset_tx_ring(struct iwx_softc *sc, struct iwx_tx_ring *ring)
 {
+    fPerf1.add(KgpPerf1::RingResets);
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 && !getMainWorkLoop()->inGate()) {
         const IOReturn result=getMainWorkLoop()->runAction(pc1RingAction,this,sc,ring);
         if (result!=kIOReturnSuccess) {__atomic_store_n(&fTx2IBlocked,1U,__ATOMIC_RELEASE);__atomic_store_n(&fPc1Fault,1U,__ATOMIC_RELEASE);}
@@ -7391,6 +7415,7 @@ iwx_rx_frame(struct iwx_softc *sc, mbuf_t m, int chanidx,
     ni = ieee80211_find_rxnode(ic, wh);
     if ((rxi->rxi_flags & IEEE80211_RXI_HWDEC) &&
         iwx_ccmp_decap(sc, m, ni, rxi) != 0) {
+        fPerf1.add(KgpPerf1::RxDecryptDrop);
         ifp->netStat->inputErrors++;
         mbuf_freem(m);
         ieee80211_release_node(ic, ni);
@@ -7446,6 +7471,7 @@ iwx_rx_frame(struct iwx_softc *sc, mbuf_t m, int chanidx,
                      m, BPF_DIRECTION_IN);
     }
 #endif
+    fPerf1.add(KgpPerf1::RxInputFrames);
     ieee80211_inputm(IC2IFP(ic), m, ni, rxi, ml);
     ieee80211_release_node(ic, ni);
 }
@@ -7843,6 +7869,7 @@ void ItlIwx::
 iwx_rx_mpdu_mq(struct iwx_softc *sc, mbuf_t m, void *pktdata,
                size_t maxlen, struct mbuf_list *ml)
 {
+    fPerf1.add(KgpPerf1::RxMpduNotifications);
     struct ieee80211com *ic = &sc->sc_ic;
     struct ieee80211_rxinfo rxi;
     struct iwx_rx_mpdu_desc *desc;
@@ -7861,6 +7888,7 @@ iwx_rx_mpdu_mq(struct iwx_softc *sc, mbuf_t m, void *pktdata,
     if (!(desc->status & htole16(IWX_RX_MPDU_RES_STATUS_CRC_OK)) ||
         !(desc->status & htole16(IWX_RX_MPDU_RES_STATUS_OVERRUN_OK))) {
         mbuf_freem(m);
+        fPerf1.add(KgpPerf1::RxCrcOrOverrunDrop);
         return; /* drop */
     }
     
@@ -7869,17 +7897,20 @@ iwx_rx_mpdu_mq(struct iwx_softc *sc, mbuf_t m, void *pktdata,
         /* Allow control frames in monitor mode. */
         if (len < sizeof(struct ieee80211_frame_cts)) {
             ic->ic_stats.is_rx_tooshort++;
+            fPerf1.add(KgpPerf1::RxLengthDrop);
             IC2IFP(ic)->netStat->inputErrors++;
             mbuf_freem(m);
             return;
         }
     } else if (len < sizeof(struct ieee80211_frame)) {
         ic->ic_stats.is_rx_tooshort++;
+        fPerf1.add(KgpPerf1::RxLengthDrop);
         IC2IFP(ic)->netStat->inputErrors++;
         mbuf_freem(m);
         return;
     }
     if (len > maxlen - desc_size) {
+        fPerf1.add(KgpPerf1::RxLengthDrop);
         IC2IFP(ic)->netStat->inputErrors++;
         mbuf_freem(m);
         return;
@@ -8016,6 +8047,7 @@ iwx_rx_tx_cmd_single(struct iwx_softc *sc, struct iwx_rx_packet *pkt,
     txfail = (status != IWX_TX_STATUS_SUCCESS);
     
     if (txfail) {
+        fPerf1.add(KgpPerf1::SingleFailStatus);
         XYLog("%s %d OUTPUT_ERROR type=%d status=%d\n", __FUNCTION__, __LINE__, txd->type, status);
         ifp->netStat->outputErrors++;
         if (txd->type == IEEE80211_FC0_TYPE_MGT)
@@ -8065,12 +8097,16 @@ iwx_clear_oactive(struct iwx_softc *sc, struct iwx_tx_ring *ring)
     struct _ifnet *ifp = &ic->ic_if;
 
     if (ring->queued < ring->low_mark) {
+        fPerf1.add(KgpPerf1::LowWaterCalls);
         sc->qfullmsk &= ~(1 << ring->qid);
         if (sc->qfullmsk == 0 && ifq_is_oactive(&ifp->if_snd)) {
+            fPerf1.add(KgpPerf1::OactiveClear);
             ifq_clr_oactive(&ifp->if_snd);
+            fPerf1.add(KgpPerf1::RestartCalls);
             (*ifp->if_start)(ifp);
         }
 #ifdef __PRIVATE_SPI__
+        fPerf1.add(KgpPerf1::OutputSignals);
         ifp->iface->signalOutputThread();
 #endif
     }
@@ -8087,6 +8123,10 @@ iwx_rx_tx_ba_notif(struct iwx_softc *sc, struct iwx_rx_packet *pkt, struct iwx_r
 
     struct ieee80211com *ic = &sc->sc_ic;
     struct iwx_compressed_ba_notif *ba_res = (struct iwx_compressed_ba_notif *)pkt->data;
+    fPerf1.add(KgpPerf1::BaNotifications);
+    fPerf1.add(KgpPerf1::BaTxed, le16toh(ba_res->txed));
+    fPerf1.add(KgpPerf1::BaAcked, le16toh(ba_res->done));
+    fPerf1.add(KgpPerf1::BaRetries, ba_res->retry_cnt);
     uint8_t tid;
     uint8_t qid;
     int i;
@@ -8147,6 +8187,9 @@ iwx_ampdu_txq_advance(struct iwx_softc *sc, struct iwx_tx_ring *ring, int idx, b
             iwx_txd_done(sc, txd);
             iwx_clear_tx_desc(sc, ring, ring->tail);
             ring->queued--;
+            fPerf1.add(KgpPerf1::RetiredObjects);
+            fPerf1.queue(ring->qid, 1);
+            fPerf1.occupancy(ring->qid, ring->ring_count, ring->queued);
         }
         ring->tail = (ring->tail + 1) % ring->ring_count;
     }
@@ -8184,6 +8227,7 @@ iwx_rx_tx_cmd(struct iwx_softc *sc, struct iwx_rx_packet *pkt,
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 &&
         __atomic_load_n(&fPc1Suspended,__ATOMIC_ACQUIRE)) {++fPc1DroppedCompletion;return;}
 
+    fPerf1.add(KgpPerf1::TxCmdNotifications);
     uint32_t ssn;
     int idx;
     int tid;
@@ -8198,6 +8242,7 @@ iwx_rx_tx_cmd(struct iwx_softc *sc, struct iwx_rx_packet *pkt,
     sc->sc_tx_timer = 0;
 
     if (tx_resp->frame_count > 1) {
+        fPerf1.add(KgpPerf1::AggregateStatusFrames, tx_resp->frame_count);
         for (int i = 0; i < tx_resp->frame_count; i++) {
             uint16_t fstatus = le16_to_cpu((&tx_resp->status)[i].status);
 
@@ -9040,6 +9085,7 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
 
     ring = &sc->txq[qid];
     if (ring->ring_count == 0) {
+        fPerf1.add(KgpPerf1::RingAbsentDrop);
         mbuf_freem(m);
         return EINVAL;
     }
@@ -9047,12 +9093,14 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 &&
         (__atomic_load_n(&fTx2IBlocked, __ATOMIC_ACQUIRE) || ring->data[idx].m ||
          __atomic_load_n(&ring->data[idx].tx2I_token, __ATOMIC_ACQUIRE))) {
+        fPerf1.add(KgpPerf1::RingOwnershipReject);
         __atomic_fetch_add(&fTx2IStats[8], 1U, __ATOMIC_RELAXED);
         mbuf_freem(m); return ENOMEM;
     }
     Tx2JScope admission2J = {nullptr};
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210) {
         if (!tx2JEnter()) {
+            fPerf1.add(KgpPerf1::AdmissionReject);
             const uint32_t n = __atomic_add_fetch(&fTx2IStats[8], 1U, __ATOMIC_RELAXED);
             if (n == 1) tx2IReport(9);
             mbuf_freem(m); return ENOMEM;
@@ -9061,6 +9109,7 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
         // A task which passed its outer RUNNING check before a completed stop
         // must not enter the old descriptor generation after that stop returns.
         if (!(ic->ic_if.if_flags & IFF_RUNNING) || (sc->sc_flags & IWX_FLAG_SHUTDOWN)) {
+            fPerf1.add(KgpPerf1::GenerationReject);
             __atomic_fetch_add(&fTx2IStats[8], 1U, __ATOMIC_RELAXED);
             mbuf_freem(m); return ENOMEM;
         }
@@ -9107,8 +9156,10 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
     if (wh->i_fc[1] & IEEE80211_FC1_PROTECTED) {
         k = ieee80211_get_txkey(ic, wh, ni);
         if (k->k_cipher != IEEE80211_CIPHER_CCMP) {
-            if ((m = ieee80211_encrypt(ic, m, k)) == NULL)
+            if ((m = ieee80211_encrypt(ic, m, k)) == NULL) {
+                fPerf1.add(KgpPerf1::CryptoDrop);
                 return ENOBUFS;
+            }
             /* 802.11 header may have moved. */
             wh = mtod(m, struct ieee80211_frame *);
             flags |= htole32(IWX_TX_FLAGS_ENCRYPT_DIS);
@@ -9157,6 +9208,7 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
     else
     nsegs = data->map->cursor->getPhysicalSegmentsWithCoalesce(m, &segs[0], IWX_TFH_NUM_TBS - 2);
     if (nsegs == 0) {
+        fPerf1.add(KgpPerf1::MappingDrop);
         if (!dma5Mapped()) XYLog("%s: can't map mbuf (error %d)\n", DEVNAME(sc),
               nsegs);
         mbuf_freem(m);
@@ -9213,21 +9265,29 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
     /* Kick TX ring. */
     ring->cur = (ring->cur + 1) % getTxQueueSize();
     IWX_WRITE(sc, IWX_HBUS_TARG_WRPTR, ring->qid << 16 | ring->cur);
+    fPerf1.add(KgpPerf1::DescriptorsSubmitted);
+    fPerf1.add(KgpPerf1::Submitted80211Bytes, totlen);
+    fPerf1.queue(ring->qid, 0);
     
     /* Mark TX ring as full if we reach a certain threshold. */
     if (++ring->queued > ring->hi_mark) {
 //        XYLog("%s sc->qfullmsk is FULL qid=%d ring->cur=%d ring->queued=%d\n", __FUNCTION__, ring->qid, ring->cur, ring->queued);
+        fPerf1.add(KgpPerf1::HighWaterEvents);
+        if (!(sc->qfullmsk & (1 << ring->qid))) fPerf1.add(KgpPerf1::FullTransitions);
+        fPerf1.queue(ring->qid, 2);
         sc->qfullmsk |= 1 << ring->qid;
         __atomic_fetch_add(&fTx5Telemetry[7],1ULL,__ATOMIC_RELAXED);
     }
     
     if (dma5Mapped()) tx2IPublished(data);
+    fPerf1.occupancy(ring->qid, ring->ring_count, ring->queued);
     return 0;
 }
 
 int ItlIwx::
 iwx_flush_sta_tids(struct iwx_softc *sc, int sta_id, uint16_t tids)
 {
+    fPerf1.add(KgpPerf1::FlushCalls);
     const unsigned generationPC1=unsigned(sc->sc_generation);
     struct iwx_rx_packet *pkt;
     struct iwx_tx_path_flush_cmd_rsp *resp;
@@ -12660,12 +12720,14 @@ _iwx_start_task(OSObject *target, void *arg0, void *arg1, void *arg2, void *arg3
     struct ether_header *eh;
     mbuf_t m;
     int ac = EDCA_AC_BE; /* XXX */
+    that->fPerf1.add(KgpPerf1::StartEntered);
     Start2LContext *context2L = static_cast<Start2LContext *>(arg1);
     if (context2L) context2L->entered = true;
     that->path2L(3);
     uint32_t exit2L = 0;
     
     if (!(ifp->if_flags & IFF_RUNNING) ||  ifq_is_oactive(&ifp->if_snd)) {
+        that->fPerf1.add(!(ifp->if_flags & IFF_RUNNING) ? KgpPerf1::StartNotRunning : KgpPerf1::StartOactive);
         const uint32_t reason2L = !(ifp->if_flags & IFF_RUNNING) ? 1U : 2U;
         if (context2L) context2L->reason = reason2L;
         that->path2L(4, uint32_t(kIOReturnError), reason2L);
@@ -12675,6 +12737,8 @@ _iwx_start_task(OSObject *target, void *arg0, void *arg1, void *arg2, void *arg3
     for (;;) {
         /* why isn't this done per-queue? */
         if (sc->qfullmsk != 0) {
+            that->fPerf1.add(KgpPerf1::StartQfull);
+            that->fPerf1.add(KgpPerf1::OactiveSet);
             ifq_set_oactive(&ifp->if_snd);
             exit2L = 3;
             break;
@@ -12682,6 +12746,7 @@ _iwx_start_task(OSObject *target, void *arg0, void *arg1, void *arg2, void *arg3
 
         /* Don't queue additional frames while flushing Tx queues. */
         if (sc->sc_flags & IWX_FLAG_TXFLUSH) {
+            that->fPerf1.add(KgpPerf1::StartFlush);
             exit2L = 4;
             break;
         }
@@ -12689,6 +12754,7 @@ _iwx_start_task(OSObject *target, void *arg0, void *arg1, void *arg2, void *arg3
         /* need to send management frames even if we're not RUNning */
         m = mq_dequeue(&ic->ic_mgtq);
         if (m) {
+            that->fPerf1.add(KgpPerf1::MgmtDequeued);
             that->path2L(5);
             //            ni = m->m_pkthdr.ph_cookie;
             ni = (struct ieee80211_node *)mbuf_pkthdr_rcvif(m);
@@ -12701,16 +12767,22 @@ _iwx_start_task(OSObject *target, void *arg0, void *arg1, void *arg2, void *arg3
             ic->ic_state != IEEE80211_S_RUN ||
 #endif
             (ic->ic_xflags & IEEE80211_F_TX_MGMT_ONLY)) {
+            that->fPerf1.add(KgpPerf1::StartMgmtOnly);
             exit2L = 5;
             break;
         }
         
         m = ifq_dequeue(&ifp->if_snd);
-        if (!m)
+        if (!m) {
+            that->fPerf1.add(KgpPerf1::StartQueueEmpty);
             break;
+        }
+        that->fPerf1.add(KgpPerf1::DataDequeued);
+        that->fPerf1.add(KgpPerf1::DataDequeuedBytes, mbuf_pkthdr_len(m));
         that->path2L(6);
         if (mbuf_len(m) < sizeof (*eh) &&
             mbuf_pullup(&m, sizeof (*eh)) != 0) {
+            that->fPerf1.add(KgpPerf1::PullupDrop);
             ifp->netStat->outputErrors++;
             continue;
         }
@@ -12719,11 +12791,13 @@ _iwx_start_task(OSObject *target, void *arg0, void *arg1, void *arg2, void *arg3
             bpf_mtap(ifp->if_bpf, m, BPF_DIRECTION_OUT);
 #endif
         if ((m = ieee80211_encap(ifp, m, &ni)) == NULL) {
+            that->fPerf1.add(KgpPerf1::EncapDrop);
             ifp->netStat->outputErrors++;
             continue;
         }
         
     sendit:
+        that->fPerf1.add(KgpPerf1::TxAttempts);
 #if NBPFILTER > 0
         if (ic->ic_rawbpf != NULL)
             bpf_mtap(ic->ic_rawbpf, m, BPF_DIRECTION_OUT);
@@ -12736,11 +12810,13 @@ _iwx_start_task(OSObject *target, void *arg0, void *arg1, void *arg2, void *arg3
         const int txResult2L = that->iwx_tx(sc, m, ni, ac);
         that->path2L(8, uint32_t(txResult2L), 0, fc2L);
         if (txResult2L != 0) {
+            that->fPerf1.add(KgpPerf1::TxErrors);
             ieee80211_release_node(ic, ni);
             ifp->netStat->outputErrors++;
             continue;
         }
         ifp->netStat->outputPackets++;
+        that->fPerf1.add(KgpPerf1::OutputPacketsIncrement);
         
         if (ifp->if_flags & IFF_UP) {
             sc->sc_tx_timer = 15;
@@ -12762,9 +12838,12 @@ iwx_start(struct _ifnet *ifp)
     struct iwx_softc *sc = (struct iwx_softc*)ifp->if_softc;
     ItlIwx *that = container_of(sc, ItlIwx, com);
     Start2LContext context2L = {};
+    that->fPerf1.add(KgpPerf1::GateCalls);
     that->path2L(1);
     const IOReturn result2L = that->getMainCommandGate()->attemptAction(
         _iwx_start_task, &that->com.sc_ic.ic_ac.ac_if, &context2L);
+    if (result2L == kIOReturnCannotLock) that->fPerf1.add(KgpPerf1::GateCannotLock);
+    else if (result2L != kIOReturnSuccess) that->fPerf1.add(KgpPerf1::GateOtherError);
     that->path2L(2, uint32_t(result2L), context2L.entered ? 1U : 0U);
     if (!context2L.entered && result2L == kIOReturnCannotLock)
         that->drain2MRequest();
@@ -12852,6 +12931,7 @@ iwx_watchdog(struct _ifnet *ifp)
 {
     struct iwx_softc *sc = (struct iwx_softc *)ifp->if_softc;
     ItlIwx *that = container_of(sc, ItlIwx, com);
+    that->perf1Publish();
     
     ifp->if_timer = 0;
     if (sc->sc_tx_timer > 0) {
@@ -13745,6 +13825,7 @@ iwx_intr(OSObject *object, IOInterruptEventSource* sender, int count)
 
 //    XYLog("Interrupt!!!\n");
     ItlIwx *that = (ItlIwx*)object;
+    that->fPerf1.add(KgpPerf1::InterruptActions);
     struct iwx_softc *sc = &that->com;
     int handled = 0;
     int r1, r2, rv = 0;
@@ -16408,6 +16489,7 @@ dexterOriginal_iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni,
 
     ring = &sc->txq[qid];
     if (ring->ring_count == 0) {
+        fPerf1.add(KgpPerf1::RingAbsentDrop);
         mbuf_freem(m);
         return EINVAL;
     }
@@ -16454,8 +16536,10 @@ dexterOriginal_iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni,
     if (wh->i_fc[1] & IEEE80211_FC1_PROTECTED) {
         k = ieee80211_get_txkey(ic, wh, ni);
         if (k->k_cipher != IEEE80211_CIPHER_CCMP) {
-            if ((m = ieee80211_encrypt(ic, m, k)) == NULL)
+            if ((m = ieee80211_encrypt(ic, m, k)) == NULL) {
+                fPerf1.add(KgpPerf1::CryptoDrop);
                 return ENOBUFS;
+            }
             /* 802.11 header may have moved. */
             wh = mtod(m, struct ieee80211_frame *);
             flags |= htole32(IWX_TX_FLAGS_ENCRYPT_DIS);
@@ -16501,6 +16585,7 @@ dexterOriginal_iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni,
     
     nsegs = data->map->cursor->getPhysicalSegmentsWithCoalesce(m, &segs[0], IWX_TFH_NUM_TBS - 2);
     if (nsegs == 0) {
+        fPerf1.add(KgpPerf1::MappingDrop);
         XYLog("%s: can't map mbuf (error %d)\n", DEVNAME(sc),
               nsegs);
         mbuf_freem(m);
@@ -16556,13 +16641,20 @@ dexterOriginal_iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni,
     /* Kick TX ring. */
     ring->cur = (ring->cur + 1) % getTxQueueSize();
     IWX_WRITE(sc, IWX_HBUS_TARG_WRPTR, ring->qid << 16 | ring->cur);
+    fPerf1.add(KgpPerf1::DescriptorsSubmitted);
+    fPerf1.add(KgpPerf1::Submitted80211Bytes, totlen);
+    fPerf1.queue(ring->qid, 0);
     
     /* Mark TX ring as full if we reach a certain threshold. */
     if (++ring->queued > ring->hi_mark) {
 //        XYLog("%s sc->qfullmsk is FULL qid=%d ring->cur=%d ring->queued=%d\n", __FUNCTION__, ring->qid, ring->cur, ring->queued);
+        fPerf1.add(KgpPerf1::HighWaterEvents);
+        if (!(sc->qfullmsk & (1 << ring->qid))) fPerf1.add(KgpPerf1::FullTransitions);
+        fPerf1.queue(ring->qid, 2);
         sc->qfullmsk |= 1 << ring->qid;
     }
     
+    fPerf1.occupancy(ring->qid, ring->ring_count, ring->queued);
     return 0;
 }
 
@@ -16571,6 +16663,10 @@ dexterOriginal_iwx_rx_tx_ba_notif(struct iwx_softc *sc, struct iwx_rx_packet *pk
 {
     struct ieee80211com *ic = &sc->sc_ic;
     struct iwx_compressed_ba_notif *ba_res = (struct iwx_compressed_ba_notif *)pkt->data;
+    fPerf1.add(KgpPerf1::BaNotifications);
+    fPerf1.add(KgpPerf1::BaTxed, le16toh(ba_res->txed));
+    fPerf1.add(KgpPerf1::BaAcked, le16toh(ba_res->done));
+    fPerf1.add(KgpPerf1::BaRetries, ba_res->retry_cnt);
     uint8_t tid;
     uint8_t qid;
     int i;
@@ -16614,6 +16710,7 @@ void ItlIwx::
 dexterOriginal_iwx_rx_tx_cmd(struct iwx_softc *sc, struct iwx_rx_packet *pkt,
               struct iwx_rx_data *data)
 {
+    fPerf1.add(KgpPerf1::TxCmdNotifications);
     uint32_t ssn;
     int idx;
     int tid;
@@ -16628,6 +16725,7 @@ dexterOriginal_iwx_rx_tx_cmd(struct iwx_softc *sc, struct iwx_rx_packet *pkt,
     sc->sc_tx_timer = 0;
 
     if (tx_resp->frame_count > 1) {
+        fPerf1.add(KgpPerf1::AggregateStatusFrames, tx_resp->frame_count);
         for (int i = 0; i < tx_resp->frame_count; i++) {
             uint16_t fstatus = le16_to_cpu((&tx_resp->status)[i].status);
 
@@ -16663,6 +16761,9 @@ dexterOriginal_iwx_ampdu_txq_advance(struct iwx_softc *sc, struct iwx_tx_ring *r
             iwx_txd_done(sc, txd);
             iwx_clear_tx_desc(sc, ring, ring->tail);
             ring->queued--;
+            fPerf1.add(KgpPerf1::RetiredObjects);
+            fPerf1.queue(ring->qid, 1);
+            fPerf1.occupancy(ring->qid, ring->ring_count, ring->queued);
         }
         ring->tail = (ring->tail + 1) % ring->ring_count;
     }
@@ -16679,25 +16780,32 @@ dexterOriginal__iwx_start_task(OSObject *target, void *arg0, void *arg1, void *a
     struct ether_header *eh;
     mbuf_t m;
     int ac = EDCA_AC_BE; /* XXX */
+    that->fPerf1.add(KgpPerf1::StartEntered);
     
     if (!(ifp->if_flags & IFF_RUNNING) ||  ifq_is_oactive(&ifp->if_snd)) {
+        that->fPerf1.add(!(ifp->if_flags & IFF_RUNNING) ? KgpPerf1::StartNotRunning : KgpPerf1::StartOactive);
         return kIOReturnError;
     }
     
     for (;;) {
         /* why isn't this done per-queue? */
         if (sc->qfullmsk != 0) {
+            that->fPerf1.add(KgpPerf1::StartQfull);
+            that->fPerf1.add(KgpPerf1::OactiveSet);
             ifq_set_oactive(&ifp->if_snd);
             break;
         }
 
         /* Don't queue additional frames while flushing Tx queues. */
-        if (sc->sc_flags & IWX_FLAG_TXFLUSH)
+        if (sc->sc_flags & IWX_FLAG_TXFLUSH) {
+            that->fPerf1.add(KgpPerf1::StartFlush);
             break;
+        }
         
         /* need to send management frames even if we're not RUNning */
         m = mq_dequeue(&ic->ic_mgtq);
         if (m) {
+            that->fPerf1.add(KgpPerf1::MgmtDequeued);
             //            ni = m->m_pkthdr.ph_cookie;
             ni = (struct ieee80211_node *)mbuf_pkthdr_rcvif(m);
             goto sendit;
@@ -16707,14 +16815,21 @@ dexterOriginal__iwx_start_task(OSObject *target, void *arg0, void *arg1, void *a
 #ifndef AIRPORT
             ic->ic_state != IEEE80211_S_RUN ||
 #endif
-            (ic->ic_xflags & IEEE80211_F_TX_MGMT_ONLY))
+            (ic->ic_xflags & IEEE80211_F_TX_MGMT_ONLY)) {
+            that->fPerf1.add(KgpPerf1::StartMgmtOnly);
             break;
+        }
         
         m = ifq_dequeue(&ifp->if_snd);
-        if (!m)
+        if (!m) {
+            that->fPerf1.add(KgpPerf1::StartQueueEmpty);
             break;
+        }
+        that->fPerf1.add(KgpPerf1::DataDequeued);
+        that->fPerf1.add(KgpPerf1::DataDequeuedBytes, mbuf_pkthdr_len(m));
         if (mbuf_len(m) < sizeof (*eh) &&
             mbuf_pullup(&m, sizeof (*eh)) != 0) {
+            that->fPerf1.add(KgpPerf1::PullupDrop);
             ifp->netStat->outputErrors++;
             continue;
         }
@@ -16723,21 +16838,25 @@ dexterOriginal__iwx_start_task(OSObject *target, void *arg0, void *arg1, void *a
             bpf_mtap(ifp->if_bpf, m, BPF_DIRECTION_OUT);
 #endif
         if ((m = ieee80211_encap(ifp, m, &ni)) == NULL) {
+            that->fPerf1.add(KgpPerf1::EncapDrop);
             ifp->netStat->outputErrors++;
             continue;
         }
         
     sendit:
+        that->fPerf1.add(KgpPerf1::TxAttempts);
 #if NBPFILTER > 0
         if (ic->ic_rawbpf != NULL)
             bpf_mtap(ic->ic_rawbpf, m, BPF_DIRECTION_OUT);
 #endif
         if (that->iwx_tx(sc, m, ni, ac) != 0) {
+            that->fPerf1.add(KgpPerf1::TxErrors);
             ieee80211_release_node(ic, ni);
             ifp->netStat->outputErrors++;
             continue;
         }
         ifp->netStat->outputPackets++;
+        that->fPerf1.add(KgpPerf1::OutputPacketsIncrement);
         
         if (ifp->if_flags & IFF_UP) {
             sc->sc_tx_timer = 15;
@@ -16753,7 +16872,10 @@ dexterOriginal_iwx_start(struct _ifnet *ifp)
 {
     struct iwx_softc *sc = (struct iwx_softc*)ifp->if_softc;
     ItlIwx *that = container_of(sc, ItlIwx, com);
-    that->getMainCommandGate()->attemptAction(_iwx_start_task, &that->com.sc_ic.ic_ac.ac_if);
+    that->fPerf1.add(KgpPerf1::GateCalls);
+    const IOReturn result = that->getMainCommandGate()->attemptAction(_iwx_start_task, &that->com.sc_ic.ic_ac.ac_if);
+    if (result == kIOReturnCannotLock) that->fPerf1.add(KgpPerf1::GateCannotLock);
+    else if (result != kIOReturnSuccess) that->fPerf1.add(KgpPerf1::GateOtherError);
 }
 
 int ItlIwx::
@@ -16761,6 +16883,7 @@ dexterOriginal_iwx_intr(OSObject *object, IOInterruptEventSource* sender, int co
 {
 //    XYLog("Interrupt!!!\n");
     ItlIwx *that = (ItlIwx*)object;
+    that->fPerf1.add(KgpPerf1::InterruptActions);
     struct iwx_softc *sc = &that->com;
     int handled = 0;
     int r1, r2, rv = 0;

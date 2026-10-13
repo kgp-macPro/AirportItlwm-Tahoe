@@ -24,6 +24,7 @@
 #include <IOKit/network/IOEthernetController.h>
 #include <IOKit/network/IOEthernetInterface.h>
 
+#include "Perf1.hpp"
 #include "ItlDriverInfo.hpp"
 #include "ItlDriverController.hpp"
 
@@ -48,6 +49,9 @@ public:
     
     virtual ItlDriverController *getDriverController() = 0;
     
+    // Null for unrelated HALs; no ownership or scheduling contract change.
+    virtual KgpPerf1 *getPerf1() { return nullptr; }
+
     virtual void free() override;
 
 public:

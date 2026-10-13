@@ -157,6 +157,7 @@ public:
     IOReturn enable(IONetworkInterface *netif) override;
     IOReturn disable(IONetworkInterface *netif) override;
     virtual struct ieee80211com *get80211Controller() override;
+    KgpPerf1 *getPerf1() override { return &fPerf1; }
     
     static bool intrFilter(OSObject *object, IOFilterInterruptEventSource *src);
     static IOReturn _iwx_start_task(OSObject *target, void *arg0, void *arg1, void *arg2, void *arg3);
@@ -532,6 +533,9 @@ public:
     static void  dexterOriginal_iwx_start(struct _ifnet *ifp);
     static int  dexterOriginal_iwx_intr(OSObject *object, IOInterruptEventSource* sender, int count);
     static bool  dexterOriginal_intrFilter(OSObject *object, IOFilterInterruptEventSource *src);
+    KgpPerf1 fPerf1;
+    void perf1Publish(); // Existing watchdog context, never packet/interrupt context.
+
     // 2I: ordinary TX only. Tokens fit pre-existing iwx_tx_data tail padding.
     enum { kTx2ICount = 1024, kTx2ISize = 8192 };
     enum { Tx2IEmpty = 0, Tx2IFree, Tx2ICopying, Tx2IInflight, Tx2IQuarantined };
