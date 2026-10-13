@@ -54,3 +54,9 @@ validation rule, payload staging, reorder policy or DMA lifetime change.
 Selective cad1841 comparison exposed this area; independent analysis of existing
 KGP paths and pinned kpi_mbuf.h contracts supplies correction. No external bodies
 copied/adapted, no external struct/constants imported. Existing licenses retained.
+
+## Qualification assets — KGP-INDEPENDENT; external reuse: NO
+ZC7_SOURCE_CHECK.py: invariant checks against preserved BOOTFIX1 source and new
+handoff/admission ordering. ZC7_COLD_BOOT_CAPTURE.py: future read-only evidence
+procedure, not executed during development. ZC7_QUALIFICATION.md: known boundaries,
+RX/TX assessment and independent review/physical validation requirements.
