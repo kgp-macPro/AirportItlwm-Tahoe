@@ -43,3 +43,14 @@ with immediate free and linkage rewrite. Both DMA routes use this common deliver
 No RX staging copy, storage/map/cache/final callback/reorder/interrupt change.
 No promise that this source defect explains any particular measured RX limit.
 The pre-existing no-interface panic behavior is unchanged in this narrow fix.
+
+## A-MSDU header/error handling — KGP-INDEPENDENT / APPLE/API-CONTRACT; audit-informed; external reuse: NO
+ieee80211_input.c::ieee80211_amsdu_decap: run existing validation before splitting
+so rejection frees the whole remaining chain rather than leaking the split tail.
+Initialize/check split output and return status; failed split retains caller-owned
+original per KPI. Skip pullup if header already contiguous; on failure mark consumed
+chain NULL before the existing partial-subframe completion path. No new parser,
+validation rule, payload staging, reorder policy or DMA lifetime change.
+Selective cad1841 comparison exposed this area; independent analysis of existing
+KGP paths and pinned kpi_mbuf.h contracts supplies correction. No external bodies
+copied/adapted, no external struct/constants imported. Existing licenses retained.
