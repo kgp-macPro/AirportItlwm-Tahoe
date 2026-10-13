@@ -31,3 +31,15 @@ interface reference, never calls HAL. No new periodic telemetry or per-packet lo
 Invalid packet guards now return immediately, correcting inherited null/post-free fallthrough.
 Conceptual comparison with laobamac d695c97 only; no batches, helper bodies or WCL
 gate policy copied. Existing GPL licensing applies; no new external attribution.
+
+## RX list handoff — DEXTER/UPSTREAM helper + APPLE/API-CONTRACT; audit-informed; external reuse: NO
+_mbuf.cpp::_if_input: replace traversal of handed-off mbuf linkage with existing
+_mbuf.h::ml_dequeue before handoff. The helper already belongs to our upstream base;
+no new external implementation body. laobamac cad1841 independently highlighted
+this same ownership boundary. Pinned Apple inputPacket asserts nextpkt == 0, may
+free on missing ifnet, or mutates queue linkage. The old loop reads nextpkt after
+handoff and supplies still-linked packets. Test the actual replacement function
+with immediate free and linkage rewrite. Both DMA routes use this common delivery.
+No RX staging copy, storage/map/cache/final callback/reorder/interrupt change.
+No promise that this source defect explains any particular measured RX limit.
+The pre-existing no-interface panic behavior is unchanged in this narrow fix.
