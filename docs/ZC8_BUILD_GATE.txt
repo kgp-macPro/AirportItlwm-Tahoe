@@ -1,0 +1,23 @@
+ZC8 SOURCE/BUILD GATE
+
+All effective project source, firmware translation unit and local kernel SDK
+export are committed. No untracked/ignored source input is accepted. The
+preserved SDK remains 05094e5e88cec7caedbfb35e8449ed0db94bf95b; this repository
+vendors its exact export (including license) rather than sharing Git metadata.
+The previously generated 88 MB FwBinary.cpp is committed byte-for-byte; the
+existing fw_gen phase exits without modifying an existing translation unit.
+No firmware update is included.
+
+Run tools/build_zc8.py from the isolated ZC8 repository only after all coherent
+changes and relevant models have been committed. It checks branch, clean index
+and tree, all file contents against Git blobs, ignored/untracked input absence,
+and writes a complete source manifest before a single Release/Tahoe x86_64 build.
+It records commit/tree/toolchain/SDK before compiling and verifies HEAD/content
+again after build. Existing output attempts are never overwritten. Any source
+correction requires a new commit and affected validation before a new attempt.
+No post-build archival commit may masquerade as the compilation source.
+
+External Apple toolchain/SDK are identified, not vendored or modified. Their
+versions and executable/SDK metadata hashes are recorded with the build. Final
+bundle copying and complete hash inventory verification are separate from build.
+No installation, EFI copying, network benchmark, tag or release is performed.
