@@ -12649,7 +12649,9 @@ iwx_init(struct _ifnet *ifp)
 IOReturn ItlIwx::
 _iwx_start_task(OSObject *target, void *arg0, void *arg1, void *arg2, void *arg3)
 {
-    // BOOTFIX1 DEXTER ROUTE _iwx_start_task: original body in its own label scope.
+    // ZC8: acknowledge gate entry for BOTH routes. The conventional packet
+    // body remains unchanged; only its scheduling notification is shared.
+    if (arg1) static_cast<Start2LContext *>(arg1)->entered = true;
     if (!container_of(static_cast<iwx_softc *>(static_cast<_ifnet *>(arg0)->if_softc), ItlIwx, com)->dma5Mapped()) return dexterOriginal__iwx_start_task(target, arg0, arg1, arg2, arg3);
 
     struct _ifnet *ifp = (struct _ifnet *)arg0;
@@ -12756,11 +12758,13 @@ _iwx_start_task(OSObject *target, void *arg0, void *arg1, void *arg2, void *arg3
 void ItlIwx::
 iwx_start(struct _ifnet *ifp)
 {
-    // BOOTFIX1 DEXTER ROUTE iwx_start: original body in its own label scope.
-    if (!container_of(static_cast<iwx_softc *>(ifp->if_softc), ItlIwx, com)->dma5Mapped()) return dexterOriginal_iwx_start(ifp);
-
     struct iwx_softc *sc = (struct iwx_softc*)ifp->if_softc;
     ItlIwx *that = container_of(sc, ItlIwx, com);
+    // ZC8: AX210 has a lifecycle-fenced drain source in both DMA modes. A
+    // failed try-lock must not strand a committed batch until another packet
+    // happens to arrive. Non-AX210 conventional scheduling is unchanged.
+    if (!that->dma5Mapped() && sc->sc_device_family < IWX_DEVICE_FAMILY_AX210)
+        return dexterOriginal_iwx_start(ifp);
     Start2LContext context2L = {};
     that->path2L(1);
     const IOReturn result2L = that->getMainCommandGate()->attemptAction(
