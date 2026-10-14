@@ -45,24 +45,32 @@ public:
         if (q) q->owner = ifp;
         return q;
     }
-    bool reserve(ifq_reservation *ticket) {
+    bool reserve(ifq_reservation *ticket, uint32_t limit = 1) {
         IOSimpleLockLock(_lock);
-        const bool ok = pullOpen && available();
+        const bool ok = limit && pullOpen && available();
         if (ok) {
-            ++reserved; retain(); ticket->queue = this; ticket->epoch = epoch;
+            const uint32_t freeSlots = IOPacketQueue::getCapacity() -
+                                       IOPacketQueue::getSize() - reserved;
+            ticket->count = limit < freeSlots ? limit : freeSlots;
+            reserved += ticket->count;
+            retain(); ticket->queue = this; ticket->epoch = epoch;
         } else if (pullOpen) waiting = true;
         IOSimpleLockUnlock(_lock);
         return ok; // On false, macOS still owns its head packet.
     }
     bool finish(ifq_reservation *ticket, mbuf_t m) {
+        // The producer owns this chain exclusively until enqueue succeeds.
+        // Reject an oversized chain rather than exceed reserved capacity.
+        uint32_t count = 0;
+        for (auto p = m; p && count <= ticket->count; p = mbuf_nextpkt(p)) ++count;
         IOSimpleLockLock(_lock);
         // Exactly one finish per successful reserve; ticket is private to caller.
         bool accepted = false;
-        --reserved;
-        if (m && pullOpen && ticket->epoch == epoch)
+        reserved -= ticket->count;
+        if (m && count <= ticket->count && pullOpen && ticket->epoch == epoch)
             accepted = IOPacketQueue::enqueue(m);
         auto *iface = takeWake();
-        ticket->queue = nullptr;
+        ticket->queue = nullptr; ticket->count = 0;
         IOSimpleLockUnlock(_lock);
         wake(iface); release();
         return accepted; // On false, caller still owns m. Never free it here.
@@ -125,6 +133,12 @@ OSDefineMetaClassAndStructors(KgpOutputQueue, IOPacketQueue)
 bool ifq_reserve(struct _ifqueue *q, struct ifq_reservation *ticket)
 {
     return q->queue && static_cast<KgpOutputQueue *>(q->queue)->reserve(ticket);
+}
+
+uint32_t ifq_reserve_batch(struct _ifqueue *q, struct ifq_reservation *ticket, uint32_t limit)
+{
+    return q->queue && static_cast<KgpOutputQueue *>(q->queue)->reserve(ticket, limit)
+           ? ticket->count : 0;
 }
 
 bool ifq_commit(struct ifq_reservation *ticket, mbuf_t m)

@@ -74,6 +74,7 @@ public:
     virtual IOReturn disable(IONetworkInterface *netif) override;
     virtual UInt32 outputPacket(mbuf_t, void * param) override;
     UInt32 outputReservedPacket(mbuf_t, struct ifq_reservation *);
+    UInt32 outputReservedBatch(mbuf_t, struct ifq_reservation *);
     virtual IOReturn setPromiscuousMode(IOEnetPromiscuousMode mode) override;
     virtual IOReturn setMulticastMode(IOEnetMulticastMode mode) override;
     virtual IOReturn setMulticastList(IOEthernetAddress* addr, UInt32 len) override;

@@ -34,8 +34,10 @@ struct _ifqueue {
 struct ifq_reservation {
     IOPacketQueue *queue;
     uint64_t epoch;
+    uint32_t count; // Reserved queue slots, never a packet owner.
 };
 bool ifq_reserve(struct _ifqueue *, struct ifq_reservation *);
+uint32_t ifq_reserve_batch(struct _ifqueue *, struct ifq_reservation *, uint32_t limit);
 bool ifq_commit(struct ifq_reservation *, mbuf_t);
 void ifq_cancel(struct ifq_reservation *);
 void ifq_start_pull(struct _ifqueue *);

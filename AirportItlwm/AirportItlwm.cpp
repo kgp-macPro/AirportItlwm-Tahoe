@@ -699,18 +699,51 @@ IOReturn AirportItlwm::outputStart(IONetworkInterface *interface, IOOptionBits o
     for (;;) {
         if (ifq_is_oactive(&ifp->if_snd)) return kIOReturnNoResources;
         ifq_reservation ticket = {};
-        if (!ifq_reserve(&ifp->if_snd, &ticket)) return kIOReturnNoResources;
+        // ZC8: capacity exists BEFORE macOS transfers any packet. The limit
+        // bounds each host dequeue and amortizes the HAL start/gate request.
+        const uint32_t count = ifq_reserve_batch(&ifp->if_snd, &ticket, 32);
+        if (!count) return kIOReturnNoResources;
         mbuf_t m = nullptr;
-        const IOReturn result = interface->dequeueOutputPackets(1, &m);
+        const IOReturn result = interface->dequeueOutputPackets(count, &m);
         if (result != kIOReturnSuccess) {
             ifq_cancel(&ticket);
             return result == kIOReturnNoFrames ? kIOReturnSuccess : result;
         }
-        if (outputReservedPacket(m, &ticket) != kIOReturnOutputSuccess)
+        if (outputReservedBatch(m, &ticket) != kIOReturnOutputSuccess)
             return kIOReturnNoResources;
     }
 }
 #endif
+
+// ZC8 BATCH BEGIN: no packet access after the successful ownership transfer.
+UInt32 AirportItlwm::outputReservedBatch(mbuf_t m, struct ifq_reservation *ticket)
+{
+    auto *ic = fHalService->get80211Controller();
+    auto *ifp = &ic->ic_ac.ac_if;
+    bool valid = m && ticket->queue && ic->ic_state == IEEE80211_S_RUN;
+    uint32_t count = 0;
+    for (auto p = m; p; p = mbuf_nextpkt(p)) {
+        ++count;
+        if (count > ticket->count || mbuf_type(p) == MBUF_TYPE_FREE ||
+            !(mbuf_flags(p) & MBUF_PKTHDR)) valid = false;
+    }
+    if (valid && ifq_commit(ticket, m)) {
+        // One start per committed batch. EAPOL/push callers keep their existing
+        // immediate start. The consumer never waits for a full batch to exist.
+        (*ifp->if_start)(ifp);
+        return kIOReturnOutputSuccess;
+    }
+    ifq_cancel(ticket); // Also returns unused slots; no-op after failed commit.
+    while (m) {
+        auto next = mbuf_nextpkt(m);
+        mbuf_setnextpkt(m, nullptr);
+        if (mbuf_type(m) != MBUF_TYPE_FREE) freePacket(m);
+        m = next;
+    }
+    if (ifp->netStat) ifp->netStat->outputErrors += count;
+    return kIOReturnOutputDropped; // Lifecycle/invalid-input failure, no replay.
+}
+// ZC8 BATCH END
 
 UInt32 AirportItlwm::outputPacket(mbuf_t m, void *param)
 {

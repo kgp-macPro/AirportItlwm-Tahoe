@@ -1,0 +1,29 @@
+ZC8 TX BATCHING — SOURCE CONTRACT AND FALSIFIABLE HYPOTHESIS
+
+SOURCE-PROVEN: ZC7 pulled one packet per macOS dequeue, queue reservation and HAL
+start/gate attempt. ZC8 reserves up to 32 bounded queue slots under the existing
+queue lock before calling the existing multi-dequeue API. It validates the
+private packet chain and atomically enqueues it, then calls if_start once.
+A short chain is immediately accepted; no timer or minimum fill is introduced.
+Count 32 is a finite software amortization limit, not a hardware PPS/ring limit.
+
+Queued + reserved <= existing capacity. Internal/EAPOL enqueue counts the same
+reservations. A ticket retains its queue, has one finish/cancel and an epoch;
+stop/flush invalidate old tickets without reclaiming their counts prematurely.
+The queue never owns a packet before successful enqueue; caller never touches
+packets after that transfer. Failure frees each still-owned packet once outside
+all spinlocks. The consumer does not wait for admission or batch formation.
+Capacity return and independent ring-low-water wakeups are unchanged.
+The existing macOS signal-before-NoResources latch remains applicable.
+
+INFERENCE: fewer API/gate entries and larger runnable groups may reduce host
+service overhead and improve real goodput. Ring occupancy during historical
+load was substantial; firmware/RF/completion service may dominate, in which
+case this change will not raise the goodput ceiling. iperf host CPU is process
+CPU, not direct driver/workloop utilization. No improvement is claimed yet.
+
+No descriptor, DMA address, mapping, resource lifetime, generation, PC1,
+STOP_MASTER, quarantine, ring threshold, QoS/BA, RX or framework ABI change.
+One packet push callers and internal EAPOL keep existing immediate scheduling.
+The added tests compile production queue and frontend bodies with mocks; they
+verify ownership/concurrency, not IOKit timing, physical DMA or throughput.

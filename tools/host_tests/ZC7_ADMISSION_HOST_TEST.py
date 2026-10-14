@@ -55,7 +55,7 @@ public:
  virtual UInt32 lockFlush(){assert(false);return 0;}
 };
 bool IOPacketQueue::failInit=false;
-struct ifq_reservation{IOPacketQueue*queue=nullptr;uint64_t epoch=0;};
+struct ifq_reservation{IOPacketQueue*queue=nullptr;uint64_t epoch=0;uint32_t count=0;};
 #define OSDeclareDefaultStructors(X)
 #define OSDefineMetaClassAndStructors(X,Y)
 '''
