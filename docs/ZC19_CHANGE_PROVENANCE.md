@@ -132,3 +132,11 @@ cwnd median per stream after second2 is316/304/387KiB in ZC8, versus140/146/137
 in ZC18 and118/148/164 in ZC13. These are transport feedback differences, not
 proof of the initiating drop layer. Remote RTT/advertised window are unavailable
 in these text records. Full per-flow/per-second decode is in the evidence directory.
+
+## Exact local implementation identity
+
+All functional rows TX1 through ID1 and their regression harnesses are committed in
+`9126564fac5d329ad8b6a14462a98076d824357f`, direct parent ZC8 `db22bb90b72b440b657246940fd8da17dbee23a4`.
+The following commit contains only build gates and documentation, not packet changes.
+The report pins its final HEAD/tree after committing; a document cannot include its
+own Git commit hash without changing that hash.

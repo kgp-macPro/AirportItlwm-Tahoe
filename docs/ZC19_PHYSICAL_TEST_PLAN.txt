@@ -1,0 +1,64 @@
+ZC19 physical qualification — KGP ONLY; no installation/reboot performed by Codex
+
+Use the ASIX AX88179B MacBook sender (currently en5,192.168.178.33), Wi-Fi off on
+that peer, same wired/AP path. Verify the candidate's loaded UUID against the final
+BUILD_REPORT before testing. Do not use system_profiler SPAirPortDataType, CoreWLAN
+queries or periodic IORegistry sampling. Do not change offloads, windows or rates.
+
+1. Basic scan, association with bbc and usable traffic. If unavailable, stop and
+   preserve failing-state read-only logs. No claimed source fix for physical scan.
+2. Short smoke: TCP RX P1/P4, TX P1/P4, UDP TX500/RX600. Save original JSON and
+   server output. No full42 needed merely to discover an obvious regression.
+   Paste ONLY after KGP has independently installed/chosen candidate and mode:
+
+PEER=192.168.178.33
+WIFI_IP="$(ipconfig getifaddr en2)"
+D="$(mktemp -d "$HOME/Desktop/AirportItlwm/TESTS/ZC19_ASIX_SMOKE_XXXXXX")"
+xcrun dwarfdump --uuid "$HOME/Desktop/AirportItlwm/B1-ZC19-PERF/AirportItlwm.kext/Contents/MacOS/AirportItlwm" > "$D/CANDIDATE_UUID.txt"
+kmutil showloaded > "$D/LOADED.txt" 2>&1
+ioreg -a -l -r -n ARPT > "$D/BEFORE.plist"
+iperf3 -c "$PEER" -p 5201 -B "$WIFI_IP%en2" -4 -R -t 8 -P 1 -J --get-server-output > "$D/TCP_RX_P1.json"
+sleep 2
+iperf3 -c "$PEER" -p 5201 -B "$WIFI_IP%en2" -4 -R -t 8 -P 4 -J --get-server-output > "$D/TCP_RX_P4.json"
+sleep 2
+iperf3 -c "$PEER" -p 5201 -B "$WIFI_IP%en2" -4 -t 8 -P 1 -J --get-server-output > "$D/TCP_TX_P1.json"
+sleep 2
+iperf3 -c "$PEER" -p 5201 -B "$WIFI_IP%en2" -4 -t 8 -P 4 -J --get-server-output > "$D/TCP_TX_P4.json"
+sleep 2
+iperf3 -c "$PEER" -p 5201 -B "$WIFI_IP%en2" -4 -u -b 500M -l 1200 -t 5 -J --get-server-output > "$D/UDP_TX500.json"
+sleep 2
+iperf3 -c "$PEER" -p 5201 -B "$WIFI_IP%en2" -4 -u -R -b 600M -l 1200 -t 5 -J --get-server-output > "$D/UDP_RX600.json"
+ioreg -a -l -r -n ARPT > "$D/AFTER.plist"
+printf 'Original evidence: %s\n' "$D"
+
+The snippets are user-run measurements, not automatic acceptance. Stop if errors,
+association loss or wrong UUID/mode. Compare receiver Goodput (not sender bitrate).
+
+3. Support for combined design: TX P1/P4>=400, RX P1/P4>=550, UDP RX~600 with
+   low loss. These are aspirational thresholds, not guarantees. If RX remains
+   ~420 despite preserved ZC8 delivery/service, the selected cached-TX/safety
+   cohort or uncontrolled runtime state remains relevant; do not call this a
+   solved single-cause regression. Do not blindly add/remove further fixes.
+4. If smoke succeeds, run the same42-case matrix via the candidate-local copy:
+
+/bin/bash "$HOME/Desktop/AirportItlwm/B1-ZC19-PERF/tools/ZC19_3x14_PORTABLE_IP_PROMPT.sh" ZC19
+
+For conventional mode only after KGP independently selects/reboots that configuration:
+
+EXPECTED_MODE=conventional /bin/bash "$HOME/Desktop/AirportItlwm/B1-ZC19-PERF/tools/ZC19_3x14_PORTABLE_IP_PROMPT.sh" ZC19
+
+Enter actual ASIX peer address when prompted. Original TOOLS portable script is
+unchanged and expects KGP_ZC10 for later versions; do NOT bypass its health checks
+or label ZC19 as ZC8. The candidate-local copy adds strict KGP_ZC19 schema19/1,
+actual mode/fault/epoch/freshness checks; matrix, timings, boundary captures,
+source binding, loaded UUID guard and final networkQuality remain unchanged.
+
+5. Repeated sleep/wake, scan/association/traffic, then same-mode repeatability;
+   preserve failure state before recovery when practical. No automatic reconnect
+   workaround. Conventional wake and physical AX211/AX201 qualification remain
+   separate gates. AX201 mapped is intentionally unsupported.
+6. Physical AX211 non-regression and AX201 conventional operation are mandatory
+   before release. No public release or deployment is authorized by this build.
+
+All originals belong under ~/Desktop/AirportItlwm/TESTS/. Compare to the exact ASIX
+ZC8 and ZC18 reference archives identified in the report, not Realtek-era averages.
