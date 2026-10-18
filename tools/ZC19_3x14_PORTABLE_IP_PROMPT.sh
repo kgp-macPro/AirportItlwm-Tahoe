@@ -167,6 +167,7 @@ stage="PREPARATION"
 online_status="NOT_RUN"
 finished_ok=0
 INITIAL_HEALTH=""
+PREVIOUS_HEALTH=""
 
 finish() {
   local rc=$?
@@ -247,10 +248,10 @@ trap 'echo "Abbruch durch Benutzer (SIGINT)"; exit 130' INT
 trap 'echo "Abbruch durch Signal (SIGTERM)"; exit 143' TERM
 
 check_snapshot() {
-  local plist="$1"; local ref="$2"
-  python3 - "$plist" "$ref" "$MODE" "$LABEL" <<'PY'
+  local plist="$1"; local ref="$2"; local previous="$3"; local phase="$4"
+  python3 - "$plist" "$ref" "$previous" "$MODE" "$LABEL" "$phase" <<'PY'
 import json,plistlib,struct,sys,hashlib
-source, ref, expected_mode, label=sys.argv[1:]
+source, ref, previous, expected_mode, label, phase=sys.argv[1:]
 with open(source,'rb') as f:root=plistlib.load(f)
 blobs=[]
 zc19=[]
@@ -283,7 +284,24 @@ if label=='ZC19':
         old=json.load(open(ref))
         if any(old.get(k)!=health[k] for k in ['Mode','Generation','Pc1Reset','CommandEpoch']):
             sys.exit('STOP: ZC19 DMA mode/generation/reset/command epoch changed')
-        if health['Publication']<=old.get('Publication',0):sys.exit('STOP: stale ZC19 health snapshot')
+    # The existing 1000-ms watchdog may skip a busy gate. Adjacent boundary
+    # captures can legitimately read the same published record; do not poll.
+    # Compare with the LAST accepted snapshot, not only INITIAL, so a rollback
+    # is rejected even when its counter is still greater than INITIAL's.
+    if previous!='NONE':
+        last=json.load(open(previous))
+        if health['Publication']<last['Publication']:
+            sys.exit('STOP: ZC19 health publication counter rolled back')
+    if phase not in ('boundary','final'):
+        sys.exit('STOP: unknown ZC19 snapshot phase')
+    # Require observed progress across the campaign before marking COMPLETE.
+    # FINAL may equal its immediate predecessor if both exceed INITIAL.
+    # This proves some publication progress, not continuous watchdog liveness.
+    if phase=='final':
+        if ref=='NONE' or previous=='NONE':
+            sys.exit('STOP: missing ZC19 campaign health reference')
+        if health['Publication']<=old['Publication']:
+            sys.exit('STOP: ZC19 health publication did not advance during campaign')
     with open(source.rsplit('.',1)[0]+'.health.json','w') as f:json.dump(health,f,indent=2)
     print('ZC19 health',health)
     sys.exit(0)
@@ -356,9 +374,10 @@ PY
 }
 
 capture() {
-  local file="$1"
+  local file="$1"; local phase="${2:-boundary}"
   ioreg -a -l -r -n "$IOREG_SERVICE" > "$file"
-  check_snapshot "$file" "${INITIAL_HEALTH:-NONE}"
+  check_snapshot "$file" "${INITIAL_HEALTH:-NONE}" "${PREVIOUS_HEALTH:-NONE}" "$phase" || return $?
+  PREVIOUS_HEALTH="${file%.plist}.health.json"
 }
 
 check_network() {
@@ -620,7 +639,7 @@ cat "$OUT/ONLINE_NETWORKQUALITY.txt"
 
 stage="FINAL_SNAPSHOT"
 check_network
-capture "$OUT/FINAL.plist"
+capture "$OUT/FINAL.plist" final
 
 finished_ok=1
 stage="COMPLETE"

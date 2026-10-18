@@ -39,19 +39,24 @@ association loss or wrong UUID/mode. Compare receiver Goodput (not sender bitrat
    ~420 despite preserved ZC8 delivery/service, the selected cached-TX/safety
    cohort or uncontrolled runtime state remains relevant; do not call this a
    solved single-cause regression. Do not blindly add/remove further fixes.
-4. If smoke succeeds, run the same42-case matrix via the candidate-local copy:
+4. If smoke succeeds, run the same42-case matrix via the corrected tooling copy:
 
-/bin/bash "$HOME/Desktop/AirportItlwm/B1-ZC19-PERF/tools/ZC19_3x14_PORTABLE_IP_PROMPT.sh" ZC19
+/bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/ZC19_3x14_PORTABLE_IP_PROMPT.sh" ZC19
 
 For conventional mode only after KGP independently selects/reboots that configuration:
 
-EXPECTED_MODE=conventional /bin/bash "$HOME/Desktop/AirportItlwm/B1-ZC19-PERF/tools/ZC19_3x14_PORTABLE_IP_PROMPT.sh" ZC19
+EXPECTED_MODE=conventional /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/ZC19_3x14_PORTABLE_IP_PROMPT.sh" ZC19
 
 Enter actual ASIX peer address when prompted. Original TOOLS portable script is
 unchanged and expects KGP_ZC10 for later versions; do NOT bypass its health checks
-or label ZC19 as ZC8. The candidate-local copy adds strict KGP_ZC19 schema19/1,
-actual mode/fault/epoch/freshness checks; matrix, timings, boundary captures,
-source binding, loaded UUID guard and final networkQuality remain unchanged.
+or label ZC19 as ZC8. The corrected ZC19 tool retains strict KGP_ZC19 schema19/1,
+actual mode/fault/epoch and loaded UUID checks. Adjacent equal publications are
+accepted; counter rollback and FINAL not exceeding INITIAL are rejected.
+Matrix, timings, boundary captures, source binding and final networkQuality
+remain unchanged. The original candidate archive (including its earlier runner)
+is preserved: use the TOOLS path above, not that archived runner. This tooling
+correction does not change the Kext built from f18801f700b433199cf45808eaa674c92ec4f422.
+See docs/ZC19_BENCHMARK_HEALTH_GUARD.md for source evidence and validation.
 
 5. Repeated sleep/wake, scan/association/traffic, then same-mode repeatability;
    preserve failure state before recovery when practical. No automatic reconnect

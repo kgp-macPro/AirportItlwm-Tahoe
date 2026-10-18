@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Exact-source retention, publication, qualification and benchmark guard checks."""
 from pathlib import Path
-import subprocess,re,tempfile,plistlib,json,struct
+import subprocess,re,tempfile,sys
 R=Path(__file__).resolve().parents[2];BASE='db22bb90b72b440b657246940fd8da17dbee23a4'
 def old(n):return subprocess.check_output(['git','-C',str(R),'show',BASE+':'+n]).decode()
 def mask(s):return re.sub(r'//[^\n]*|/\*.*?\*/', '',s,flags=re.S)
@@ -37,12 +37,6 @@ with tempfile.TemporaryDirectory(prefix='zc19-source-') as t:
  a=(p/'f.s').read_text();assert 'mfence' in a or 'lock' in a;print('PASS actual fence emits x86_64 hardware ordering')
  runner=(R/'tools/ZC19_3x14_PORTABLE_IP_PROMPT.sh').read_text();assert not re.search(r'^\s*(?:/usr/sbin/)?system_profiler\s',runner,re.M)
  subprocess.run(['/bin/bash','-n',str(R/'tools/ZC19_3x14_PORTABLE_IP_PROMPT.sh')],check=True)
- code=runner.split("  python3 - \"$plist\" \"$ref\" \"$MODE\" \"$LABEL\" <<'PY'\n")[1].split('\nPY')[0]
- (p/'guard.py').write_text(code)
- w=[0]*32;w[:8]=[19,1,256,1,100,2,1,2];w[11:13]=[1,518]
- def run(mode='mapped',ref='NONE',ok=True):
-  (p/'test.plist').write_bytes(plistlib.dumps([{'KGP_ZC19':struct.pack('<32Q',*w),'KGP_RX_EXPERIMENT':'AirportItlwm-Tahoe-B1-ZC19-PERF'}]));v=subprocess.run(['python3','-B',str(p/'guard.py'),str(p/'test.plist'),ref,mode,'ZC19'],capture_output=True);assert (v.returncode==0)==ok,(v.stdout,v.stderr)
- run();ref=p/'reference.json';ref.write_bytes((p/'test.health.json').read_bytes());run(ref=str(ref),ok=False);w[3]+=1;run(ref=str(ref))
- for i in [8,9,10,13,14]:w[i]=1;run(ok=False);w[i]=0
- w[5]=1;run('conventional');run('mapped',ok=False);w[5]=0;run('conventional',ok=False)
- print('PASS candidate guard: valid both modes, unresolved/wrong mode, stale snapshot and all named fault fields rejected; full matrix/cadence retained')
+
+# Run the actual embedded benchmark guard, including sequential shell handoff.
+subprocess.run([sys.executable,'-B',str(R/'tools/host_tests/ZC19_BENCHMARK_GUARD_TEST.py')],check=True)
