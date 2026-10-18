@@ -1,3 +1,5 @@
+// ZC19 retains KGP restart correction 120ab2c61f0bbe0e6462f4eeea9fd7e5da29a7f2.
+// See docs/ZC19_CHANGE_PROVENANCE.md; existing IWM/IWN dispatch is unchanged.
 //
 //  AirportSTAIOCTL.cpp
 //  AirportItlwm
@@ -995,12 +997,25 @@ getPOWERSAVE(OSObject *object, struct apple80211_powersave_data *pd)
     return kIOReturnSuccess;
 }
 
+IOReturn AirportItlwm::zc16SetPowerGated(OSObject *owner, void *object,
+                                        void *data, void *, void *)
+{
+    // ZC16: serialize radio intent with PM Off/On, including user Off during
+    // sleep. runAction is synchronous; the caller owns data until return.
+    return static_cast<AirportItlwm *>(owner)->setPOWER(
+        static_cast<OSObject *>(object), static_cast<apple80211_power_data *>(data));
+}
+
 IOReturn AirportItlwm::
 setPOWER(OSObject *object,
                          struct apple80211_power_data *pd)
 {
     if (!pd)
         return kIOReturnError;
+    // ZC16: the PM callbacks already execute under this same workloop gate.
+    // Re-enter only from outside it; preserve IWM/IWN dispatch unchanged.
+    if (OSDynamicCast(ItlIwx, fHalService) && !getWorkLoop()->inGate())
+        return getCommandGate()->runAction(zc16SetPowerGated, object, pd);
     IOLog("itlwm: setPOWER: num_radios[%d]  power_state(0:%u  1:%u  2:%u  3:%u)\n", pd->num_radios, pd->power_state[0], pd->power_state[1], pd->power_state[2], pd->power_state[3]);
     if (pd->num_radios > 0) {
         bool isRunning = (fHalService->get80211Controller()->ic_ac.ac_if.if_flags & (IFF_UP | IFF_RUNNING)) != 0;

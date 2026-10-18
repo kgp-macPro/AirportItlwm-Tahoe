@@ -1,3 +1,5 @@
+// ZC19 retains KGP restart correction 120ab2c61f0bbe0e6462f4eeea9fd7e5da29a7f2.
+// See docs/ZC19_CHANGE_PROVENANCE.md; existing IWM/IWN dispatch is unchanged.
 /*
 * Copyright (C) 2020  钟先耀
 *
@@ -454,6 +456,9 @@ void AirportItlwm::watchdogAction(IOTimerEventSource *timer)
 {
     struct _ifnet *ifp = &fHalService->get80211Controller()->ic_ac.ac_if;
     (*ifp->if_watchdog)(ifp);
+    // ZC19: reuse the existing watchdog (ZC11 c1b1d9a72aaae80ee3819996ecaa35a0d568c0ed).
+    // IWX only, nonblocking health snapshot; no per-packet observer or new timer.
+    if (auto *iwx = OSDynamicCast(ItlIwx, fHalService)) iwx->zc19Publish();
     watchdogTimer->setTimeoutMS(kWatchDogTimerPeriod);
 }
 
@@ -649,9 +654,27 @@ IOReturn AirportItlwm::disable(IONetworkInterface *netif)
     return kIOReturnSuccess;
 }
 
+IOReturn AirportItlwm::zc16AdapterPowerGated(OSObject *owner, void *netif,
+                                             void *enable, void *, void *)
+{
+    // ZC16: use the same recursive workloop gate as PM and POWER requests.
+    // No waiting for a worker/firmware completion is introduced by this handoff.
+    auto *that = static_cast<AirportItlwm *>(owner);
+    auto *interface = static_cast<IONetworkInterface *>(netif);
+    if (enable) return that->enableAdapter(interface);
+    that->disableAdapter(interface);
+    return kIOReturnSuccess;
+}
+
 IOReturn AirportItlwm::enableAdapter(IONetworkInterface *netif)
 {
-    fHalService->enable(netif);
+    if (OSDynamicCast(ItlIwx, fHalService) && !getWorkLoop()->inGate())
+        return getCommandGate()->runAction(zc16AdapterPowerGated, netif,
+                                          reinterpret_cast<void *>(uintptr_t(1)));
+    // ZC16 preserves IO80211's established restart policy and callback order.
+    // No PM-triggered enable or new radio-intent/deferred-restart state.
+    const IOReturn result = fHalService->enable(netif);
+    if (OSDynamicCast(ItlIwx, fHalService) && result != kIOReturnSuccess) return result;
     watchdogTimer->setTimeoutMS(kWatchDogTimerPeriod);
     watchdogTimer->enable();
     return kIOReturnSuccess;
@@ -659,6 +682,10 @@ IOReturn AirportItlwm::enableAdapter(IONetworkInterface *netif)
 
 void AirportItlwm::disableAdapter(IONetworkInterface *netif)
 {
+    if (OSDynamicCast(ItlIwx, fHalService) && !getWorkLoop()->inGate()) {
+        getCommandGate()->runAction(zc16AdapterPowerGated, netif, nullptr);
+        return;
+    }
     watchdogTimer->cancelTimeout();
     watchdogTimer->disable();
     fHalService->disable(netif);

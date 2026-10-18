@@ -259,6 +259,17 @@ void ItlIwx::rx2HError(unsigned slot, unsigned stage, IOReturn result)
 
 // Reusable backing primitive; RX/TX/command publication and retirement policies
 // remain separate. This helper has no ring, mbuf, callback or provider ownership.
+// ZC19 selective reuse of KGP ZC14 ordering primitive, a635d22c3ba60cf25ca9b313f6c67390348eac82,
+// and TX publication sites from 87b05e50e966f87b2fa74c7a596dbfc2b228f5c5.
+// The pinned SDK OSSynchronizeIO is empty. This orders coherent cached TX
+// stores before queue enable/MMIO on x86_64; it does not flush RX DMA caches,
+// prove completion, authorize buffer reuse, or change mapper qualification.
+// Both qualified modes/all IWX; RX credit/startup sequencing stays ZC8.
+static inline void iwx_dma_publish_barrier()
+{
+    __atomic_thread_fence(__ATOMIC_SEQ_CST);
+}
+
 static IOReturn allocatePacketBacking2H(struct iwx_dma_info *dma, size_t size,
                                         unsigned alignment, unsigned *stage, IOMapper *mapper = nullptr,
                                         bool coherentPayload = false)
@@ -357,7 +368,7 @@ bool ItlIwx::dma5Select()
     if (selection) selection->release();
     if (!resolved) { boot5Mark(10, "device DMA policy unresolved; attach refused", 2); return false; }
     pci.pa_tag->setProperty("KGP_ZC5_DMA_MODE", mapped ? "mapped RX/TX" : "original Dexter RX/TX");
-    pci.pa_tag->setProperty("KGP_RX_EXPERIMENT", "AirportItlwm-Tahoe-B1-ZC8-PERF");
+    pci.pa_tag->setProperty("KGP_RX_EXPERIMENT", "AirportItlwm-Tahoe-B1-ZC19-PERF");
     boot5Mark(11, mapped ? "DMA routing completed: mapped" : "DMA routing completed: original Dexter");
     return true;
 }
@@ -989,7 +1000,10 @@ void ItlIwx::path2LPublish()
 // NULL provider means software events only (pinned IOInterruptEventSource.h).
 bool ItlIwx::drain2MSetup()
 {
-    if (com.sc_device_family < IWX_DEVICE_FAMILY_AX210) return true;
+    // ZC19: retain the all-IWX last-batch recovery from KGP ZC12
+    // cda7ae51561dee54ac21b01a70d60755205f5eb6. A failed nonblocking
+    // start must have a lifecycle-fenced retry, including AX201 conventional.
+    // No service-depth handoff, mapper policy or hardware queue change.
     fDrain2MLock = IOSimpleLockAlloc();
     if (!fDrain2MLock) { fDrain2MStats[17] = kIOReturnNoMemory; return false; }
     fDrain2MEvent = IOInterruptEventSource::interruptEventSource(this, drain2MAction);
@@ -1479,16 +1493,34 @@ public:
         __atomic_fetch_add(&cacheStats[8],1ULL,__ATOMIC_RELAXED);
         cacheCountChanged(); return true;
     }
-    bool takeReturned(Entry &e) {
+    // ZC15 independent KGP RX-cache correction. The ONCE worker exclusively
+    // owns these off-ring records. At capacity, exchanging a final-returned
+    // cached entry for the completed incoming entry avoids completing/unmapping
+    // that incoming preparation merely to reuse another one. No mapping, ring
+    // address, cache attribute or capacity changes; callbacks touch storage,
+    // never Entry. Acquire-returned is required before attaching a new view.
+    // exchange is used only for a valid prepared, viewless incoming entry and
+    // a full cache. Both preparations remain owned, including on view failure.
+    // See docs/ZC19_CHANGE_PROVENANCE.md; no upstream code is imported.
+// ZC19 selective KGP adaptation from 008c159c56f1bc2ba1791ff787b02cdfd55596fa;
+// dependencies and mode-specific safety: docs/ZC19_CHANGE_PROVENANCE.md.
+    bool takeReturned(Entry &e, bool exchange = false) {
         const unsigned attempts=MIN(unsigned(batch),cacheCount);
         for (unsigned n=0;n<attempts;++n) {
             if (cacheCursor>=cacheCount) cacheCursor=0;
             const unsigned i=cacheCursor++;
             __atomic_fetch_add(&cacheStats[11],1ULL,__ATOMIC_RELAXED);
             if (!__atomic_load_n(&cache[i].storage->returned,__ATOMIC_ACQUIRE)) continue;
-            e=cache[i]; e.state=Working;
-            cache[i]=cache[--cacheCount]; memset(&cache[cacheCount],0,sizeof(Entry));
-            cacheCountChanged();
+            if (exchange) {
+                Entry incoming=e;
+                e=cache[i]; e.state=Working;
+                cache[i]=incoming; cache[i].state=Retired;
+                __atomic_fetch_add(&cacheStats[8],1ULL,__ATOMIC_RELAXED);
+            } else {
+                e=cache[i]; e.state=Working;
+                cache[i]=cache[--cacheCount]; memset(&cache[cacheCount],0,sizeof(Entry));
+                cacheCountChanged();
+            }
             __atomic_fetch_add(&cacheStats[6],1ULL,__ATOMIC_RELAXED); return true;
         }
         __atomic_fetch_add(&cacheStats[7],1ULL,__ATOMIC_RELAXED);
@@ -1575,8 +1607,18 @@ public:
             if (e.view) { __atomic_fetch_add(&reused, 1ULL, __ATOMIC_RELAXED); return 0; }
             return failed() ? 2 : 1;
         }
+        // ZC15: probe BEFORE dropping a completed mapping at cache capacity.
+        // A miss still takes the original bounded renewal/cleanup path. Do not
+        // probe twice on that path: retain the existing maximum batch scan and
+        // never wait for a host reference. Conventional RX bypasses this pool.
+        const bool atCapacity=e.storage && e.commandPrepared && !e.view && cacheCount==cacheLimit;
+        if (atCapacity && takeReturned(e, true)) {
+            e.view=view(e.storage);
+            if (e.view) { __atomic_fetch_add(&reused,1ULL,__ATOMIC_RELAXED); return 0; }
+            return failed()?2:1;
+        }
         if (!(e.storage && e.commandPrepared && !e.view && retainCompleted(e)) && !releaseEntry(e)) return 2;
-        if (takeReturned(e)) {
+        if (!atCapacity && takeReturned(e)) {
             e.view=view(e.storage);
             if (e.view) { __atomic_fetch_add(&reused,1ULL,__ATOMIC_RELAXED); return 0; }
             return failed()?2:1;
@@ -2261,8 +2303,16 @@ IOReturn ItlIwx::enable(IONetworkInterface *netif)
         return kIOReturnSuccess;
     }
     ifp->if_flags |= IFF_UP;
-    iwx_activate(&com, DVACT_RESUME);
-    iwx_activate(&com, DVACT_WAKEUP);
+    // ZC16: don't queue firmware init after failed hardware resume, or leave
+    // IFF_UP set after a refused wake. Otherwise later explicit enables would
+    // silently succeed without scheduling init. No bypass of terminal/mapper
+    // checks; the existing initialization path remains authoritative.
+    int error = iwx_activate(&com, DVACT_RESUME);
+    if (!error) error = iwx_activate(&com, DVACT_WAKEUP);
+    if (error) {
+        ifp->if_flags &= ~IFF_UP;
+        return kIOReturnNotReady;
+    }
     return kIOReturnSuccess;
 }
 
@@ -4442,6 +4492,33 @@ iwx_dma_contig_alloc(bus_dma_tag_t tag, struct iwx_dma_info *dma,
     return 0;
 }
 
+// ZC13 independent KGP correction: packet TFDs, TX command headers and byte
+// counts are ordinary host RAM, not MMIO. ZC12 requested inhibited caching for
+// them and rewrote them for every packet while holding the service gate.
+// Use the already-established coherent backing primitive on this x86_64
+// target. It verifies one complete aligned IOVM extent, the actual DMA backing
+// descriptor and initial synchronization; failure never falls back to raw PA.
+// Both positively selected routes retain their original mapper choice. AX201
+// is conventional-only under unchanged dma5Select; AX210/AX211 support both.
+// Firmware-command queue 0 and ALL RX allocations keep the old policy. See
+// docs/ZC19_CHANGE_PROVENANCE.md. No external implementation is imported.
+// ZC19 selective KGP adaptation from 31ac210425f497d3d8192982a643807361f1c6b2;
+// dependencies and mode-specific safety: docs/ZC19_CHANGE_PROVENANCE.md.
+int ItlIwx::iwx_tx_control_alloc(struct iwx_dma_info *dma, bus_size_t size,
+                               bus_size_t alignment)
+{
+#if defined(__x86_64__)
+    if (!fDma5Selected || !size || alignment > UINT_MAX ||
+        (alignment && (alignment & (alignment - 1)))) return 1;
+    unsigned stage = 0;
+    return allocatePacketBacking2H(dma, size, alignment ? unsigned(alignment) : 1,
+                                   &stage, fDma5Mapper, true) == kIOReturnSuccess ? 0 : 1;
+#else
+    // No claim of coherent-cache support for an unqualified architecture.
+    return 1;
+#endif
+}
+
 void ItlIwx::
 iwx_dma_contig_free(struct iwx_dma_info *dma)
 {
@@ -4538,7 +4615,7 @@ iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
     }
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 &&
         !pci.pa_tag->setProperty("KGP_RX_EXPERIMENT",
-            "AirportItlwm-Tahoe-B1-ZC8-PERF")) {
+            "AirportItlwm-Tahoe-B1-ZC19-PERF")) {
         err = ENOMEM; goto fail;
     }
     return 0;
@@ -4678,7 +4755,9 @@ iwx_alloc_tx_ring(struct iwx_softc *sc, struct iwx_tx_ring *ring, int qid)
     ring->qid = qid;
     /* Allocate TX descriptors (256-byte aligned). */
     size = ring->ring_count * sizeof (struct iwx_tfh_tfd);
-    err = iwx_dma_contig_alloc(sc->sc_dmat, &ring->desc_dma, size, 256);
+    err = qid == IWX_DQA_CMD_QUEUE ?
+        iwx_dma_contig_alloc(sc->sc_dmat, &ring->desc_dma, size, 256) :
+        iwx_tx_control_alloc(&ring->desc_dma, size, 256);
     if (err) {
         XYLog("%s: could not allocate TX ring DMA memory\n",
               DEVNAME(sc));
@@ -4687,11 +4766,13 @@ iwx_alloc_tx_ring(struct iwx_softc *sc, struct iwx_tx_ring *ring, int qid)
     ring->desc = (struct iwx_tfh_tfd*)ring->desc_dma.vaddr;
 
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210)
-        err = iwx_dma_contig_alloc(sc->sc_dmat, &ring->bc_tbl,
-                                   sizeof(struct iwx_gen3_bc_tbl), 0);
+        err = qid == IWX_DQA_CMD_QUEUE ?
+            iwx_dma_contig_alloc(sc->sc_dmat, &ring->bc_tbl, sizeof(struct iwx_gen3_bc_tbl), 0) :
+            iwx_tx_control_alloc(&ring->bc_tbl, sizeof(struct iwx_gen3_bc_tbl), 0);
     else
-        err = iwx_dma_contig_alloc(sc->sc_dmat, &ring->bc_tbl,
-                                   sizeof(struct iwx_agn_scd_bc_tbl), 0);
+        err = qid == IWX_DQA_CMD_QUEUE ?
+            iwx_dma_contig_alloc(sc->sc_dmat, &ring->bc_tbl, sizeof(struct iwx_agn_scd_bc_tbl), 0) :
+            iwx_tx_control_alloc(&ring->bc_tbl, sizeof(struct iwx_agn_scd_bc_tbl), 0);
     if (err) {
         XYLog("%s: could not allocate byte count table DMA memory\n",
               DEVNAME(sc));
@@ -4699,8 +4780,9 @@ iwx_alloc_tx_ring(struct iwx_softc *sc, struct iwx_tx_ring *ring, int qid)
     }
     
     size = ring->ring_count * sizeof(struct iwx_device_cmd);
-    err = iwx_dma_contig_alloc(sc->sc_dmat, &ring->cmd_dma, size,
-                               IWX_FIRST_TB_SIZE_ALIGN);
+    err = qid == IWX_DQA_CMD_QUEUE ?
+        iwx_dma_contig_alloc(sc->sc_dmat, &ring->cmd_dma, size, IWX_FIRST_TB_SIZE_ALIGN) :
+        iwx_tx_control_alloc(&ring->cmd_dma, size, IWX_FIRST_TB_SIZE_ALIGN);
     if (err) {
         XYLog("%s: could not allocate cmd DMA memory\n", DEVNAME(sc));
         goto fail;
@@ -5514,6 +5596,11 @@ iwx_enable_txq(struct iwx_softc *sc, int sta_id, int qid, int tid,
     hcmd.data[0] = &cmd;
     hcmd.len[0] = sizeof(cmd);
     
+    // ZC13: order initialized/reset packet-control RAM before the firmware
+    // queue-enable command, in both mapped and conventional modes. Ownership
+    // and the existing positive stop/reset fences are unchanged.
+    // ZC14 TX-1: pinned OSSynchronizeIO is empty; emit the intended publication fence.
+    iwx_dma_publish_barrier();
     err = iwx_send_cmd(sc, &hcmd);
     if (err)
         return err;
@@ -5605,7 +5692,7 @@ iwx_tvqm_enable_txq(struct iwx_softc *sc, int tid, int ssn, uint32_t size)
     memset(ring, 0, sizeof(*ring));
     iwx_tx_ring_init(sc, ring, size);
     /* Allocate TX descriptors (256-byte aligned). */
-    err = iwx_dma_contig_alloc(sc->sc_dmat, &ring->desc_dma, ring->ring_count * sizeof (struct iwx_tfh_tfd), 256);
+    err = iwx_tx_control_alloc(&ring->desc_dma, ring->ring_count * sizeof (struct iwx_tfh_tfd), 256);
     if (err) {
         XYLog("%s: could not allocate TX ring DMA memory\n",
               DEVNAME(sc));
@@ -5614,10 +5701,10 @@ iwx_tvqm_enable_txq(struct iwx_softc *sc, int tid, int ssn, uint32_t size)
     }
     ring->desc = (struct iwx_tfh_tfd*)ring->desc_dma.vaddr;
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210)
-        err = iwx_dma_contig_alloc(sc->sc_dmat, &ring->bc_tbl,
+        err = iwx_tx_control_alloc(&ring->bc_tbl,
                                    sizeof(struct iwx_gen3_bc_tbl), 0);
     else
-        err = iwx_dma_contig_alloc(sc->sc_dmat, &ring->bc_tbl,
+        err = iwx_tx_control_alloc(&ring->bc_tbl,
                                    sizeof(struct iwx_agn_scd_bc_tbl), 0);
     if (err) {
         XYLog("%s: could not allocate byte count table DMA memory\n",
@@ -5626,7 +5713,7 @@ iwx_tvqm_enable_txq(struct iwx_softc *sc, int tid, int ssn, uint32_t size)
         goto fail;
     }
 
-    err = iwx_dma_contig_alloc(sc->sc_dmat, &ring->cmd_dma, ring->ring_count * sizeof(struct iwx_device_cmd), IWX_FIRST_TB_SIZE_ALIGN);
+    err = iwx_tx_control_alloc(&ring->cmd_dma, ring->ring_count * sizeof(struct iwx_device_cmd), IWX_FIRST_TB_SIZE_ALIGN);
     if (err) {
         XYLog("%s: could not allocate cmd DMA memory\n", DEVNAME(sc));
         err = -ENOMEM;
@@ -5658,6 +5745,11 @@ iwx_tvqm_enable_txq(struct iwx_softc *sc, int tid, int ssn, uint32_t size)
     hcmd.data[0] = &cmd;
     hcmd.len[0] = sizeof(cmd);
 
+    // ZC13: order initialized/reset packet-control RAM before the firmware
+    // queue-enable command, in both mapped and conventional modes. Ownership
+    // and the existing positive stop/reset fences are unchanged.
+    // ZC14 TX-1: pinned OSSynchronizeIO is empty; emit the intended publication fence.
+    iwx_dma_publish_barrier();
     err = iwx_send_cmd(sc, &hcmd);
     if (err)
         return err;
@@ -6068,6 +6160,62 @@ iwx_clear_reorder_buffer(struct iwx_softc *sc, struct iwx_rxba_data *rxba)
 
 #define RX_REORDER_BUF_TIMEOUT_MQ_USEC (100000ULL)
 
+
+// ZC16 independent KGP correction, derived from the frozen ZC15 reorder path.
+// A fresh relative 100 ms timeout on every NSSN notification can indefinitely
+// postpone an already buffered frame. Keep the inherited timeout and sequence
+// release rules, but anchor the timer to the first occupied sequence slot's
+// existing timestamp (the last subframe timestamp for A-MSDU). An earlier armed
+// deadline is never postponed: an early callback can recompute the remainder.
+// Only notification/timer service reads or writes this deadline under the
+// existing main workloop gate. It is valid only while the timer is pending;
+// BA reset/free leaves it untouched and a newly created/nonpending timer always
+// overwrites it. This does not add a lifecycle-side shared write or claim that
+// inherited task-queue BA lifetime is fully gated. No new worker, packet
+// inspection, node reference, DMA access or ownership transfer. Shared IWX RX serves TCP data AND returning ACKs in both qualified
+// DMA modes, including AX201 conventional / AX210+AX211 mapped or conventional.
+// No IWM/IWN or firmware timing policy changes. Runtime relevance is unproven.
+// ZC19 selective KGP adaptation from 120ab2c61f0bbe0e6462f4eeea9fd7e5da29a7f2;
+// dependencies and mode-specific safety: docs/ZC19_CHANGE_PROVENANCE.md.
+void ItlIwx::zc16ArmReorder(struct iwx_rxba_data *rxba)
+{
+    struct iwx_reorder_buffer *buf = &rxba->reorder_buf;
+    if (!buf->num_stored || buf->removed) {
+        timeout_del(&buf->reorder_timer);
+        timerclear(&buf->zc16_deadline);
+        return;
+    }
+    for (unsigned i = 0; i < buf->buf_size; ++i) {
+        const unsigned index = (buf->head_sn + i) % buf->buf_size;
+        if (ml_empty(&rxba->entries[index].frames)) continue;
+        struct timeval timeout, expiry, now, remaining;
+        USEC_TO_TIMEVAL(RX_REORDER_BUF_TIMEOUT_MQ_USEC, &timeout);
+        timeradd(&rxba->entries[index].reorder_time, &timeout, &expiry);
+        if (timeout_pending(&buf->reorder_timer) &&
+            timerisset(&buf->zc16_deadline) &&
+            timercmp(&buf->zc16_deadline, &expiry, <=)) return;
+        getmicrouptime(&now);
+        int milliseconds = 1;
+        if (timercmp(&now, &expiry, <)) {
+            timersub(&expiry, &now, &remaining);
+            // CTimeout has millisecond resolution; round up, never expire a
+            // frame early. An overdue frame uses 1 ms to avoid zero-delay spin.
+            const uint64_t usecs = uint64_t(remaining.tv_sec) * 1000000ULL +
+                                   uint64_t(remaining.tv_usec);
+            milliseconds = int(MIN(usecs, RX_REORDER_BUF_TIMEOUT_MQ_USEC) + 999) / 1000;
+        }
+        if (timeout_add_msec(&buf->reorder_timer, milliseconds))
+            buf->zc16_deadline = expiry;
+        return;
+    }
+    // Inconsistent num_stored is not permission to release or invent a frame.
+    // Keep the inherited bounded retry; valid lists always returned above.
+    if (!timeout_pending(&buf->reorder_timer)) {
+        timerclear(&buf->zc16_deadline);
+        timeout_add_usec(&buf->reorder_timer, RX_REORDER_BUF_TIMEOUT_MQ_USEC);
+    }
+}
+
 void ItlIwx::
 iwx_rx_ba_session_expired(void *arg)
 {
@@ -6075,20 +6223,40 @@ iwx_rx_ba_session_expired(void *arg)
     struct iwx_rxba_data *rxba = (struct iwx_rxba_data *)arg;
     struct iwx_softc *sc = rxba->sc;
     struct ieee80211com *ic = &sc->sc_ic;
+    ItlIwx *that = container_of(sc, ItlIwx, com);
     struct ieee80211_node *ni = ic->ic_bss;
     struct timeval now, timeout, expiry;
     int s;
     
     s = splnet();
+    ++that->fZc18Stats[8];
+    // ZC19 adaptation of KGP 177d39aa865e6ac6d45127bc4f50c0f1a9ceb5c6.
+    // ZC18 independent KGP fix: this is the request-derived local BA SESSION inactivity
+    // timer, not ZC16's 100-ms missing-FRAME reorder deadline. The ADDBA path
+    // passes microseconds (TU * 1024), retained losslessly in rxba->timeout. The inherited net80211 timeout is cleared before
+    // ADDBA response construction; this change does not alter that wire policy.
+    // Compare last qualifying RX + that duration; if still live, rearm the
+    // remaining interval rounded UP to CTimeout's millisecond resolution.
+    // Keep zero disabled, real expiry DELBA and shutdown/state/BAID guards.
+    // No frame flushing, node lifetime, firmware/DMA or PM policy changes.
+    // Shared IWX data/ACK RX, both qualified modes; AX201 conventional only.
+    // Provenance and counterexamples: docs/ZC19_CHANGE_PROVENANCE.md.
     if ((sc->sc_flags & IWX_FLAG_SHUTDOWN) == 0 &&
         ic->ic_state == IEEE80211_S_RUN &&
-        rxba->baid != IWX_RX_REORDER_DATA_INVALID_BAID) {
+        rxba->baid != IWX_RX_REORDER_DATA_INVALID_BAID &&
+        rxba->timeout != 0) {
         getmicrouptime(&now);
-        USEC_TO_TIMEVAL(RX_REORDER_BUF_TIMEOUT_MQ_USEC, &timeout);
+        USEC_TO_TIMEVAL(rxba->timeout, &timeout);
         timeradd(&rxba->last_rx, &timeout, &expiry);
         if (timercmp(&now, &expiry, <)) {
-            timeout_add_usec(&rxba->session_timer, rxba->timeout);
+            struct timeval remaining;
+            timersub(&expiry, &now, &remaining);
+            const uint64_t usecs = uint64_t(remaining.tv_sec) * 1000000ULL +
+                                   uint64_t(remaining.tv_usec);
+            ++that->fZc18Stats[9];
+            timeout_add_msec(&rxba->session_timer, int((usecs + 999) / 1000));
         } else {
+            ++that->fZc18Stats[10];
             ic->ic_stats.is_ht_rx_ba_timeout++;
             ieee80211_delba_request(ic, ni,
                                     IEEE80211_REASON_TIMEOUT, 0, rxba->tid);
@@ -6154,8 +6322,7 @@ iwx_reorder_timer_expired(void *arg)
          * pointing to the first unexpired frame - modify reorder timeout
          * accordingly.
          */
-        timeout_add_usec(&buf->reorder_timer,
-                         RX_REORDER_BUF_TIMEOUT_MQ_USEC);
+        that->zc16ArmReorder(rxba);
     }
     
     splx(s);
@@ -6401,14 +6568,19 @@ iwx_sta_rx_agg(struct iwx_softc *sc, struct ieee80211_node *ni, uint8_t tid,
         rxba->sta_id = IWX_STATION_ID;
         rxba->tid = tid;
         rxba->baid = baid;
+        // ZC18: host duration is already microseconds from ADDBA TU decoding.
+        // These two setup counters may be written by the existing BA task;
+        // use atomic publication, unlike gate-only RX detector counters.
         rxba->timeout = timeout_val;
+        __atomic_fetch_add(&fZc18Stats[timeout_val ? 6 : 7], 1ULL, __ATOMIC_RELAXED);
+        if (timeout_val) __atomic_store_n(&fZc18Stats[11], uint64_t(timeout_val), __ATOMIC_RELAXED);
         getmicrouptime(&rxba->last_rx);
         iwx_init_reorder_buffer(&rxba->reorder_buf, ssn,
                                 winsize);
         if (timeout_val != 0) {
             struct ieee80211_rx_ba *ba;
-            timeout_add_usec(&rxba->session_timer,
-                             timeout_val);
+            // CTimeout floors microseconds; round up once here instead.
+            timeout_add_msec(&rxba->session_timer, (timeout_val + 999) / 1000);
             /* XXX disable net80211's BA timeout handler */
             ba = &ni->ni_rx_ba[tid];
             ba->ba_timeout_val = 0;
@@ -7582,11 +7754,8 @@ iwx_release_frames(struct iwx_softc *sc, struct ieee80211_node *ni,
     reorder_buf->head_sn = nssn;
 
 set_timer:
-    if (reorder_buf->num_stored && !reorder_buf->removed) {
-        timeout_add_usec(&reorder_buf->reorder_timer,
-            RX_REORDER_BUF_TIMEOUT_MQ_USEC);
-    } else
-        timeout_del(&reorder_buf->reorder_timer);
+    // ZC16: repeated non-advancing NSSN must not reset the same frame's age.
+    zc16ArmReorder(rxba);
 }
 
 int ItlIwx::
@@ -7595,19 +7764,37 @@ iwx_oldsn_workaround(struct iwx_softc *sc, struct ieee80211_node *ni, int tid,
 {
     struct ieee80211com *ic = &sc->sc_ic;
 
+    // ZC19 adaptation of KGP f92775e65f743e3a84d9cd3634fd8c955125bc78.
+    // ZC18 independent KGP correction of the inherited consecutive-group
+    // detector (frozen ZC17 53975f5ed87a6f7fb11d2129fef54660c6645ce7).
+    // prev_drop describes ONLY the group identified by ampdu_gp2. Without
+    // clearing it at a GP2 transition, one OLD_SN latches it until DELBA and
+    // 20 nonconsecutive bad groups can tear down an otherwise progressing RX
+    // BA session. End the previous group's accounting, then start a clean
+    // group; a later OLD_SN in that same group still counts exactly once.
+    // Keep the existing threshold/recovery, NSSN/window and frame-drop rules.
+    // Main-gated notification service owns these writes, as before. No DMA,
+    // mbuf, timer or node ownership changes; applies to shared IWX RX data and
+    // returning ACKs in both qualified routes (AX201 remains conventional).
+    // See docs/ZC19_CHANGE_PROVENANCE.md; no external source was imported.
     if (gp2 != buffer->consec_oldsn_ampdu_gp2) {
+        ++fZc18Stats[0];
         /* we have a new (A-)MPDU ... */
 
         /*
          * reset counter to 0 if we didn't have any oldsn in
          * the last A-MPDU (as detected by GP2 being identical)
          */
-        if (!buffer->consec_oldsn_prev_drop)
+        if (!buffer->consec_oldsn_prev_drop) {
+            if (buffer->consec_oldsn_drops) ++fZc18Stats[2];
             buffer->consec_oldsn_drops = 0;
+        }
+        buffer->consec_oldsn_prev_drop = 0;
 
         /* either way, update our tracking state */
         buffer->consec_oldsn_ampdu_gp2 = gp2;
     } else if (buffer->consec_oldsn_prev_drop) {
+        ++fZc18Stats[4];
         /*
          * tracking state didn't change, and we had an old SN
          * indication before - do nothing in this case, we
@@ -7624,9 +7811,13 @@ iwx_oldsn_workaround(struct iwx_softc *sc, struct ieee80211_node *ni, int tid,
     /* update state */
     buffer->consec_oldsn_prev_drop = 1;
     buffer->consec_oldsn_drops++;
+    ++fZc18Stats[1];
+    if (buffer->consec_oldsn_drops > fZc18Stats[5])
+        fZc18Stats[5] = buffer->consec_oldsn_drops;
 
     /* if limit is reached, send del BA and reset state */
     if (buffer->consec_oldsn_drops == IWX_AMPDU_CONSEC_DROPS_DELBA) {
+        ++fZc18Stats[3];
         XYLog("reached %d old SN frames, stopping BA session on TID %d\n",
               IWX_AMPDU_CONSEC_DROPS_DELBA, tid);
         ieee80211_delba_request(ic, ni, IEEE80211_REASON_UNSPECIFIED,
@@ -9209,7 +9400,8 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
     
     iwx_tx_update_byte_tbl(sc, ring, idx, totlen, num_tbs);
     
-    if (dma5Mapped()) OSSynchronizeIO(); // coherent payload/descriptor stores precede MMIO
+    // ZC14 TX-1: pinned OSSynchronizeIO is empty; emit the intended publication fence.
+    if (dma5Mapped()) iwx_dma_publish_barrier(); // coherent payload/descriptor stores precede MMIO
     /* Kick TX ring. */
     ring->cur = (ring->cur + 1) % getTxQueueSize();
     IWX_WRITE(sc, IWX_HBUS_TARG_WRPTR, ring->qid << 16 | ring->cur);
@@ -12561,6 +12753,38 @@ iwx_allow_mcast(struct iwx_softc *sc)
     return err;
 }
 
+// ZC16 independent KGP lifecycle correction. A stop can run while init waits
+// for firmware. Its generation/epoch must win over a late RUNNING/scan publish.
+// Keep the state publication, drain arm and scan enqueue within the existing
+// workloop gate. No firmware wait occurs here: begin_scan schedules newstate.
+// All IWX, both qualified modes; no packet body or cache ownership alteration.
+// ZC19 selective KGP adaptation from 120ab2c61f0bbe0e6462f4eeea9fd7e5da29a7f2;
+// dependencies and mode-specific safety: docs/ZC19_CHANGE_PROVENANCE.md.
+IOReturn ItlIwx::zc16PublishRun(OSObject *owner, void *generation, void *epoch,
+                               void *, void *)
+{
+    auto *that = static_cast<ItlIwx *>(owner);
+    auto *sc = &that->com;
+    auto *ic = &sc->sc_ic;
+    auto *ifp = &ic->ic_if;
+    if (unsigned(uintptr_t(generation)) != unsigned(sc->sc_generation) ||
+        !(ifp->if_flags & IFF_UP) ||
+        __atomic_load_n(&that->fPc1Suspended, __ATOMIC_ACQUIRE) ||
+        __atomic_load_n(&that->fPc1Fault, __ATOMIC_ACQUIRE))
+        return kIOReturnNotReady;
+    ifq_clr_oactive(&ifp->if_snd);
+    ifq_flush(&ifp->if_snd);
+    ifp->if_flags |= IFF_RUNNING;
+    that->drain2MArm(uint32_t(uintptr_t(epoch)));
+    if (ic->ic_opmode == IEEE80211_M_MONITOR) {
+        ic->ic_bss->ni_chan = ic->ic_ibss_chan;
+        ieee80211_new_state(ic, IEEE80211_S_RUN, -1);
+    } else {
+        ieee80211_begin_scan(ifp);
+    }
+    return kIOReturnSuccess;
+}
+
 int ItlIwx::
 iwx_init(struct _ifnet *ifp)
 {
@@ -12606,23 +12830,14 @@ iwx_init(struct _ifnet *ifp)
     if (sc->sc_nvm.sku_cap_11ax_enable)
         iwx_setup_he_rates(sc);
     
-    ifq_clr_oactive(&ifp->if_snd);
-    ifq_flush(&ifp->if_snd);
-    if (!dma5Mapped()) {
-        // Publish conventional RUNNING under the same lifecycle gate as stop.
-        if (getMainWorkLoop()->runAction(boot5ConventionalRun, this,
-                reinterpret_cast<void *>(uintptr_t(generation))) != kIOReturnSuccess) return ENXIO;
-    } else ifp->if_flags |= IFF_RUNNING;
-    drain2MArm(drainEpoch2M); // no later stop/reset may have superseded this init
-    
+    if (getMainWorkLoop()->runAction(zc16PublishRun, this,
+            reinterpret_cast<void *>(uintptr_t(generation)),
+            reinterpret_cast<void *>(uintptr_t(drainEpoch2M))) != kIOReturnSuccess)
+        return ENXIO;
     if (ic->ic_opmode == IEEE80211_M_MONITOR) {
-        ic->ic_bss->ni_chan = ic->ic_ibss_chan;
-        ieee80211_new_state(ic, IEEE80211_S_RUN, -1);
         flow2J(9, 4, generation, sc->sc_generation); flow2JPublish();
         return 0;
     }
-    
-    ieee80211_begin_scan(ifp);
     
     /*
      * ieee80211_begin_scan() ends up scheduling iwx_newstate_task().
@@ -12760,11 +12975,9 @@ iwx_start(struct _ifnet *ifp)
 {
     struct iwx_softc *sc = (struct iwx_softc*)ifp->if_softc;
     ItlIwx *that = container_of(sc, ItlIwx, com);
-    // ZC8: AX210 has a lifecycle-fenced drain source in both DMA modes. A
-    // failed try-lock must not strand a committed batch until another packet
-    // happens to arrive. Non-AX210 conventional scheduling is unchanged.
-    if (!that->dma5Mapped() && sc->sc_device_family < IWX_DEVICE_FAMILY_AX210)
-        return dexterOriginal_iwx_start(ifp);
+    // ZC19 selective KGP ZC12 cda7ae51561dee54ac21b01a70d60755205f5eb6:
+    // all attached IWX use this nonblocking gate plus fenced retry. Retain
+    // ZC8 admission, immediate completion restart and consumer ordering.
     Start2LContext context2L = {};
     that->path2L(1);
     const IOReturn result2L = that->getMainCommandGate()->attemptAction(
@@ -15743,11 +15956,12 @@ iwx_activate(struct iwx_softc *sc, int act)
     flow2J(6, act, sc->sc_generation, ifp->if_flags, sc->sc_flags);
     switch (act) {
         case DVACT_QUIESCE:
-            if (ifp->if_flags & IFF_RUNNING) {
-                //            rw_enter_write(&sc->ioctl_rwl);
-                iwx_stop(ifp, 5);
-                //            rw_exit(&sc->ioctl_rwl);
-            }
+            // ZC16: disable() cleared IFF_UP, but init may still be queued or
+            // waiting for a firmware response before publishing IFF_RUNNING.
+            // Fence/cancel that activation as well, through the EXISTING stop:
+            // command epoch, STOP_MASTER proof, quarantine and generation.
+            // Never release mappings merely because RUNNING was not reached.
+            iwx_stop(ifp, 5);
             break;
         case DVACT_RESUME:
             err = iwx_resume(sc);
@@ -15759,10 +15973,12 @@ iwx_activate(struct iwx_softc *sc, int act)
             /* Hardware should be up at this point. */
             if (iwx_set_hw_ready(sc))
                 task_add(systq, &sc->init_task);
+            else
+                err = ETIMEDOUT;
             break;
     }
     
-    return 0;
+    return err; // ZC16: propagate resume/readiness refusal to enable().
 }
 
 // BOOTFIX1 pinned original Dexter packet methods: bodies verbatim from
@@ -16557,6 +16773,12 @@ dexterOriginal_iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni,
     
     iwx_tx_update_byte_tbl(sc, ring, idx, totlen, num_tbs);
     
+    // ZC13: packet control RAM is now coherent cached memory in this positive
+    // conventional route too. Order payload/header/TFD/byte-count stores before
+    // the MMIO doorbell, matching the mapped route. No mapped packet addresses
+    // or TX ownership changes are introduced by this publication barrier.
+    // ZC14 TX-1: pinned OSSynchronizeIO is empty; emit the intended publication fence.
+    iwx_dma_publish_barrier();
     /* Kick TX ring. */
     ring->cur = (ring->cur + 1) % getTxQueueSize();
     IWX_WRITE(sc, IWX_HBUS_TARG_WRPTR, ring->qid << 16 | ring->cur);
@@ -16919,4 +17141,49 @@ dexterOriginal_intrFilter(OSObject *object, IOFilterInterruptEventSource *src)
     ItlIwx *that = (ItlIwx*)object;
     IWX_WRITE(&that->com, IWX_CSR_INT_MASK, 0);
     return true;
+}
+
+// ZC19 independent minimal health publication, using the corrected controller-
+// owned gate convention from KGP c1b1d9a72aaae80ee3819996ecaa35a0d568c0ed.
+// Only the already existing watchdog calls this; no packet observer/worker.
+// Fixed 256-byte record, one timestamp per successful snapshot, no node/mbuf
+// access, no packet counter/queue walk, no allocation under the main gate.
+// Task-written BA setup slots are atomic; other state is main-gate serialized.
+IOReturn ItlIwx::zc19Snapshot(OSObject *, void *context, void *, void *, void *)
+{
+    auto *that = static_cast<ItlIwx *>(context);
+    if (!that || !that->getMainWorkLoop() || !that->getMainWorkLoop()->inGate())
+        return kIOReturnNotReady;
+    auto *w = that->fZc19Health;
+    w[0]=19; w[1]=1; w[2]=sizeof(that->fZc19Health); ++w[3];
+    w[4]=time2GNow();
+    w[5]=!that->fDma5Selected?0:(that->dma5Mapped()?2:1);
+    w[6]=that->com.sc_generation; w[7]=that->com.sc_device_family;
+    w[8]=__atomic_load_n(&that->fPc1Fault,__ATOMIC_ACQUIRE);
+    w[9]=__atomic_load_n(&that->fTx2IBlocked,__ATOMIC_ACQUIRE);
+    w[10]=__atomic_load_n(&that->fCmd2KFrozen,__ATOMIC_ACQUIRE);
+    w[11]=that->fPc1ResetEpoch;
+    w[12]=__atomic_load_n(&that->fCmd2KEpoch,__ATOMIC_SEQ_CST);
+    w[13]=__atomic_load_n(&that->fPc1Suspended,__ATOMIC_ACQUIRE);
+    w[14]=__atomic_load_n(&that->fRxZcFault,__ATOMIC_ACQUIRE);
+    w[15]=that->com.sc_ic.ic_if.if_flags;
+    for (unsigned i=0;i<12;++i)
+        w[16+i]=(i==6 || i==7 || i==11)?
+            __atomic_load_n(&that->fZc18Stats[i],__ATOMIC_RELAXED):that->fZc18Stats[i];
+    w[28]=that->fZc19Miss; w[29]=that->fZc19PublishFail;
+    w[30]=0; w[31]=0;
+    return kIOReturnSuccess;
+}
+void ItlIwx::zc19Publish()
+{
+    // Main gate owner is AirportItlwm, NOT this HAL: explicit synchronous arg0.
+    // Busy means skip, never wait for packet service. The watchdog owns both
+    // the publication copy and miss/failure counters; teardown removes that
+    // existing event before the HAL is released. setProperty runs outside gate.
+    if (!pci.pa_tag || !getMainCommandGate()) return;
+    if (getMainCommandGate()->attemptAction(zc19Snapshot,this)!=kIOReturnSuccess) {
+        ++fZc19Miss; return;
+    }
+    if (!pci.pa_tag->setProperty("KGP_ZC19",fZc19Health,sizeof(fZc19Health)))
+        ++fZc19PublishFail;
 }

@@ -231,6 +231,8 @@ public:
     virtual IOReturn setWakeOnMagicPacket( bool active ) override;
     void setPowerStateOff(void);
     void setPowerStateOn(void);
+    static IOReturn zc16SetPowerGated(OSObject *, void *, void *, void *, void *);
+    static IOReturn zc16AdapterPowerGated(OSObject *, void *, void *, void *, void *);
     void unregistPM();
     
     bool createMediumTables(const IONetworkMedium **primary);

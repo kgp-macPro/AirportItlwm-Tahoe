@@ -241,6 +241,7 @@ public:
     void    iwx_clear_bits_prph(struct iwx_softc *, uint32_t, uint32_t);
     int    iwx_dma_contig_alloc(bus_dma_tag_t, struct iwx_dma_info *, bus_size_t,
             bus_size_t);
+    int    iwx_tx_control_alloc(struct iwx_dma_info *, bus_size_t, bus_size_t);
     void    iwx_dma_contig_free(struct iwx_dma_info *);
     int    iwx_alloc_rx_ring(struct iwx_softc *, struct iwx_rx_ring *);
     void    iwx_disable_rx_dma(struct iwx_softc *);
@@ -305,6 +306,7 @@ public:
             uint8_t);
     static void    iwx_rx_ba_session_expired(void *);
     static void    iwx_reorder_timer_expired(void *);
+    void zc16ArmReorder(struct iwx_rxba_data *);
     static void    iwx_update_chw(struct ieee80211com *);
     void    iwx_sta_rx_agg(struct iwx_softc *, struct ieee80211_node *, uint8_t,
                            uint16_t, uint16_t, int, int);
@@ -552,6 +554,7 @@ public:
     void boot5ConventionalStop();
     void boot5ConventionalFault();
     static IOReturn boot5ConventionalRun(OSObject *, void *, void *, void *, void *);
+    static IOReturn zc16PublishRun(OSObject *, void *, void *, void *, void *);
     static void boot5ClosedInterrupt(OSObject *, IOInterruptEventSource *, int);
     bool dma5Select();
     bool dma5Mapped() const { return fDma5Selected && fDma5UseMapped; }
@@ -623,6 +626,17 @@ public:
     uint32_t fPath2LBusy = 0, fPath2LDropped = 0;
     void path2L(unsigned event, uint32_t result = 0, uint32_t detail = 0, uint32_t fc0 = 0);
     void path2LPublish();
+
+    // ZC19 retains the bounded BA correctness counters from KGP
+    // f92775e65f743e3a84d9cd3634fd8c955125bc78 and
+    // 177d39aa865e6ac6d45127bc4f50c0f1a9ceb5c6, without the ZC10/ZC18
+    // packet observers. Gate-only except atomic BA-task setup slots 6/7/11.
+    // They do not control packet processing and are not a public wire schema.
+    uint64_t fZc18Stats[12]={};
+    // ZC19 watchdog-owned copy, schema 19/1; no hot-path instrumentation.
+    uint64_t fZc19Health[32]={}, fZc19Miss=0, fZc19PublishFail=0;
+    static IOReturn zc19Snapshot(OSObject*,void*,void*,void*,void*);
+    void zc19Publish();
 
     // 2M: a coalesced software event on the SAME workloop as mainCommandGate.
     // The lock protects event lifetime/signalling only; never held across gates.

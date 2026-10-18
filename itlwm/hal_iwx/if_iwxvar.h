@@ -515,6 +515,9 @@ struct iwx_reorder_buffer {
     uint16_t last_amsdu;
     uint8_t last_sub_index;
     CTimeout *reorder_timer;
+    // ZC16 host-only notification/timer gate state; valid only while pending.
+    // Never a firmware timestamp or DMA-visible field; no new packet ownership.
+    struct timeval zc16_deadline;
     int removed;
     int valid;
     unsigned int consec_oldsn_drops;
@@ -544,10 +547,10 @@ struct iwx_reorder_buf_entry {
  * @sta_id: station id
  * @tid: tid of the session
  * @baid: baid of the session
- * @timeout: the timeout set in the addba request
+ * @timeout: ADDBA-request-derived local inactivity duration in microseconds (not TU)
  * @entries_per_queue: # of buffers per queue
- * @last_rx: last rx timestamp, updated only if timeout passed from last update
- * @session_timer: timer to check if BA session expired, runs at 2 * timeout
+ * @last_rx: last qualifying RX timestamp, refreshed while timeout is nonzero
+ * @session_timer: checks the local request-derived inactivity deadline
  * @sc: softc pointer, needed for timer context
  * @reorder_buf: reorder buffer
  * @reorder_buf_data: buffered frames, one entry per sequence number
@@ -556,7 +559,10 @@ struct iwx_rxba_data {
     uint8_t sta_id;
     uint8_t tid;
     uint8_t baid;
-    uint16_t timeout;
+    // ZC18: net80211 converts the 16-bit ADDBA TU value to microseconds.
+    // 65535 * 1024 = 67107840; uint16_t truncated this host-only duration
+    // (64 TU became zero). Not a firmware ABI or DMA-visible descriptor.
+    uint32_t timeout;
     uint16_t entries_per_queue;
     struct timeval last_rx;
     CTimeout *session_timer;
