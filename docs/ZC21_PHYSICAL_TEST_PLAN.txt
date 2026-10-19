@@ -1,0 +1,30 @@
+B1-ZC21-PERF — KGP-only physical qualification
+No physical operation was performed by Codex. Host/build success is not runtime
+success. The candidate repairs TVQM errors; TCP RX improvement is unproven.
+
+Use the same ASIX AX88179B sender, current wired peer, channel and DMA mode as the
+matched ZC19/ZC20 campaigns. KGP alone controls installation/boot/settings.
+1. Verify loaded UUID against delivered executable identity. Check scanning,
+   association with bbc and basic usable traffic. Avoid system_profiler/CoreWLAN
+   queries before the throughput comparison.
+2. First bounded smoke: TCP TX P1/P4 and TCP RX P1/P4, 8 seconds each, then UDP
+   TX500 / RX600, 5 seconds each, unchanged payloads and original sender/receiver
+   evidence. Use only initial/final health snapshots; no periodic registry reads.
+3. If stable, run the unchanged 3x14 matrix with the new identity-correct runner:
+   /bin/bash "$HOME/Desktop/AirportItlwm/B1-ZC21-PERF/tools/ZC21_3x14_PORTABLE_IP_PROMPT.sh" ZC21
+   For an already conventional configuration, prefix EXPECTED_MODE=conventional.
+   The runner prompts for current peer IPv4 and binds the actual Wi-Fi IP/en2.
+   Preserve all 42 JSONs, remote output, normal boundary health and Internet test.
+4. Compare against the matching ZC19 baseline, not interrupted ZC20 best values.
+   Targets: TX >400, preferably 470–490; RX toward 550–600; maintain UDP RX600.
+   A repair without throughput gain remains a correctness result, not a claimed
+   solution of the performance objective. A new blocked/epoch/fault state is a
+   failure needing original logs; do not bypass the guard.
+5. KGP should check Wi-Fi OFF/ON and repeated sleep/wake/reassociation separately
+   from the timed performance runs. Capture a failing state before recovery when
+   practical. AX211 non-regression and AX201 conventional qualification remain
+   outstanding before release. Do not enable AX201 mapped mode.
+
+An optional three-case reverse TCP pacing A/B/A may help distinguish sensitivity
+to sender supply/feedback, but is not required before evaluating this candidate.
+Application pacing is not wire pacing and is not a proposed production fix.
