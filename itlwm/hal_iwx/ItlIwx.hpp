@@ -274,6 +274,8 @@ public:
     int    iwx_nic_rx_init(struct iwx_softc *);
     int    iwx_nic_init(struct iwx_softc *);
     int    iwx_enable_txq(struct iwx_softc *, int, int, int, int);
+    // ZC21 TVQM contract: nonnegative firmware QID or negative errno;
+    // command errors never escape as successful queue IDs.
     int     iwx_tvqm_alloc_txq(struct iwx_softc *, int, int);
     int     iwx_tvqm_enable_txq(struct iwx_softc *, int, int, uint32_t);
     void    iwx_post_alive(struct iwx_softc *);

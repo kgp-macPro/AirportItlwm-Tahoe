@@ -368,7 +368,7 @@ bool ItlIwx::dma5Select()
     if (selection) selection->release();
     if (!resolved) { boot5Mark(10, "device DMA policy unresolved; attach refused", 2); return false; }
     pci.pa_tag->setProperty("KGP_ZC5_DMA_MODE", mapped ? "mapped RX/TX" : "original Dexter RX/TX");
-    pci.pa_tag->setProperty("KGP_RX_EXPERIMENT", "AirportItlwm-Tahoe-B1-ZC19-PERF");
+    pci.pa_tag->setProperty("KGP_RX_EXPERIMENT", "AirportItlwm-Tahoe-B1-ZC21-PERF");
     boot5Mark(11, mapped ? "DMA routing completed: mapped" : "DMA routing completed: original Dexter");
     return true;
 }
@@ -4615,7 +4615,7 @@ iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
     }
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 &&
         !pci.pa_tag->setProperty("KGP_RX_EXPERIMENT",
-            "AirportItlwm-Tahoe-B1-ZC19-PERF")) {
+            "AirportItlwm-Tahoe-B1-ZC21-PERF")) {
         err = ENOMEM; goto fail;
     }
     return 0;
@@ -5643,6 +5643,11 @@ out:
 int ItlIwx::
 iwx_tvqm_alloc_txq(struct iwx_softc *sc, int tid, int ssn)
 {
+    // ZC21: QID >= 0 on success, negative errno on failure. Retry only a
+    // locally failed allocation whose backing was actually released. A failed
+    // command may already have made the temporary ring device-visible.
+    // Exact ZC8 provenance and both-mode contract: docs/ZC21_CHANGE_PROVENANCE.txt.
+    if (tid < 0 || tid >= IWX_MAX_TID_COUNT) return -EINVAL;
     int queue;
     //TODO: Here is a bug, for gen3 devices which support 256 frame aggregate into 1 A-MPDU like ax210, if the TfDs count larger than 256 than it would trigger system freeze on macOS, don't know why but Linux can do this. Still need to dig deep into the code or optimize the DMA memory allocation, here I just limit the size to 256 as the temporary solution.
 #ifdef notyet
@@ -5657,7 +5662,9 @@ iwx_tvqm_alloc_txq(struct iwx_softc *sc, int tid, int ssn)
             XYLog("Failed allocating TXQ of size %d for sta %d tid %d, ret: %d\n",
                   size, IWX_STATION_ID, tid, queue);
         size /= 2;
-    } while (queue < 0 && size >= 16);
+    } while (queue == -ENOMEM && size >= 16 &&
+             !sc->sc_tvqm_ring.desc_dma.cmd &&
+             !sc->sc_tvqm_ring.cmd_dma.cmd && !sc->sc_tvqm_ring.bc_tbl.cmd);
     
     if (queue < 0)
         return queue;
@@ -5668,7 +5675,9 @@ iwx_tvqm_alloc_txq(struct iwx_softc *sc, int tid, int ssn)
 int ItlIwx::
 iwx_tvqm_enable_txq(struct iwx_softc *sc, int tid, int ssn, uint32_t size)
 {
-    int err = -1;
+    int err = -EIO;
+    const int generation = sc->sc_generation;
+    const uint32_t commandEpoch = __atomic_load_n(&fCmd2KEpoch, __ATOMIC_SEQ_CST);
     int i = 0;
     bus_addr_t paddr;
     int fwqid;
@@ -5688,6 +5697,7 @@ iwx_tvqm_enable_txq(struct iwx_softc *sc, int tid, int ssn, uint32_t size)
     };
     struct iwx_tx_ring *ring = &sc->sc_tvqm_ring;
     
+    if (tid < 0 || tid >= IWX_MAX_TID_COUNT) return -EINVAL;
     if (ring->desc_dma.cmd || ring->cmd_dma.cmd || ring->bc_tbl.cmd) return -EBUSY;
     memset(ring, 0, sizeof(*ring));
     iwx_tx_ring_init(sc, ring, size);
@@ -5751,44 +5761,81 @@ iwx_tvqm_enable_txq(struct iwx_softc *sc, int tid, int ssn, uint32_t size)
     // ZC14 TX-1: pinned OSSynchronizeIO is empty; emit the intended publication fence.
     iwx_dma_publish_barrier();
     err = iwx_send_cmd(sc, &hcmd);
-    if (err)
-        return err;
+    if (err) {
+        // iwx_send_cmd returns POSITIVE errno, never a queue ID. Preserve a
+        // hypothetical negative errno too; every failure stays negative here.
+        if (err > 0) err = -err;
+        goto retain;
+    }
+    if (generation != sc->sc_generation ||
+        commandEpoch != __atomic_load_n(&fCmd2KEpoch, __ATOMIC_SEQ_CST) ||
+        (sc->sc_flags & IWX_FLAG_SHUTDOWN)) {
+        err = -ENXIO;
+        goto retain;
+    }
 
     pkt = hcmd.resp_pkt;
     if (!pkt || (pkt->hdr.group_id & IWX_CMD_FAILED_MSK)) {
         XYLog("SCD_QUEUE_CFG command failed\n");
         err = -EIO;
-        goto fail;
+        goto retain;
     }
 
     resp_len = iwx_rx_packet_payload_len(pkt);
     if (resp_len != sizeof(*resp)) {
         XYLog("SCD_QUEUE_CFG returned %zu bytes, expected %zu bytes\n", resp_len, sizeof(*resp));
         err = -EIO;
-        goto fail;
+        goto retain;
     }
 
     resp = (struct iwx_tx_queue_cfg_rsp *)pkt->data;
     fwqid = le16toh(resp->queue_number);
     wr_idx = le16toh(resp->write_pointer);
-    if (fwqid >= ARRAY_SIZE(sc->txq)) {
+    // Validate the driver's actual queue roles, not a presumed firmware
+    // minimum. ADD_STA >=12 uses default QID 1, so dynamic QID 2 is valid.
+    // Older/unknown versions reserve auxiliary QID 1 and default QID 2.
+    if (fwqid >= ARRAY_SIZE(sc->txq) ||
+        fwqid >= sizeof(sc->qfullmsk) * 8 ||
+        fwqid == IWX_DQA_CMD_QUEUE || fwqid == sc->first_data_qid ||
+        (sc->first_data_qid == IWX_QID_MGMT && fwqid == IWX_DQA_AUX_QUEUE) ||
+        wr_idx >= getTxQueueSize()) {
         XYLog("queue index %d unsupported", fwqid);
         err = -EIO;
-        goto fail;
+        goto retain;
     }
-    ring->cur = wr_idx;
+    for (i = 0; i < IWX_MAX_TID_COUNT; ++i) {
+        if (sc->sc_tid_data[i].qid == fwqid) {
+            err = -EBUSY; // A live TID still owns this queue, even if empty.
+            goto retain;
+        }
+    }
+    // An empty ring begins at the firmware's producer AND consumer coordinate.
+    // gen3 coordinates span 65536; physical descriptor slots still wrap at 256.
+    ring->cur = ring->tail = wr_idx;
     ring->qid = fwqid;
     if (!tx5RingReleasable(&sc->txq[fwqid])) {
-        __atomic_fetch_or(&fTx2JAdmission,kTx2JClosed,__ATOMIC_ACQ_REL);
-        __atomic_store_n(&fTx2IBlocked,1U,__ATOMIC_RELEASE);
-        return -EBUSY; // Both rings retained; device stop is required.
+        err = -EBUSY;
+        goto retain; // Both rings retained; device stop is required.
     }
     iwx_reset_tx_ring(sc, &sc->txq[fwqid]);
     iwx_free_tx_ring(sc, &sc->txq[fwqid]);
     memcpy(&sc->txq[fwqid], ring, sizeof(*ring));
     memset(ring,0,sizeof(*ring)); // Ownership moved; no stale temporary alias.
+    iwx_free_resp(sc, &hcmd); // WANT_RESP ownership transferred to this caller.
     return fwqid;
+retain:
+    // ZC21: command failure/malformed reply does NOT prove firmware rejection.
+    // Free only the CPU response, retain prepared backing in sc_tvqm_ring,
+    // close admission and use the existing positive stop/reset cleanup. No
+    // fallback queue-size retry, early DMA free, forced stop or PM policy change.
+    // This conservative rule also retains early command failures for which the
+    // API does not expose a publication result; retention is bounded to one ring.
+    iwx_free_resp(sc, &hcmd);
+    __atomic_fetch_or(&fTx2JAdmission, kTx2JClosed, __ATOMIC_ACQ_REL);
+    __atomic_store_n(&fTx2IBlocked, 1U, __ATOMIC_RELEASE);
+    return err;
 fail:
+    // Only local, pre-command allocation/map failures may release backing.
     iwx_reset_tx_ring(sc, ring);
     iwx_free_tx_ring(sc, ring);
     return err;
@@ -6769,14 +6816,18 @@ iwx_ba_task(void *arg)
         if (sc->sc_flags & IWX_FLAG_SHUTDOWN)
             break;
         if (sc->ba_tx.start_tidmask & (1 << tid)) {
+            // ZC21: one failed TID must not poison a later successful request.
+            err = 0;
+            bool nicLocked = false;
             ba = &ni->ni_tx_ba[tid];
             XYLog("%s ba_tx_start tid=%d, ssn=%d\n", __FUNCTION__, tid, ba->ba_winstart);
             if (!that->iwx_nic_lock(sc)) {
-                err = -1;
+                err = -EBUSY;
                 goto out;
             }
+            nicLocked = true;
             if ((qid = that->iwx_tvqm_alloc_txq(sc, tid, ba->ba_winstart)) < 0) {
-                err = -1;
+                err = qid;
                 goto out;
             }
             ring = &sc->txq[qid];
@@ -6786,7 +6837,7 @@ iwx_ba_task(void *arg)
             ieee80211_addba_resp_accept(ic, ni, tid);
             XYLog("%s tx queue alloc succeed qid=%d ssn=%d\n", __FUNCTION__, qid, ba->ba_winstart);
         out:
-            that->iwx_nic_unlock(sc);
+            if (nicLocked) that->iwx_nic_unlock(sc);
             if (err)
                 ieee80211_addba_resp_refuse(ic, ni, tid,
                                             IEEE80211_STATUS_UNSPECIFIED);
