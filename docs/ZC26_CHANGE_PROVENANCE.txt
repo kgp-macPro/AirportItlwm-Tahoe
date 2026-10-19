@@ -38,3 +38,26 @@ Final correction targets BOTH RXclasses toward stable~580 while retaining fastTX
 and goodWAN. This is an experimental corrective design, not a physicalfixclaim.
 Originalbad22/23states,25negativeRX and positiveWAN, lossbursts andtails preserved.
 One final deliveredcandidate, no uncontrolledwarmup or extra physical request.
+
+STORE-PUBLICATION CONTRACT (independent of cache policy)
+All FOUR existing helper uses remain at the same locations: packet mapped and
+conventional after payload/control/bytecount stores before WRPTR; default TXqueue
+after initialized/reset backing before its MMIO publication; dynamicTVQM after
+all allocation/address/config stores before queue-enable firmware command.
+No helper caller uses it for DMA-read visibility or a CPU StoreLoad handshake.
+Use x86_64 volatile SFENCE with a full compiler memory clobber. It orders prior
+stores before following stores; it does NOT order loads and does NOT prove DMA
+completion. All lifecycle/token/admission/command atomics and their original
+memory orders remain unchanged. Non-x86 fallback remains SEQ_CST; no new device
+or DMA qualification. x86_64 baseline supports SFENCE without SIMD register use.
+
+Primary reference: Intel SDM Vol2B SFENCE, document325383, page4-616:
+https://cdrdv2-public.intel.com/782156/325383-sdm-vol-2abcd.pdf
+Linux DMA memory-ordering contract reference (not code imported):
+https://kernel.org/doc/html/latest/core-api/wrappers/memory-barriers.html
+SFENCE is selected from the actual write-publication contract, not as a cache
+flush, reduced correctness fence or guarantee of580Mbps. Existing lock-prefixed
+ownership/counter operations still exist and may dominate cost. No numerical
+speedup is inferred from instruction counts. Negative23/24/25 physical results
+remain constraints: prior generic batching/store-width/cache choices did not
+establish a solution; this is a coordinated, independently source-backed design.

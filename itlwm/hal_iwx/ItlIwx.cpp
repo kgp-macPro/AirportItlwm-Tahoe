@@ -267,7 +267,15 @@ void ItlIwx::rx2HError(unsigned slot, unsigned stage, IOReturn result)
 // Both qualified modes/all IWX; RX credit/startup sequencing stays ZC8.
 static inline void iwx_dma_publish_barrier()
 {
+#if defined(__x86_64__)
+    // ZC26: all four users publish CPU stores before a device doorbell or
+    // queue-enable command. A compiler memory clobber plus SFENCE provides
+    // that store->store contract, without a locked stack RMW/load fence.
+    // This is NOT RX visibility, CPU ownership synchronization or completion.
+    __asm__ __volatile__("sfence" ::: "memory");
+#else
     __atomic_thread_fence(__ATOMIC_SEQ_CST);
+#endif
 }
 
 // ZC22: one bounded publication from CPU-only construction storage. No DMA
