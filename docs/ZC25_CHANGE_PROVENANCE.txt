@@ -108,3 +108,14 @@ Traceability: the first TX implementation is365f5c8c3ee43f045e72a34244bcd492b28e
 The following independent commit moves RX reporting and completes fail-closed
 address arithmetic. Host/source validation and final binary identity follow in
 the archived validation/build reports, without a claim of physical success.
+
+INTEGRATION HARNESS UPDATE (no production change, no Kext build yet)
+First full validation completed31/37. Six runs could not compile inherited RX
+pool/cache/suspend mocks because their extracted source region now also includes
+the new reporting methods and lacked dma5Mapped(). The existing tests are kept
+byte-for-byte. Three new ZC25 wrappers retain the same complete source-derived
+ownership/lifetime cases and add only a mapped-mode predicate to that mapped-RX
+mock. The reporting methods independently execute in their dedicated both-mode
+report/health models. Initial logs remain validation-final-01; second full run
+uses validation-final-02. This is a test fixture dependency, not a driver error,
+sanitzer finding, hidden skipped ownership check or failed Release build.
