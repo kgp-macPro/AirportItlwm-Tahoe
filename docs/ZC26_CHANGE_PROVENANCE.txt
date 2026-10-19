@@ -1,0 +1,40 @@
+B1-ZC26-PERF — coherent store publication and RX service preservation
+
+Baseline: frozen ZC25 tooling513e3708800bdd20ee15debe17dda0cec9e90b4f.
+It contains exact built-driver6607d97cd42e738efc32e048ffdc35a3c0254684 plus
+only shared-runner tooling. New isolated worktree shares the existing ZC8 Git DB.
+
+Architectural decision: restore exactly ZC22 private CPU construction with the
+checked coherent/inhibit-requested TFD, packet command and byte-count backing.
+Remove ZC25 dedicated TB0 allocation and cached-read-only control topology.
+This is evidence-guided reconciliation, not a claim caching is unsafe. ZC25
+both campaigns retain TX476/478 but RX498/446;22laterRX551/522. Allnine22rounds
+RX522/511 including its badfirstcampaign remain separate.25changeswerejoint;
+no individual cache/layout/report causality is established. Keep25 bounded
+watchdog capture/outside-gate report publication and all existing safety.
+
+Qualifiers retained: actual mapper/backing identity, complete prepared extents,
+positive completion/reset/STOP_MASTER, epochs/command-error/TVQM ownership,
+RXreplacement/finalmbufreferences, cacheexchange/reorder/BA and ZC16restart/power.
+Restored packet functions differ from22 only in marker comments whereapplicable;
+newpublisher keeps25 base+offsetoverflow and first/secondTB4GiB failclosedchecks,
+adapted to the reunited command view. Queue0 and firmware/payload policy exact.
+Three backings, same ring counts; no live remap or policy switching.
+
+The additional source-supported publication correction is documented/tested in
+its separate commit: four callsites require prior CPU stores before following
+MMIO/queue-enable stores, not CPU load serialization. No ownership or RX-read
+fence will be weakened. Physical throughput/cost/PAT remain unmeasured.
+
+CurrentsourceRXnotifications and Apple input batching are bounded and match8/22;
+no new packet-loss defect was proved. Do not invent unboundedRXproducerchasing,
+queuedinputreturn0failure, permanentACKqueuefull or pool exhaustion. New25periodic
+rawcounters show0starved/pressure/retries/mapping/headerfaults. This does not
+exclude short service delays. Optionalrefillworkerregistryfairness may be a
+futureopportunity but predates8 and is not established as currentTCPbottleneck.
+No arbitrary RXbudget/earlycredit/feedback redesign is imported from23.
+
+Final correction targets BOTH RXclasses toward stable~580 while retaining fastTX
+and goodWAN. This is an experimental corrective design, not a physicalfixclaim.
+Originalbad22/23states,25negativeRX and positiveWAN, lossbursts andtails preserved.
+One final deliveredcandidate, no uncontrolledwarmup or extra physical request.

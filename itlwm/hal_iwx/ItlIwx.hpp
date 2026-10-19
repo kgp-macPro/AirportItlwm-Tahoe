@@ -241,7 +241,7 @@ public:
     void    iwx_clear_bits_prph(struct iwx_softc *, uint32_t, uint32_t);
     int    iwx_dma_contig_alloc(bus_dma_tag_t, struct iwx_dma_info *, bus_size_t,
             bus_size_t);
-    int    iwx_tx_control_alloc(struct iwx_dma_info *, bus_size_t, bus_size_t, bool inhibitCache = false);
+    int    iwx_tx_control_alloc(struct iwx_dma_info *, bus_size_t, bus_size_t);
     void    iwx_dma_contig_free(struct iwx_dma_info *);
     int    iwx_alloc_rx_ring(struct iwx_softc *, struct iwx_rx_ring *);
     void    iwx_disable_rx_dma(struct iwx_softc *);

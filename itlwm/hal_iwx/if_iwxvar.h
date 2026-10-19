@@ -343,7 +343,6 @@ struct iwx_tx_ring {
 	struct iwx_dma_info	desc_dma;
 	struct iwx_dma_info	cmd_dma;
 	struct iwx_dma_info	bc_tbl;
-    struct iwx_dma_info first_tb_dma; // ZC25: packet-only bidirectional 64-byte slots.
 	struct iwx_tfh_tfd	*desc;
 	struct iwx_device_cmd	*cmd;
 	struct iwx_tx_data	data[IWX_MIN_256_BA_QUEUE_SIZE_GEN3];
