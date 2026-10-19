@@ -84,3 +84,26 @@ repairs, not an explanation of the ZC13chronology or a provenRX/firststatefix.
 Actualhelper/PDU/free/fullaux/criticalstationtail tests inject both errno signs,
 failed/short/missing/validresponse, FWstatuses and versions. No rate, queue-growth,
 firmware binary, power policy or DMA-lifetime change.
+
+FOCUSED FOUR-SITE REVIEW / CONSERVATIVE FINAL STRENGTH
+Supersedes the earlier all-four-SFENCE proposal above before any Release build.
+Only the two ALTERNATIVE packet TX paths useSFENCE. The default and dynamicTVQM
+queue setup sites now call a separate fullSEQ_CST queue-publication helper;
+their established initialization/command boundary strength is unchanged. These
+rare setup operations are not a per-ACK cost, so weakening them has no supported
+hot-path benefit. Their complete firmware-command/CPUhandoff lifecycle is kept
+conservatively stronger even though the immediate data role is writepublication.
+
+For TCP reception a driver-transmitted ACK executes ONE packet site, mapped OR
+conventional. A completion does not automatically execute a fence: it must
+actually cause a subsequent successful packet submission. Queueconfiguration
+runs during setup/reconfiguration, not fourtimesperACK. Firmwarecommandqueue0
+retains its own existing policy and command ownership; no frame-rate inferred.
+Each packet's CPU ownership/acquire checks precede privateconstruction/payload
+copy, publication stores and barrier. Existing x86LoadStore ordering plus compiler
+memoryclobber prevents those reads crossing the hardwareownership submission;
+SFENCE orders the CPUstores before the subsequent MMIOstore. Completion/token/
+reset handshakes retain their existing atomicorders. SFENCE is not a CPU
+StoreLoadhandshake, does not order RXloads, and does not imply devicecompletion.
+Finalbinary must showtwoSFENCE packet sites andtwooriginalfullqueuebarriers.
+No significance of the fullpacketbarrier as an actual RXbottleneck is claimed.

@@ -268,14 +268,21 @@ void ItlIwx::rx2HError(unsigned slot, unsigned stage, IOReturn result)
 static inline void iwx_dma_publish_barrier()
 {
 #if defined(__x86_64__)
-    // ZC26: all four users publish CPU stores before a device doorbell or
-    // queue-enable command. A compiler memory clobber plus SFENCE provides
+    // ZC26: the two alternative packet paths publish CPU stores before MMIO.
+    // A compiler memory clobber plus SFENCE provides
     // that store->store contract, without a locked stack RMW/load fence.
     // This is NOT RX visibility, CPU ownership synchronization or completion.
     __asm__ __volatile__("sfence" ::: "memory");
 #else
     __atomic_thread_fence(__ATOMIC_SEQ_CST);
 #endif
+}
+
+// Queue setup is not a per-packet cost. Keep the established full-strength
+// initialization/firmware-command boundary separate from packet publication.
+static inline void iwx_dma_queue_publish_barrier()
+{
+    __atomic_thread_fence(__ATOMIC_SEQ_CST);
 }
 
 // ZC22: one bounded publication from CPU-only construction storage. No DMA
@@ -5708,7 +5715,7 @@ iwx_enable_txq(struct iwx_softc *sc, int sta_id, int qid, int tid,
     // queue-enable command, in both mapped and conventional modes. Ownership
     // and the existing positive stop/reset fences are unchanged.
     // ZC14 TX-1: pinned OSSynchronizeIO is empty; emit the intended publication fence.
-    iwx_dma_publish_barrier();
+    iwx_dma_queue_publish_barrier();
     err = iwx_send_cmd(sc, &hcmd);
     if (err)
         return err;
@@ -5867,7 +5874,7 @@ iwx_tvqm_enable_txq(struct iwx_softc *sc, int tid, int ssn, uint32_t size)
     // queue-enable command, in both mapped and conventional modes. Ownership
     // and the existing positive stop/reset fences are unchanged.
     // ZC14 TX-1: pinned OSSynchronizeIO is empty; emit the intended publication fence.
-    iwx_dma_publish_barrier();
+    iwx_dma_queue_publish_barrier();
     err = iwx_send_cmd(sc, &hcmd);
     if (err) {
         // iwx_send_cmd returns POSITIVE errno, never a queue ID. Preserve a
