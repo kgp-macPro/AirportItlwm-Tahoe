@@ -1,0 +1,94 @@
+AIRPORTITLWM SHARED PORTABLE BENCHMARK — MAINTAINED ENTRY POINT
+
+Canonical location for KGP, Luiz and Fulvio:
+~/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh
+A distribution copy is included with B1-ZC25-PERF. Its tracked source is
+ tools/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh
+in the ZC25 experimental worktree. Use the shared entry point for future tests.
+Historical candidate-local runners are preserved byte-for-byte for provenance.
+
+Measurement protocol: AIRPORTITLWM_3X14_NO_PROFILER_V1
+Runner revision: shared-2026-10-19-r1
+Reference: frozen ZC22 7dd260fbfb9d612574a6b18fbb042d4963402eda,
+ tools/ZC22_3x14_PORTABLE_IP_PROMPT.sh.
+
+MEASUREMENT BEHAVIOR
+No traffic change: the actual run_test and check_network functions, preflight
+commands, three-round case order, TCP8s/P1/P4 both directions, UDP5s/1200B at
+100/250/400/500/600M both directions, default2s gaps, final3s pause followed by
+networkQuality -I <wifi> -s -c, normal8 boundary snapshots and raw CSV/client/
+server evaluation remain equivalent to frozen ZC22. No profiler, periodicpolling,
+extra traffic or calibration run. TEST_GAP_SECONDS remains an explicit override;
+nondefault gaps are recorded and not labeled default-protocol equivalent.
+Online PASS denotes successful execution, not acceptable performance.
+
+IDENTITY/SCHEMA SUPPORT (separate from measurement)
+ZC8: original legacy marker/mode/mandatory opaquePC1 and mappedTX_2I guards.
+ZC13/ZC18: exact candidate marker and KGP_ZC10 schema10/2 10912B; original numeric
+mode/fault/generation/reset guards. These records do not expose every19/1 epoch.
+ZC19/ZC20/ZC21/ZC22/ZC23/ZC24/ZC25: exact marker + KGP_ZC19 schema19/1 256B.
+ZC20's real marker/path is B1-ZC20-TX-CMD-UC; never pretend it is -PERF.
+Strict actual DMA mode, all existing named faults/suspended state and generation/
+reset/command epochs preserved. Equal adjacent Publication accepted; compare
+rollback against LAST accepted; complete campaign requiresFINAL>INITIAL.
+Loaded x86_64 UUID must match on-disk candidate, not version1.0.0 label. Unknown
+schema/candidate is rejected, not silently interpreted with a weaker guard.
+System AppleVTD-active alone does not establish the driver's actual DMA route.
+AX201 remains conventional-only; this runner cannot enable mapped support.
+
+DISPLAY-ONLY CORRECTION
+Directional dl_responsiveness and ul_responsiveness are displayed separately;
+global responsiveness is shown only when present. This carries the independent
+ZC24 text fix, preserves rawJSON, and does not change measured capacity/traffic.
+
+ARCHIVE PROVENANCE (new preparation/finalization work, outside measurement)
+Each created archive, including interrupted/incomplete runs, preserves:
+ EXECUTED_RUNNER.sh                 copied script bytes
+ EXECUTED_RUNNER_SHA256.txt          SHA256 of that copy
+ RUNNER_PROVENANCE.json             protocol/revision/path/hash + stage checks
+ EFFECTIVE_SETTINGS.json            resolved interface/IP/server/port/mode/UUID,
+                                   test matrix, pauses/binding/paths/Bash version
+ BENCHMARK_PROTOCOL.txt             protocol and tooling change classification
+All included in the normal SHA256SUMS.txt and ZIP. Metadata is prepared before
+traffic and finalized after measurement; no extra radio or live registry query.
+Initial/prepared/final checks compare invoked file and copied bytes; detected
+change prevents COMPLETE status and retains evidence. This is not a claim of
+cryptographic attestation of shell RAM or globally atomic driver snapshots.
+Failed early setup can legitimately leave wifi_ipv4 unresolved/null in settings.
+
+PORTABLE COMMANDS — KGP/TESTERS EXECUTE, NOT CODEX
+Install/loaded-driver/configuration decisions remain entirely with each tester.
+Copy the candidate and shared runner to the established Desktop/AirportItlwm
+layout first. The server's CURRENT IPv4 is prompted every run; no stored IP or
+remote credentials. Wired peer runs iperf3 -s with its Wi-Fi OFF as already used.
+These commands neither switch modes nor install anything; select only an already
+supported/verified configuration. Do not infer Luiz's historical mapped route
+from AppleVTD system presence. Interface names below reflect historical usage;
+set WIFI_IFACE to the tester's actual Wi-Fi interface if different.
+
+KGP AX210, already-qualified mapped mode, en2:
+ WIFI_IFACE=en2 DEVICE_LABEL=AX210 EXPECTED_MODE=mapped /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC25
+KGP AX210, already-selected conventional mode:
+ WIFI_IFACE=en2 DEVICE_LABEL=AX210 EXPECTED_MODE=conventional /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC25
+Luiz AX211, en0, ONLY if actual mapped qualification is already established:
+ WIFI_IFACE=en0 DEVICE_LABEL=AX211 EXPECTED_MODE=mapped /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC25
+Luiz AX211, already-selected conventional mode:
+ WIFI_IFACE=en0 DEVICE_LABEL=AX211 EXPECTED_MODE=conventional /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC25
+Fulvio AX201, conventional ONLY (use actual interface if not en0):
+ WIFI_IFACE=en0 DEVICE_LABEL=AX201 EXPECTED_MODE=conventional /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC25
+
+An absolute kext path can replace ZC25. Use CANDIDATE_LABEL=ZC25 for a nonstandard
+parent folder. AIRPORTITLWM_ROOT / AIRPORTITLWM_TEST_DIR / IOREG_WIFI_SERVICE
+remain explicit portable options; effective values are archived. Supported
+historical labels can replace ZC25 without changing measurement traffic.
+The output prints the exact original folder, status and ZIP to preserve/upload.
+No completed campaign needs repeating merely because of this tooling update.
+
+VALIDATION
+SHARED_BENCHMARK_TEST.py exercises actual embedded guards, actual mocked42-case
+snapshot flow, explicit byte equivalence to frozen ZC22 measurement/evaluation,
+all required19/1 identities/both modes, strict10/2 markers, loadedUUID/fault/epoch/
+freshness failures, directionalRPM, and actual archive/trap fixtures for complete,
+interrupted and changed-script runs. All are OFFLINE; no hardware/network test.
+The tooling commit is separately recorded from the one clean built ZC25 driver
+commit6607d97cd42e738efc32e048ffdc35a3c0254684. No Kext rebuild or variant.
