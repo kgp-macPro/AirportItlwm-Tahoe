@@ -61,3 +61,26 @@ ownership/counter operations still exist and may dominate cost. No numerical
 speedup is inferred from instruction counts. Negative23/24/25 physical results
 remain constraints: prior generic batching/store-width/cache choices did not
 establish a solution; this is a coordinated, independently source-backed design.
+
+INDEPENDENT COMMAND-STATUS CORRECTNESS REPAIR
+A status helper receiving a nonnullfailed CPU response returnedEIO before freeing
+its caller-owned response, unlike the bad-length branch. Free it on the same
+failure branch, nullable/idempotent API as before. Current ordinary RX handlers
+already filter CMD_FAILED responses before caller transfer, so this branch's
+production reachability is NOT established. Do not call it an observed leak.
+Transport-error ownership is unchanged: iwx_send_cmd transfers resp_pkt only on
+successful wait, otherwise retains/frees its own response; command DMA ownership
+and positive completion/quarantine never depend on this CPU response free.
+
+Two SOURCE-PROVEN caller failures are fixed: iwx_add_sta_cmd set STA_ACTIVE when
+transport err!=0 due to its compound if/else; it now returns the transport error
+without asserting activation. iwx_add_aux_sta enabled an auxiliary queue after
+transport error and replaced it with the queue-enable result; now returns error
+before enabling. FirmwareADD_STA status failure remainsEIO; versions>=12 still
+skip the legacy auxiliary path. Existing active bit is preserved on failedupdate,
+not blindly cleared. All failures flow to existing initialization/recovery code.
+These branches exist directly in frozenZC8 too. They are independent correctness
+repairs, not an explanation of the ZC13chronology or a provenRX/firststatefix.
+Actualhelper/PDU/free/fullaux/criticalstationtail tests inject both errno signs,
+failed/short/missing/validresponse, FWstatuses and versions. No rate, queue-growth,
+firmware binary, power policy or DMA-lifetime change.

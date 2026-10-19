@@ -9142,8 +9142,11 @@ iwx_send_cmd_status(struct iwx_softc *sc, struct iwx_host_cmd *cmd,
         return err;
     
     pkt = cmd->resp_pkt;
-    if (pkt == NULL || (pkt->hdr.group_id & IWX_CMD_FAILED_MSK))
+    if (pkt == NULL || (pkt->hdr.group_id & IWX_CMD_FAILED_MSK)) {
+        // Caller-owned CPU response only; never release command DMA here.
+        iwx_free_resp(sc, cmd);
         return EIO;
+    }
     
     resp_len = iwx_rx_packet_payload_len(pkt);
     if (resp_len != sizeof(*resp)) {
@@ -9987,10 +9990,11 @@ iwx_add_sta_cmd(struct iwx_softc *sc, struct iwx_node *in, int update)
     status = IWX_ADD_STA_SUCCESS;
     err = iwx_send_cmd_pdu_status(sc, IWX_ADD_STA, sizeof(add_sta_cmd),
                                   &add_sta_cmd, &status);
-    if (!err && (status & IWX_ADD_STA_STATUS_MASK) != IWX_ADD_STA_SUCCESS)
-        err = EIO;
-    else
-        sc->sc_flags |= IWX_FLAG_STA_ACTIVE;
+    if (err)
+        return err; // A transport error cannot establish station activation.
+    if ((status & IWX_ADD_STA_STATUS_MASK) != IWX_ADD_STA_SUCCESS)
+        return EIO;
+    sc->sc_flags |= IWX_FLAG_STA_ACTIVE;
 
     return err;
 }
@@ -10027,12 +10031,13 @@ iwx_add_aux_sta(struct iwx_softc *sc)
     status = IWX_ADD_STA_SUCCESS;
     err = iwx_send_cmd_pdu_status(sc, IWX_ADD_STA, sizeof(cmd), &cmd,
                                   &status);
-    if (!err && (status & IWX_ADD_STA_STATUS_MASK) != IWX_ADD_STA_SUCCESS)
+    if (err)
+        return err; // Do not enable an auxiliary queue after ADD_STA failed.
+    if ((status & IWX_ADD_STA_STATUS_MASK) != IWX_ADD_STA_SUCCESS)
         return EIO;
-    
+
     return iwx_enable_txq(sc, IWX_AUX_STA_ID, qid, IWX_MGMT_TID,
                           sc->txq[qid].ring_count);
-    return 0;
 }
 
 int ItlIwx::
