@@ -280,36 +280,56 @@ static bool iwx_tx_publish_control(struct iwx_tx_ring *ring, unsigned idx,
                                     const struct iwx_device_cmd *command)
 {
     static_assert(sizeof(struct iwx_tfh_tfd) == 256, "packet TFD extent");
+    static_assert(IWX_FIRST_TB_SIZE == 20 && IWX_FIRST_TB_SIZE_ALIGN == 64,
+                  "bidirectional scratch extent and isolation stride");
     if (!ring || !tfd || !command || ring->qid == IWX_DQA_CMD_QUEUE ||
         ring->qid == IWX_INVALID_QUEUE || idx >= ring->ring_count ||
         idx >= nitems(ring->data) || !ring->desc || !ring->cmd ||
-        ring->desc != ring->desc_dma.vaddr || ring->cmd != ring->cmd_dma.vaddr)
-        return false;
+        ring->desc != ring->desc_dma.vaddr || ring->cmd != ring->cmd_dma.vaddr ||
+        !ring->first_tb_dma.vaddr ||
+        (reinterpret_cast<uintptr_t>(ring->first_tb_dma.vaddr) & 63U) ||
+        (ring->first_tb_dma.paddr & 63U)) return false;
     const unsigned num_tbs = le16toh(tfd->num_tbs);
     if (num_tbs < 2 || num_tbs > IWX_TFH_NUM_TBS ||
         le16toh(tfd->tbs[0].tb_len) != IWX_FIRST_TB_SIZE) return false;
-    // The byte-count encoding tells hardware to fetch whole 64-byte chunks.
-    // Copy all fetched reserved bytes as zero, not merely the active TB fields.
     const size_t tfd_bytes = (offsetof(struct iwx_tfh_tfd, tbs) +
         num_tbs * sizeof(struct iwx_tfh_tb) + 63U) & ~size_t(63U);
     const size_t command_bytes = IWX_FIRST_TB_SIZE + le16toh(tfd->tbs[1].tb_len);
     const size_t tfd_offset = size_t(idx) * sizeof(*tfd);
     const size_t command_offset = size_t(idx) * sizeof(*command);
+    const size_t first_offset = size_t(idx) * IWX_FIRST_TB_SIZE_ALIGN;
     if (tfd_bytes > sizeof(*tfd) || command_bytes > sizeof(*command) ||
         command_bytes <= IWX_FIRST_TB_SIZE || (command_bytes & 3U) ||
         tfd_offset + tfd_bytes > ring->desc_dma.size ||
         command_offset + command_bytes > ring->cmd_dma.size ||
+        first_offset + IWX_FIRST_TB_SIZE_ALIGN > ring->first_tb_dma.size ||
         tfd == &ring->desc[idx] || command == &ring->cmd[idx]) return false;
     uint64_t first, second;
     memcpy(&first, &tfd->tbs[0].addr, sizeof(first));
     memcpy(&second, &tfd->tbs[1].addr, sizeof(second));
-    const uint64_t address = ring->cmd_dma.paddr + command_offset;
-    if (ring->data[idx].cmd_paddr != address || le64toh(first) != address ||
-        le64toh(second) != address + IWX_FIRST_TB_SIZE) return false;
-    memcpy(&ring->cmd[idx], command, command_bytes);
+    const uint64_t command_address = ring->cmd_dma.paddr + command_offset;
+    const uint64_t scratch_address = ring->first_tb_dma.paddr + first_offset;
+    const uint64_t remainder_address = command_address + IWX_FIRST_TB_SIZE;
+    const size_t remainder_bytes = command_bytes - IWX_FIRST_TB_SIZE;
+    if (ring->data[idx].cmd_paddr != command_address ||
+        le64toh(first) != scratch_address || le64toh(second) != remainder_address ||
+        scratch_address > UINT64_MAX - IWX_FIRST_TB_SIZE ||
+        remainder_address > UINT64_MAX - remainder_bytes ||
+        (scratch_address >> 32) != ((scratch_address + IWX_FIRST_TB_SIZE) >> 32) ||
+        (remainder_address >> 32) != ((remainder_address + remainder_bytes) >> 32))
+        return false; // FH TBs must not cross OR end at a 4-GiB boundary.
+    // ZC25 direction split: FH writes back ONLY the first 20-byte TB. Give each
+    // hardware-owned scratch view its own qualified 64-byte slot, isolated from
+    // all CPU-cached TX-control memory. The remainder, TFD and byte count are
+    // device-read-only, coherently cached and constructed privately as in ZC22.
+    // No CPU reads of scratch, live remap, extra doorbell or changed payload.
+    memcpy(static_cast<uint8_t *>(ring->first_tb_dma.vaddr) + first_offset,
+           command, IWX_FIRST_TB_SIZE);
+    memcpy(reinterpret_cast<uint8_t *>(&ring->cmd[idx]) + IWX_FIRST_TB_SIZE,
+           reinterpret_cast<const uint8_t *>(command) + IWX_FIRST_TB_SIZE,
+           remainder_bytes);
     memcpy(&ring->desc[idx], tfd, tfd_bytes);
-    // Caller next writes its byte-count entry, then uses the existing hardware
-    // publication fence and WRPTR. These copies alone do not publish ownership.
+    // Existing byte-count store and full publication fence precede WRPTR.
     return true;
 }
 
@@ -411,7 +431,7 @@ bool ItlIwx::dma5Select()
     if (selection) selection->release();
     if (!resolved) { boot5Mark(10, "device DMA policy unresolved; attach refused", 2); return false; }
     pci.pa_tag->setProperty("KGP_ZC5_DMA_MODE", mapped ? "mapped RX/TX" : "original Dexter RX/TX");
-    pci.pa_tag->setProperty("KGP_RX_EXPERIMENT", "AirportItlwm-Tahoe-B1-ZC22-PERF");
+    pci.pa_tag->setProperty("KGP_RX_EXPERIMENT", "AirportItlwm-Tahoe-B1-ZC25-PERF");
     boot5Mark(11, mapped ? "DMA routing completed: mapped" : "DMA routing completed: original Dexter");
     return true;
 }
@@ -4535,25 +4555,23 @@ iwx_dma_contig_alloc(bus_dma_tag_t tag, struct iwx_dma_info *dma,
     return 0;
 }
 
-// ZC22 split construction/publication: CPU packet assembly uses private cached
-// stack objects; the device-visible TFD, command and byte-count backing requests
-// the ZC8 inhibit-cache policy. Keep the qualified ZC13 mapper/extent/backing-
-// identity checks, independent of the cache option. Payloads stay coherent cached;
-// firmware command queue 0 and RX keep their existing allocation policy.
-// See docs/ZC22_CHANGE_PROVENANCE.txt for the corrective hypothesis, exact byte
-// publication contract, both DMA modes and physical-validation limitations.
+// ZC25: keep ZC22 private CPU construction, but separate DMA directions.
+// Only dedicated first-TB scratch requests inhibition; the device-read-only
+// TFD, command remainder and byte count use the checked coherent cached backing.
+// IOKit direction remains conservative InOut; these are hardware access roles,
+// not an unverified change to IODMACommand prepare/sync semantics. Queue 0 and
+// packet payloads retain their existing policies and qualification.
 int ItlIwx::iwx_tx_control_alloc(struct iwx_dma_info *dma, bus_size_t size,
-                               bus_size_t alignment)
+                               bus_size_t alignment, bool inhibitCache)
 {
 #if defined(__x86_64__)
     if (!fDma5Selected || !size || alignment > UINT_MAX ||
         (alignment && (alignment & (alignment - 1)))) return 1;
     unsigned stage = 0;
     return allocatePacketBacking2H(dma, size, alignment ? unsigned(alignment) : 1,
-                                   &stage, fDma5Mapper, true, true) == kIOReturnSuccess ? 0 : 1;
+                                   &stage, fDma5Mapper, true, inhibitCache) == kIOReturnSuccess ? 0 : 1;
 #else
-    // No claim of coherent-cache support for an unqualified architecture.
-    return 1;
+    return 1; // No coherent-cache claim for unqualified architectures.
 #endif
 }
 
@@ -4653,7 +4671,7 @@ iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
     }
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 &&
         !pci.pa_tag->setProperty("KGP_RX_EXPERIMENT",
-            "AirportItlwm-Tahoe-B1-ZC22-PERF")) {
+            "AirportItlwm-Tahoe-B1-ZC25-PERF")) {
         err = ENOMEM; goto fail;
     }
     return 0;
@@ -4826,7 +4844,14 @@ iwx_alloc_tx_ring(struct iwx_softc *sc, struct iwx_tx_ring *ring, int qid)
         goto fail;
     }
     ring->cmd = (struct iwx_device_cmd*)ring->cmd_dma.vaddr;
-    
+    if (qid != IWX_DQA_CMD_QUEUE) {
+        err = iwx_tx_control_alloc(&ring->first_tb_dma,
+            ring->ring_count * IWX_FIRST_TB_SIZE_ALIGN, IWX_FIRST_TB_SIZE_ALIGN, true);
+        if (err || (reinterpret_cast<uintptr_t>(ring->first_tb_dma.vaddr) & 63U)) {
+            if (!err) err = EINVAL;
+            goto fail;
+        }
+    }
     paddr = ring->cmd_dma.paddr;
     for (i = 0; i < ring->ring_count; i++) {
         struct iwx_tx_data *data = &ring->data[i];
@@ -4902,6 +4927,9 @@ iwx_reset_tx_ring(struct iwx_softc *sc, struct iwx_tx_ring *ring)
     /* Clear byte count table. */
     memset(ring->bc_tbl.vaddr, 0, ring->bc_tbl.size);
     
+    /* The same positive stop/completion proof covers the isolated scratch. */
+    if (ring->first_tb_dma.vaddr)
+        memset(ring->first_tb_dma.vaddr, 0, ring->first_tb_dma.size);
     /* Clear TX descriptors. */
     memset(ring->desc, 0, ring->desc_dma.size);
     //    bus_dmamap_sync(sc->sc_dmat, ring->desc_dma.map, 0,
@@ -4925,6 +4953,7 @@ iwx_free_tx_ring(struct iwx_softc *sc, struct iwx_tx_ring *ring)
     iwx_dma_contig_free(&ring->desc_dma);
     iwx_dma_contig_free(&ring->cmd_dma);
     iwx_dma_contig_free(&ring->bc_tbl);
+    iwx_dma_contig_free(&ring->first_tb_dma);
     } else {
         __atomic_store_n(&fCmd2KStats[28], 1U, __ATOMIC_RELAXED);
     }
@@ -5702,7 +5731,8 @@ iwx_tvqm_alloc_txq(struct iwx_softc *sc, int tid, int ssn)
         size /= 2;
     } while (queue == -ENOMEM && size >= 16 &&
              !sc->sc_tvqm_ring.desc_dma.cmd &&
-             !sc->sc_tvqm_ring.cmd_dma.cmd && !sc->sc_tvqm_ring.bc_tbl.cmd);
+             !sc->sc_tvqm_ring.cmd_dma.cmd && !sc->sc_tvqm_ring.bc_tbl.cmd &&
+             !sc->sc_tvqm_ring.first_tb_dma.cmd);
     
     if (queue < 0)
         return queue;
@@ -5736,7 +5766,8 @@ iwx_tvqm_enable_txq(struct iwx_softc *sc, int tid, int ssn, uint32_t size)
     struct iwx_tx_ring *ring = &sc->sc_tvqm_ring;
     
     if (tid < 0 || tid >= IWX_MAX_TID_COUNT) return -EINVAL;
-    if (ring->desc_dma.cmd || ring->cmd_dma.cmd || ring->bc_tbl.cmd) return -EBUSY;
+    if (ring->desc_dma.cmd || ring->cmd_dma.cmd || ring->bc_tbl.cmd ||
+        ring->first_tb_dma.cmd) return -EBUSY;
     memset(ring, 0, sizeof(*ring));
     iwx_tx_ring_init(sc, ring, size);
     /* Allocate TX descriptors (256-byte aligned). */
@@ -5768,6 +5799,12 @@ iwx_tvqm_enable_txq(struct iwx_softc *sc, int tid, int ssn, uint32_t size)
         goto fail;
     }
     ring->cmd = (struct iwx_device_cmd*)ring->cmd_dma.vaddr;
+    err = iwx_tx_control_alloc(&ring->first_tb_dma,
+        ring->ring_count * IWX_FIRST_TB_SIZE_ALIGN, IWX_FIRST_TB_SIZE_ALIGN, true);
+    if (err || (reinterpret_cast<uintptr_t>(ring->first_tb_dma.vaddr) & 63U)) {
+        err = -ENOMEM;
+        goto fail; // Local-only allocation failure; no firmware ownership yet.
+    }
 
     paddr = ring->cmd_dma.paddr;
     for (i = 0; i < ring->ring_count; i++) {
@@ -9465,9 +9502,10 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
     desc->num_tbs = htole16(num_tbs);
     
     desc->tbs[0].tb_len = htole16(IWX_FIRST_TB_SIZE);
-    paddr = htole64(data->cmd_paddr);
+    paddr = htole64(ring->first_tb_dma.paddr + size_t(idx) * IWX_FIRST_TB_SIZE_ALIGN);
     memcpy(&desc->tbs[0].addr, &paddr, sizeof(paddr));
-    if (data->cmd_paddr >> 32 != (data->cmd_paddr + le32toh(desc->tbs[0].tb_len)) >> 32)
+    if ((ring->first_tb_dma.paddr + size_t(idx) * IWX_FIRST_TB_SIZE_ALIGN) >> 32 !=
+        (ring->first_tb_dma.paddr + size_t(idx) * IWX_FIRST_TB_SIZE_ALIGN + IWX_FIRST_TB_SIZE) >> 32)
         DPRINTF(("%s: TB0 crosses 32bit boundary\n", __func__));
     desc->tbs[1].tb_len = htole16(_ALIGN(sizeof(struct iwx_cmd_header) +
                                   cmd_size + hdrlen - IWX_FIRST_TB_SIZE, 4));
@@ -16851,9 +16889,10 @@ dexterOriginal_iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni,
     desc->num_tbs = htole16(num_tbs);
     
     desc->tbs[0].tb_len = htole16(IWX_FIRST_TB_SIZE);
-    paddr = htole64(data->cmd_paddr);
+    paddr = htole64(ring->first_tb_dma.paddr + size_t(idx) * IWX_FIRST_TB_SIZE_ALIGN);
     memcpy(&desc->tbs[0].addr, &paddr, sizeof(paddr));
-    if (data->cmd_paddr >> 32 != (data->cmd_paddr + le32toh(desc->tbs[0].tb_len)) >> 32)
+    if ((ring->first_tb_dma.paddr + size_t(idx) * IWX_FIRST_TB_SIZE_ALIGN) >> 32 !=
+        (ring->first_tb_dma.paddr + size_t(idx) * IWX_FIRST_TB_SIZE_ALIGN + IWX_FIRST_TB_SIZE) >> 32)
         DPRINTF(("%s: TB0 crosses 32bit boundary\n", __func__));
     desc->tbs[1].tb_len = htole16(_ALIGN(sizeof(struct iwx_cmd_header) +
                                   cmd_size + hdrlen - IWX_FIRST_TB_SIZE, 4));

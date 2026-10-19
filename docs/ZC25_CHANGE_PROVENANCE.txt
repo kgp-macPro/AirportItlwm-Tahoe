@@ -1,0 +1,81 @@
+B1-ZC25-PERF — direction-separated packet TX control and RX service hardening
+Baseline: frozen ZC22 7dd260fbfb9d612574a6b18fbb042d4963402eda.
+Branch: experiment/track-b1-zc25-tb0-isolation-20261019. Existing shared ZC8 Git DB.
+
+ZC24 is a NEGATIVE physical result, not a faster publisher because fewer scalar
+stores were emitted. Its two complete ASIX campaigns retain high TX but TCP RX
+falls to488.885/449.630Mbps and remains499.549/446.965 after the first2seconds.
+All84 originals, server texts, health, UDP and WAN have been independently read.
+ZC22 remains the best provisional source foundation, not an assumed optimum.
+
+ACTIVE TX ARCHITECTURE
+The hardware writes back only the first20-byte TB: local if_iwxreg.h documents
+scratch/assigned PN, and Linuxv6.12 iwlwifi pcie/tx-gen2.c separately allocates a
+64-byte-aligned first-TB object and maps the remaining command DMA_TO_DEVICE.
+This is an actual DMA access-role distinction. Our IOKit descriptors remain
+conservative InOut with the existing checked coherent backing/mapper contract.
+No claim Linux itself requires UC memory is made. No external code copied.
+
+Keep ZC22 private CPU construction. Give every packet ring a FOURTH prepared
+DMA allocation:64-byte-stride first-TB scratch slots, inhibit-cache requested.
+Only20bytes are copied there. TFD, byte-count and command remainder are coherent
+cached memory; firmware does not write those views. TFD TB0 points to the new
+scratch slot; TB1 still points to old command base+20. Concatenated command and
+payload bytes, header encoding, queues/rates, byte counts, full fence/doorbell
+and positive completion-before-reuse are unchanged. Command queue0 untouched.
+
+This is not a repeat of ZC20's whole-command cache switch. ZC20 retained in-place
+UC command construction. ZC25 combines private construction and minimum UC
+publication with hardware-writeback isolation. ZC13 cached the writeback region
+together with the read-only command prefix; ZC22/24 published all control bytes
+to inhibition-requested memory. ZC25 removes both couplings. Source defines the
+operations; physical CPU/PAT/coherency costs are NOT measured, and no specific
+580Mbps result or original loss layer is claimed. ZC20's negative result argues
+against presenting TB0 cache snoops ALONE as established root cause.
+
+The old324-byte command stride gives64-byte TB0 alignment to only1/16slots, with
+some TB0s crossing cache lines. Do NOT call this a proven failure or claim an
+active neighboring-slot race: ordinary command publication uses only a prefix.
+Dedicated64-byte slots isolate each bidirectional region and cannot cross/end
+a page/4GiB boundary with20bytes. TB0/TB1 crossing or ending4GiB is rejected by
+the validated publisher before any write/ownership/doorbell. This follows the
+known FH boundary contract; unproven ownership is never converted to completion.
+
+LIFETIME AND FAILURE CONTRACT
+The first-TB allocation follows ring_count, existing queue ownership and full
+ring memcpy transfer. Local allocation failures unwind all4 allocations; retry
+requires all4 temporary mappings absent. Ambiguous firmware command/reply/epoch
+failure retains ALL4; busy checks include first-TB-only retention. Reset and
+free use the same existing positive completion/STOP_MASTER/quarantine proofs;
+no scratch release or reset while hardware ownership is unresolved. No per-
+packet map/unmap/sync, live policy change, new payload reference or ring growth.
+
+Preserve AX210/AX211 mapped and conventional qualification, AX201/family22000
+conventional-only exclusion, management/EAPOL, RX replacement/final references,
+ZC15 cache exchange, ZC16 reorder/restart/power, ZC21 TVQM/BA/error ownership,
+PC1/STOP_MASTER/epochs/quarantine and all existing full publication fences.
+IWM/IWN and queue0 firmware commands are outside the change.
+
+SECOND INDEPENDENT CORRECTION
+Ordinary RX notification currently calls rxZcReport(0), including per-batch clock
+reads and periodic setProperty allocation/locking while the main gate is held
+and interrupts have not yet been restored. Move bounded periodic capture to the
+existing watchdog gate attempt and publish outside it. Separate periodic keys
+preserve forced lifecycle records without a stale-overwrite race. The exact
+implementation/tests and lifetime-selection decoder are recorded separately.
+This removes non-packet registry work from normal RX service; it does not prove
+the cause of either transient all-protocol degradation or the sustained RX gap.
+
+VALIDATION AND PHYSICAL LIMITS
+Actual publication byte/extent/slot/TB0-writeback/failure models, four-allocation
+TVQM move/ambiguous retention/stop/free tests, both mapped/conventional allocator
+contracts and actual report/health methods must pass ASan/UBSan and TSan. Final
+binary/fences/stack and clean committed source/build correspondence checked.
+Host models do not simulate hardware PAT, latency, RF, TCP congestion or sleep.
+No additional physical request precedes completion of one integrated candidate.
+
+EXTERNAL PRIMARY REFERENCES (read2026-10-19)
+https://github.com/torvalds/linux/blob/v6.12/drivers/net/wireless/intel/iwlwifi/pcie/tx-gen2.c
+https://github.com/torvalds/linux/blob/v6.12/drivers/net/wireless/intel/iwlwifi/pcie/tx.c
+First-TB direction/alignment/separate body mapping and coherent allocation,
+not a Linux API transplant. New IOKit implementation authored locally.
