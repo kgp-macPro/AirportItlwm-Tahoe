@@ -18,8 +18,8 @@ changed=['allocatePacketBacking2H','iwx_tx_control_alloc','iwx_tx','dexterOrigin
 # ownership inputs, queue selection, payload mapping and doorbell progression.
 for n in ['iwx_tx','dexterOriginal_iwx_tx']:
  f=fn(s,n);o=fn(old,n)
- f=f.replace('    struct iwx_tfh_tfd prepared_desc;\n    struct iwx_device_cmd prepared_command = {};\n','')
- f=f.replace('desc = &prepared_desc;','desc = &ring->desc[idx];').replace('cmd = &prepared_command;','cmd = &ring->cmd[idx];')
+ f=f.replace('    struct iwx_tfh_tfd prepared_desc = {};\n    struct iwx_device_cmd prepared_command = {};\n','')
+ f=f.replace('desc = &prepared_desc;','desc = &ring->desc[idx];\n    memset(desc, 0, sizeof(*desc));').replace('cmd = &prepared_command;','cmd = &ring->cmd[idx];')
  a=f.index('    // Validate/copy before transferring');b=f.index('    iwx_tx_update_byte_tbl',a)
  transfer='    data->m = m;\n    data->in = in;\n    data->type = type;\n'
  assert f.count(transfer)==1

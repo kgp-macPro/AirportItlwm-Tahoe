@@ -9278,7 +9278,7 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
     struct iwx_node *in = (struct iwx_node *)ni;
     struct iwx_tx_ring *ring;
     struct iwx_tx_data *data;
-    struct iwx_tfh_tfd prepared_desc;
+    struct iwx_tfh_tfd prepared_desc = {};
     struct iwx_device_cmd prepared_command = {};
     struct iwx_tfh_tfd *desc;
     struct iwx_device_cmd *cmd;
@@ -9358,8 +9358,7 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
         }
     }
     // ZC22: cached CPU-only assembly; DMA addresses still name ring backing.
-    desc = &prepared_desc;
-    memset(desc, 0, sizeof(*desc));
+    desc = &prepared_desc; // Already zero-initialized once, before field assembly.
     data = &ring->data[idx];
     
     cmd = &prepared_command;
@@ -16689,7 +16688,7 @@ dexterOriginal_iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni,
     struct iwx_node *in = (struct iwx_node *)ni;
     struct iwx_tx_ring *ring;
     struct iwx_tx_data *data;
-    struct iwx_tfh_tfd prepared_desc;
+    struct iwx_tfh_tfd prepared_desc = {};
     struct iwx_device_cmd prepared_command = {};
     struct iwx_tfh_tfd *desc;
     struct iwx_device_cmd *cmd;
@@ -16748,8 +16747,7 @@ dexterOriginal_iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni,
     }
     idx = (ring->cur & (ring->ring_count - 1));
     // ZC22: cached CPU-only assembly; DMA addresses still name ring backing.
-    desc = &prepared_desc;
-    memset(desc, 0, sizeof(*desc));
+    desc = &prepared_desc; // Already zero-initialized once, before field assembly.
     data = &ring->data[idx];
     
     cmd = &prepared_command;

@@ -187,3 +187,13 @@ No new pacing trial, captures, reboots or environmental troubleshooting are
 requested in this phase. The completed candidate and future comparison plan are
 the deliverable. Old recommendations to demand another unchanged-ZC20 pacing test
 are superseded by this implementation mandate, not erased from historical records.
+
+Compiler-guided refinement before delivery
+Internal Release build01 from756a5be40520ee74dc6191912c92d08e3c983405 succeeded
+and passed source correspondence. Its machine code showed compiler-inserted
+zero initialization of the new stack TFD plus the inherited explicit memset.
+Use explicit aggregate initialization once and remove that redundant later clear.
+Packet field initialization remains equivalent; source reversal and affected
+models are rerun. Preserve build01 and metadata as an internal superseded attempt.
+The final report identifies the subsequent clean committed build; only one
+candidate is delivered. No physical experiment or cache-policy variant was added.
