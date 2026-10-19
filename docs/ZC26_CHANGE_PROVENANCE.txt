@@ -1,3 +1,24 @@
+FINAL STABILITY-PRIORITY DECISION — 2026-10-20
+SUPERSEDES the earlier optional SFENCE selection documented below. Before any
+ZC26 Kext build, the packet helper was returned to full SEQ_CST, exactly the
+ZC22 strength; both cold queue helpers also remain full SEQ_CST. Four actual
+sites, all full. The per-site roles/read/write/lifetime review below remains
+useful, but SFENCE is NOT in the delivered candidate. Architectural sufficiency
+alone did not establish a stability benefit; the final user priority is a
+reliable ZC22-class550/520RX and480TX, not tonight's580/580 prerequisite.
+The source tests and final binary gate require the full barriers at all sites.
+No optional throughput optimization is required to complete stability work.
+
+FINAL candidate reconciles ZC22 control publication with ZC25 reporting outside
+the RX gate, preserving all safety, plus independent command-error corrections.
+Reporting relocation removes a SOURCE-PROVEN allocation/IORegistry publication
+inside the traffic gate; it cannot by itself prove the old intermittent stalls'
+cause. ZC25 retained good WAN but its jointly changed control layout had weaker
+RX, so the chosen combination is a testable reconciliation, not established
+physical stability. Do not claim collapses fixed until KGP evaluates it.
+
+Earlier review/decision history retained for provenance:
+======================================================
 B1-ZC26-PERF — coherent store publication and RX service preservation
 
 Baseline: frozen ZC25 tooling513e3708800bdd20ee15debe17dda0cec9e90b4f.
@@ -21,10 +42,11 @@ newpublisher keeps25 base+offsetoverflow and first/secondTB4GiB failclosedchecks
 adapted to the reunited command view. Queue0 and firmware/payload policy exact.
 Three backings, same ring counts; no live remap or policy switching.
 
-The additional source-supported publication correction is documented/tested in
-its separate commit: four callsites require prior CPU stores before following
-MMIO/queue-enable stores, not CPU load serialization. No ownership or RX-read
-fence will be weakened. Physical throughput/cost/PAT remain unmeasured.
+The additional publication correction narrows ONLY the two mutually exclusive
+packet write-publication barriers to x86 SFENCE with full compiler memory clobber.
+Both queue setup sites retain full SEQ_CST. The complete per-site contract and
+compiler/MMIO limitations are in ZC26_FOUR_SITE_BARRIER_REVIEW.txt. No ownership
+or RX-read fence is weakened. Physical throughput/cost/PAT remain unmeasured.
 
 CurrentsourceRXnotifications and Apple input batching are bounded and match8/22;
 no new packet-loss defect was proved. Do not invent unboundedRXproducerchasing,
@@ -40,27 +62,25 @@ Originalbad22/23states,25negativeRX and positiveWAN, lossbursts andtails preserv
 One final deliveredcandidate, no uncontrolledwarmup or extra physical request.
 
 STORE-PUBLICATION CONTRACT (independent of cache policy)
-All FOUR existing helper uses remain at the same locations: packet mapped and
-conventional after payload/control/bytecount stores before WRPTR; default TXqueue
-after initialized/reset backing before its MMIO publication; dynamicTVQM after
-all allocation/address/config stores before queue-enable firmware command.
-No helper caller uses it for DMA-read visibility or a CPU StoreLoad handshake.
-Use x86_64 volatile SFENCE with a full compiler memory clobber. It orders prior
-stores before following stores; it does NOT order loads and does NOT prove DMA
-completion. All lifecycle/token/admission/command atomics and their original
-memory orders remain unchanged. Non-x86 fallback remains SEQ_CST; no new device
-or DMA qualification. x86_64 baseline supports SFENCE without SIMD register use.
+There are TWO alternative packet publication sites and TWO cold queue setup
+sites. Packet stores precede SFENCE and the actual MMIO WRPTR publication; queue
+configuration retains its original full SEQ_CST before firmware command handoff.
+The inline asm compiler memory clobber forbids compiler memory motion. x86
+ordinary WB/UC LoadStore ordering and existing gate/acquire contracts retain
+prior ownership reads; SFENCE provides only StoreStore ordering. Completion,
+command, reset and stop atomics keep all original memory orders. Neither helper
+is an RX DMA read invalidation or positive completion proof. Non-x86 packet
+fallback stays full SEQ_CST. Final Release disassembly is a separate gate.
 
 Primary reference: Intel SDM Vol2B SFENCE, document325383, page4-616:
 https://cdrdv2-public.intel.com/782156/325383-sdm-vol-2abcd.pdf
 Linux DMA memory-ordering contract reference (not code imported):
 https://kernel.org/doc/html/latest/core-api/wrappers/memory-barriers.html
-SFENCE is selected from the actual write-publication contract, not as a cache
-flush, reduced correctness fence or guarantee of580Mbps. Existing lock-prefixed
-ownership/counter operations still exist and may dominate cost. No numerical
-speedup is inferred from instruction counts. Negative23/24/25 physical results
-remain constraints: prior generic batching/store-width/cache choices did not
-establish a solution; this is a coordinated, independently source-backed design.
+https://cdn.kernel.org/doc/html/latest/driver-api/io_ordering.html
+Existing lock-prefixed ownership/counter operations may dominate cost. No actual
+RX bottleneck, PAT/cache state or numerical speedup follows from instruction
+counts. Negative ZC23/24/25 physical results remain constraints. No external
+implementation code was copied; only ISA/documentation contracts were consulted.
 
 INDEPENDENT COMMAND-STATUS CORRECTNESS REPAIR
 A status helper receiving a nonnullfailed CPU response returnedEIO before freeing

@@ -1,0 +1,152 @@
+FINAL STABILITY-PRIORITY DECISION — 2026-10-20
+SUPERSEDES the earlier optional SFENCE selection documented below. Before any
+ZC26 Kext build, the packet helper was returned to full SEQ_CST, exactly the
+ZC22 strength; both cold queue helpers also remain full SEQ_CST. Four actual
+sites, all full. The per-site roles/read/write/lifetime review below remains
+useful, but SFENCE is NOT in the delivered candidate. Architectural sufficiency
+alone did not establish a stability benefit; the final user priority is a
+reliable ZC22-class550/520RX and480TX, not tonight's580/580 prerequisite.
+The source tests and final binary gate require the full barriers at all sites.
+No optional throughput optimization is required to complete stability work.
+
+FINAL candidate reconciles ZC22 control publication with ZC25 reporting outside
+the RX gate, preserving all safety, plus independent command-error corrections.
+Reporting relocation removes a SOURCE-PROVEN allocation/IORegistry publication
+inside the traffic gate; it cannot by itself prove the old intermittent stalls'
+cause. ZC25 retained good WAN but its jointly changed control layout had weaker
+RX, so the chosen combination is a testable reconciliation, not established
+physical stability. Do not claim collapses fixed until KGP evaluates it.
+
+Earlier review/decision history retained for provenance:
+======================================================
+ZC26 FINAL INDEPENDENT FOUR-SITE PUBLICATION REVIEW
+This document SUPERSEDES the initial suggestion to narrow all four fences.
+Final conservative decision: ONLY the two hot PACKET sites use SFENCE;
+keep fullSEQ_CST at BOTH queue-enable sites via separate queue helper.
+No claim is made that SFENCE is architecturally incorrect for queue enable.
+Queue creation is not per-ACK work, so narrowing its broader initialization/
+command-lifetime boundary gives no justified steady-state performance benefit.
+
+SELECTED HELPERS
+Packet: iwx_dma_publish_barrier
+ #if defined(__x86_64__)
+ __asm__ __volatile__("sfence" ::: "memory");
+ #else
+ __atomic_thread_fence(__ATOMIC_SEQ_CST);
+ #endif
+Queue: iwx_dma_queue_publish_barrier
+ __atomic_thread_fence(__ATOMIC_SEQ_CST);
+
+1. MAPPED PACKET PUBLICATION — iwx_tx
+Source route: qualified mapped branch of iwx_tx reached by gated _iwx_start_task.
+Before the helper: packet/header/command/TFD CPU construction; positive ring
+capacity/ownership guards; mapped payload copied into checked prepared backing;
+checked actual control-buffer addresses/copy; data->m and data->in linkage;
+byte-count entry store. Then SFENCE, producer increment and WRPTR store.
+Purpose of THIS barrier: order CPU writes to coherent payload and inhibited
+control/byte-count memory before a later device doorbell STORE. The firmware
+must not act on the new producer before those stores become globally visible.
+Neither old device-owned scratch nor a device completion record is read to
+establish completion here. This is NOT a DMA read-synchronization boundary.
+Prior CPU loads/branch checks remain; compiler memory clobber prohibits moving
+memory access across the inline asm. Hardware SFENCE does not order loads, but
+x86 ordinary WB/UC LoadStore ordering and existing acquire/lock/command/epoch
+contracts still govern those checks. Removing independent atomic semantics is
+not authorized by this change. All tx2J admission/stop fencing, prepared-token
+and positive-completion-before-reuse logic remains byte-identical.
+Runtime frequency: ONE selected packet SFENCE for each successfully published
+mapped packet, including a small return ACK. It is NOT four fences per ACK.
+Abort before publication has no doorbell and creates no permission to reuse.
+
+2. CONVENTIONAL PACKET PUBLICATION — dexterOriginal_iwx_tx
+Source route: positive conventional selection dispatches to legacy packet body,
+reached by the same all-IWX command-gated service consumer. Original mbuf payload
+is hardware backing, with existing DMA cursor addresses and ownership lifetime.
+Before the helper: private CPU construction, successful payload physical segment
+resolution, checked control copy, data->m/node ownership linkage, byte count.
+Then unconditional packet SFENCE, producer increment, WRPTR.
+The required ordering is the same STORE->device-STORE contract. The SFENCE is
+not a mapper operation, packet flush, RX invalidation, completion proof or a
+substitute for gate serialization. Conventional route does NOT acquire a mapped
+payload token merely because mapped route does; its original mbuf remains owned
+until existing positive completion/terminal-reset reclamation. Existing main
+gate and lifecycle guards serialize its publisher with stop/reset. All those
+operations remain unchanged. Compiler memory clobber + x86 LoadStore/acquire
+contracts remain; no device-owned data is consumed through this store helper.
+Runtime frequency: ONE packet SFENCE per successfully published conventional
+packet; mapped publication body is bypassed, not executed additionally.
+AX201 remains conventional-only under existing qualification. AX210/AX211
+qualified conventional route retains same packet bytes, ring and completion.
+
+3. DEFAULT/AUX/MONITOR QUEUE ENABLE — iwx_enable_txq
+Actual callers: iwx_add_aux_sta, iwx_enable_mgmt_queue (defaultmanagement/data
+queue), and iwx_auth monitor-mode branch. The function first iwx_reset_tx_ring (with its original gate and positive
+stop/releasability contract), builds stack queue-enable config including BC and
+TFDQ DMA addresses, sets hcmd, FULL queue fence, then iwx_send_cmd.
+The configuration and initialized backing must be visible before firmware
+can enable queue from the later command. The command path itself performs
+original command queue publication, synchronous wait and response processing.
+Prior reads include selected queue role/state/addresses and ownership checks.
+Existing gate/locks are responsible for cross-CPU handoff of initialization;
+a fence in the caller alone would not establish arbitrary other-CPU ownership.
+In particular runAction is synchronous gate execution, not permission to treat
+ungated shared fields as automatically synchronized. No new concurrency contract
+is invented here. Keep old fullSEQ_CST strength at this entire initialization/
+firmware-command boundary, including load/store ordering and interaction with
+command/lifecycle reads, because it is cold and narrowing it is unnecessary.
+Runtime frequency: per queue setup/recovery/association, NOT per data packet or
+per ACK. An ACK taking an already enabled queue does not call this site.
+No command-response ownership, reset, conservative retention or error behavior
+is changed by the barrier split. Separate command correctness repairs are traced
+and tested independently.
+
+4. DYNAMIC TX BA / TVQM QUEUE ENABLE — iwx_tvqm_enable_txq
+Actual route: BA task -> iwx_tvqm_alloc_txq -> iwx_tvqm_enable_txq. It validates
+TID and temporary-ring ownership, constructs checked desc/cmd/BC allocations,
+initializes maps/indices and command cb_size/addresses, FULL queue fence, then
+sends SCD_QUEUE_CFG. Firmware may own the supplied backing after publication.
+On response it validates generation/command epoch/shutdown, response length/
+status, firmware queue and write pointer, reserved/live queue protections,
+physical tail index, then moves the complete backing tuple to its live owner.
+Ambiguous outcomes retain backing and close admission until positive stop.
+Local pre-command failure unwinds only locally owned resources.
+These pre/post command reads, waits, ownership transfers and epoch safeguards
+remain unchanged; keeping fullSEQ_CST avoids weakening this broader cold
+transaction while optimizing hot packet stores separately. CPU initialization
+from another actor still needs existing synchronization, never fence-only proof.
+Runtime frequency: once per requested BA/TID queue allocation/retry/session
+transition, not per ACK and not proof that every observed traffic flow has a
+specific aggregation efficiency. Do not infer FW acceptance from async send or
+BA-active flags without actual event evidence.
+
+COMMON COMPILER/MMIO AND COMPLETION BOUNDARIES
+Intel primary: https://cdrdv2-public.intel.com/782156/325383-sdm-vol-2abcd.pdf
+SFENCE Vol2B4-616: prior store instructions become globally visible before
+later stores; load ordering is NOT supplied. The inline asm compiler clobber
+prevents memory-access compiler motion; neither clobber nor SFENCE substitutes
+for final-reference accounting, ownership atomics, interrupts or stop proofs.
+The mapped/conventional modes are mutually selected for a packet. Cold queue
+fences are not included in per-packet counts. Source has2packet+2queue calls.
+IWX_WRITE -> out-of-line bus_space_write_4 is existing ordinary pointer store;
+final pinned Release machine code must show hotSFENCE before actual doorbell
+call/store and cold fullfence before firmware-command call. The hostcompiler
+witness with volatiledoorbell establishes helper emission/order only; it is
+not the fullProductionMMIO disassembly. Existing separate-TU external call and
+compiler clobber preserve ordering; do not silently enableLTO/rewriteMMIO.
+No weaker RX cache visibility assertion is made, no completion/reset full fence
+is changed, and no SFENCE is claimed to wait for device retirement/peer receipt.
+
+MEANINGFUL VALIDATION AND LIMITS
+Updated ZC26_STORE_PUBLICATION_HOST_TEST extracts BOTH actual helpers and all
+FOUR actual full callsite bodies. It asserts exact expected role/call counts,
+privatecopy->ownership->BC->packetfence->WRPTR, and initializedconfig->FULLqueue-
+fence->sendcmd. Compiler witness checks2independent emissions: x86 hotSFENCE
+(no lockedRMW/MFENCE), coldqueue fullfence (noSFENCE); forcednonx86preprocessor
+branch still fullfence. SSE register code disabled for witness.
+Explicit SIMULATION ofstorevisibility disallows96prematuredoorbellorders while
+allowing24priorstorepermutations. It follows statedISAcontract, not actualDMA.
+4096host64slotpublication/completionhandshakes use explicit release/acquire;
+ASan/UBSan andTSan validate ordinaryCPUownership andwrap, NOT SFENCE/DMA.
+Existing actual publication/token/map/reset/lifecycle suites must still pass.
+No test/instructioncount establishes cheaper actualUC/PAT behavior or RX gain.
+Final binary inspection and KGP physical qualification remain separate gates.

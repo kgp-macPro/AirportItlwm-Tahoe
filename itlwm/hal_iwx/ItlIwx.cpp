@@ -267,15 +267,9 @@ void ItlIwx::rx2HError(unsigned slot, unsigned stage, IOReturn result)
 // Both qualified modes/all IWX; RX credit/startup sequencing stays ZC8.
 static inline void iwx_dma_publish_barrier()
 {
-#if defined(__x86_64__)
-    // ZC26: the two alternative packet paths publish CPU stores before MMIO.
-    // A compiler memory clobber plus SFENCE provides
-    // that store->store contract, without a locked stack RMW/load fence.
-    // This is NOT RX visibility, CPU ownership synchronization or completion.
-    __asm__ __volatile__("sfence" ::: "memory");
-#else
+    // ZC26 stability priority: retain the physically exercised ZC22 full
+    // publication contract. SFENCE narrowing was reviewed but is not shipped.
     __atomic_thread_fence(__ATOMIC_SEQ_CST);
-#endif
 }
 
 // Queue setup is not a per-packet cost. Keep the established full-strength

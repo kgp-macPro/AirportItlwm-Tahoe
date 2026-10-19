@@ -21,7 +21,7 @@ class SharedGuards(g.BenchmarkGuard):
    g.SOURCE=S.replace(TIGHT,'');super().test_legacy_guards_and_benchmark_protocol_unchanged()
   finally:g.SOURCE=previous
  def test_all_required_19_identities_and_modes_are_strict(self):
-  for label in ['ZC19','ZC20','ZC21','ZC22','ZC23','ZC24','ZC25']:
+  for label in ['ZC19','ZC20','ZC21','ZC22','ZC23','ZC24','ZC25','ZC26']:
    marker='AirportItlwm-Tahoe-B1-ZC20-TX-CMD-UC' if label=='ZC20' else 'AirportItlwm-Tahoe-B1-'+label+'-PERF'
    for mode,n in [('mapped',2),('conventional',1)]:
     words=g.record(mode=n);src=self.path/'all.plist';src.write_bytes(g.plistlib.dumps(g.fixture(words,marker)))

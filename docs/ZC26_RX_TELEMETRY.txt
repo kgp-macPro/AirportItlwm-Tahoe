@@ -1,0 +1,159 @@
+ZC26 RX forced/periodic saved-plist decoder
+=========================================
+
+This is an offline decoder. It never invokes ioreg, reads live hardware, changes
+settings or generates traffic. Python3 standard library only. Usage:
+
+python3 tools/decode_zc26_rx.py /path/to/saved.plist > /path/to/decoded.json
+
+It accepts saved XML or binary plists. Recursively searches dictionary/list
+providers, requires exactly one health/experiment provider, exact marker
+AirportItlwm-Tahoe-B1-ZC26-PERF, and exact KGP_ZC19 schema19/1 256 bytes.
+Mode must be1(conventional) or2(mapped); mode0(unqualified) is rejected. Present
+malformed main/pressure OSData is rejected even in conventional mode. Ambiguous
+providers are not silently filtered/selected. Decoder errors return2 with no
+partial JSON on stdout. Fault states remain in forensic output; this decoder is
+not a benchmark health PASS gate.
+
+Original properties remain losslessly represented as raw_hex and raw_qwords;
+there is no replacement/merging of forced and periodic originals. All pressure
+records are independently preserved. The decoder does not modify source plists.
+
+Source grounding: exact active ZC26 ItlIwx.cpp inspected read-only in
+/Users/kgp/Developer/OpenIntelWireless/AirportItlwm-Tahoe-1.0.0-Experiments/TRACK-B1-ZC26-PERF
+at rxZcReport, rxZcCapturePeriodic, rxZcPublishPeriodic, rxZcPressureRecord,
+KgpRxZcPool::snapshot, KgpRxZcLife/KgpRxZcStorage, and zc19Snapshot.
+
+Selection and lifetime limitations
+---------------------------------
+Forced key: KGP_RX_ZC4. Periodic key: KGP_RX_ZC4_PERIODIC.
+Both use original schema4, 64 little-endian64-bit words (512bytes), no revision
+word. The reason distinguishes forced lifecycle capture from watchdog capture:
+0 watchdog periodic;1 RXarm;3 terminal close;4 unproven-terminal close;
+5 deferred-cleanup handoff. KGP_RX_ZC4 rejects reason0 and the periodic key
+rejects any nonzero reason, matching this candidate's actual writers.
+
+Health KGP_ZC19 is schema19/revision1/bytes256, 32little-endian64-bit words.
+Current RX record must satisfy ALL:
+  RX word11(rx generation) == health word6(driver generation)
+  RX word12(posted RX reset epoch) == health word11(reset epoch)
+  RX word13(recorded reset epoch) == health word11(reset epoch)
+Only after this match are snapshot serials compared. No global highest serial
+selection exists: RX setup resets serial, so an older lifetime can have a much
+higher number. Forced reasons3/4/5 from other lifetimes are explicitly listed as
+retained_other_lifetime_forced_keys and fully decoded rather than discarded.
+
+A newer forced record wins over an older captured periodic record from the same
+matching lifetime, even if that old periodic property was published later. If
+no tuple matches, current_rx stays null with a warning; no fallback to old pool
+state occurs. In conventional mode current_rx is always null because it has no
+active mapped prepared pool; existing pool properties are historical evidence.
+
+The generation/reset tuple is not a separate unique pool allocation ID. If a
+tuple is reused and serial order contradicts local capture-time order, decoder
+rejects ambiguity instead of allowing an old high serial to win. Equal serials
+with conflicting records are also rejected. This does not prove every possible
+tuple reuse is detectable; a future unique pool ID would be required for that.
+
+IORegistry properties are NOT globally atomic, nor are pool fields sampled at
+one hardware instant. The main gate capture, pool-lock gauges and independent
+relaxed atomics are distinct observation boundaries. Pressure records contain
+no generation/reset tuple and cannot be safely attributed to a pool lifetime by
+their key alone. Epoch mismatches may indicate capture/publication timing; they
+are not silently interpreted as DMA faults.
+
+time2GNow uses clock_get_uptime plus absolutetime_to_nanoseconds: word17 and
+pressure word2 are local monotonic boot uptime in nanoseconds, not UTC and not
+the peer's clock. No one-way latency or peer delivery is derived.
+
+Main64-word schema, exact index meanings
+--------------------------------------
+00 schema4
+01 snapshot serial, atomic increment; reset by rxZcSetup
+02 reason (above)
+03 fRxZcFault reason (first latched failure, zero means none recorded)
+04 fRxZcRunning
+05 fRxZcPublished (ring was published)
+06 fRxZcTerminal (qualified terminal proof recorded)
+07 fRxZcClosing
+08 fRxZcSynced (successful synchronize(kIODirectionIn) calls)
+09 fRxZcReplaced (old complete entry retired after fresh replacement)
+10 fRxZcStarved (pool take returned no fresh replacement)
+11 fRxZcGeneration
+12 fRxZcEpoch (reset epoch at RXarm)
+13 current fPc1ResetEpoch at capture
+14 fPc1TerminalEpoch
+15 fPc1Fault
+16 fPc1Suspended
+17 monotonic captured uptime ns
+18 fRxZcNotif (mapped notification-handler entries after closing guard)
+19 fRxZcEpisodes (first replacement starvation in a pressure episode)
+20 fRxZcRecoveries (successful replacement ends pressure episode)
+21 fRxZcPressure
+22 fRxZcBatchQueued (last observed current mbuf-list length, not an interval sum)
+23 fRxZcBatchMax (maximum recorded completed-list length)
+24 pool.readyCount (ready FIFO occupancy)
+25 pool.retireCount (retired FIFO occupancy)
+26 pool.working (entries currently replenished outside pool lock)
+27 pool.scheduled (worker scheduled flag)
+28 pool.supplied (successful replenishment returns to ready FIFO)
+29 pool.pressure (take called with no ready entry, not mapping-allocation failure)
+30 pool.retries (transient replenishment returned entry to retired FIFO)
+31 pool.retirePeak (retired FIFO maximum)
+32 pool.readyMin (historical minimum ready FIFO occupancy)
+33 pool.runs (worker invocations)
+34 pool.reused (existing mapped storage reused during replenishment)
+35 pool.renewed (storage renewed during replenishment)
+36 pool.allocationFailures
+37 pool.mappingFailures
+38 pool.headerFailures
+39 pool.failed() reason
+40 life.live (currently allocated RX storage clusters, NOT host mbuf refs)
+41 life.created (storage clusters allocated)
+42 life.freed (storage clusters freed)
+43 life.callbacks (final returnedCluster callbacks)
+44 life.detached (detached storage objects still alive)
+45 life.closeState:0live/1closing/2clean/3retained/4cleanupFailure
+46 kRxZcCount (prepared pool entry limit)
+47 IWX_RX_MQ_RING_COUNT
+48 fRxZcPool != nullptr
+49 fRxZcCleanHandoff
+50 fRxZcPropertyFailures
+51..63 reserved zero in this candidate, preserved raw and named individually.
+
+Pool words24..32 are copied under pool lock;33..39 are separate atomic loads.
+Zeros in absent-pool records do not mean a populated healthy pool. No aggregate
+counter is reinterpreted as packet loss, actual firmware delivery, TCP acceptance,
+pool exhaustion or permanent mapping leak.
+
+Pressure24-word schema, exact mapping
+------------------------------------
+Keys:
+KGP_RX_ZC4_FIRST_PRESSURE, KGP_RX_ZC4_LAST_RECOVERY,
+KGP_RX_ZC4_PERIODIC_FIRST_PRESSURE, KGP_RX_ZC4_PERIODIC_LAST_RECOVERY.
+00 schema4;01 event1(firstpressure) or2(lastrecovery);02local uptime ns.
+03..18 the same16 pool snapshot fields as main24..39 in the same order.
+19 replaced;20 starved;21 PC1fault;22 RXfault;23life.detached.
+There is no pressure serial, generation, reset epoch or unique pool ID.
+Even though all current fields have source names, raw originals are retained;
+their scope/timing limitations must not be hidden by decoded labels.
+
+Health32-word schema
+--------------------
+00schema19/01rev1/02bytes256/03publication/04uptime ns/05mode/06generation/
+07device family/08PC1fault/09TXblocked/10commandFrozen/11reset epoch/
+12command epoch/13PC1suspended/14RXfault/15if_flags.
+16..27 raw existing twelve BA statistics (ba_stat_0..11); these are not TCP
+retransmission or air-retry counters.28snapshotMisses/29propertyFailures/
+30..31reserved. Health originals are also preserved losslessly.
+
+Tests
+-----
+python3 tools/host_tests/ZC26_RX_DECODER_TEST.py
+19 regression cases cover recursive provider discovery, ambiguity rejection,
+all field/raw-data preservation, serial reset across lifetimes, stale periodic
+after forced capture, each of three lifetime mismatches, conventional no-pool
+and retained properties, all terminal/handoff reasons, fault preservation,
+same-serial conflicts, reused-tuple serial rollback, wrong marker/modes/schema/
+length/flags/pressure event, saved XML+binary CLI and interrupted/malformed input.
+These are synthetic decoder correctness tests, not physical-driver validation.

@@ -23,7 +23,7 @@ set -Eeuo pipefail
 
 usage() {
   cat <<'HELP'
-Usage: /bin/bash AirportItlwm_3x14_PORTABLE.sh ZC25|ZC24|ZC23|ZC22|ZC21|ZC20|ZC19|ZC8|ZC13|ZC18|/absolute/path/AirportItlwm.kext
+Usage: /bin/bash AirportItlwm_3x14_PORTABLE.sh ZC26|ZC25|ZC24|ZC23|ZC22|ZC21|ZC20|ZC19|ZC8|ZC13|ZC18|/absolute/path/AirportItlwm.kext
 
 When started, the script asks for the wired iperf3 server's CURRENT IPv4.
 There is NO hard-coded or remembered server IP. Use dots, not commas.
@@ -178,7 +178,7 @@ PREVIOUS_HEALTH=""
 
 # Fixed traffic protocol unchanged from frozen ZC22; revision covers tooling only.
 PROTOCOL_VERSION='AIRPORTITLWM_3X14_NO_PROFILER_V1'
-RUNNER_REVISION='shared-2026-10-19-r1'
+RUNNER_REVISION='shared-2026-10-19-r2'
 RUNNER_SOURCE="${BASH_SOURCE[0]}"
 record_protocol() {
   python3 - "$RUNNER_SOURCE" "$OUT" "$PROTOCOL_VERSION" "$RUNNER_REVISION" "$1" \
@@ -328,7 +328,7 @@ def walk(o):
     elif isinstance(o,list):
         for v in o:walk(v)
 walk(root)
-if label in ('ZC19','ZC20','ZC21','ZC22','ZC23','ZC24','ZC25'):
+if label in ('ZC19','ZC20','ZC21','ZC22','ZC23','ZC24','ZC25','ZC26'):
     if blobs or len(zc19)!=1 or len(zc19[0])!=256:
         sys.exit('STOP: expected exactly one ZC19 256-byte health record, no ZC10 schema')
     w=struct.unpack('<32Q',zc19[0])
