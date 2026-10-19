@@ -270,14 +270,57 @@ static inline void iwx_dma_publish_barrier()
     __atomic_thread_fence(__ATOMIC_SEQ_CST);
 }
 
+// ZC22: one bounded publication from CPU-only construction storage. No DMA
+// address ever points at these stack objects. The device may write command TB0;
+// it cannot write the CPU construction view. Slot reuse still requires the
+// existing positive completion/reset proof. No per-packet allocation or IOKit
+// synchronize operation, no TCP parsing, no delayed doorbell or ACK policy.
+static bool iwx_tx_publish_control(struct iwx_tx_ring *ring, unsigned idx,
+                                    const struct iwx_tfh_tfd *tfd,
+                                    const struct iwx_device_cmd *command)
+{
+    static_assert(sizeof(struct iwx_tfh_tfd) == 256, "packet TFD extent");
+    if (!ring || !tfd || !command || ring->qid == IWX_DQA_CMD_QUEUE ||
+        ring->qid == IWX_INVALID_QUEUE || idx >= ring->ring_count ||
+        idx >= nitems(ring->data) || !ring->desc || !ring->cmd ||
+        ring->desc != ring->desc_dma.vaddr || ring->cmd != ring->cmd_dma.vaddr)
+        return false;
+    const unsigned num_tbs = le16toh(tfd->num_tbs);
+    if (num_tbs < 2 || num_tbs > IWX_TFH_NUM_TBS ||
+        le16toh(tfd->tbs[0].tb_len) != IWX_FIRST_TB_SIZE) return false;
+    // The byte-count encoding tells hardware to fetch whole 64-byte chunks.
+    // Copy all fetched reserved bytes as zero, not merely the active TB fields.
+    const size_t tfd_bytes = (offsetof(struct iwx_tfh_tfd, tbs) +
+        num_tbs * sizeof(struct iwx_tfh_tb) + 63U) & ~size_t(63U);
+    const size_t command_bytes = IWX_FIRST_TB_SIZE + le16toh(tfd->tbs[1].tb_len);
+    const size_t tfd_offset = size_t(idx) * sizeof(*tfd);
+    const size_t command_offset = size_t(idx) * sizeof(*command);
+    if (tfd_bytes > sizeof(*tfd) || command_bytes > sizeof(*command) ||
+        command_bytes <= IWX_FIRST_TB_SIZE || (command_bytes & 3U) ||
+        tfd_offset + tfd_bytes > ring->desc_dma.size ||
+        command_offset + command_bytes > ring->cmd_dma.size ||
+        tfd == &ring->desc[idx] || command == &ring->cmd[idx]) return false;
+    uint64_t first, second;
+    memcpy(&first, &tfd->tbs[0].addr, sizeof(first));
+    memcpy(&second, &tfd->tbs[1].addr, sizeof(second));
+    const uint64_t address = ring->cmd_dma.paddr + command_offset;
+    if (ring->data[idx].cmd_paddr != address || le64toh(first) != address ||
+        le64toh(second) != address + IWX_FIRST_TB_SIZE) return false;
+    memcpy(&ring->cmd[idx], command, command_bytes);
+    memcpy(&ring->desc[idx], tfd, tfd_bytes);
+    // Caller next writes its byte-count entry, then uses the existing hardware
+    // publication fence and WRPTR. These copies alone do not publish ownership.
+    return true;
+}
+
 static IOReturn allocatePacketBacking2H(struct iwx_dma_info *dma, size_t size,
                                         unsigned alignment, unsigned *stage, IOMapper *mapper = nullptr,
-                                        bool coherentPayload = false)
+                                        bool coherentPayload = false, bool inhibitCache = false)
 {
     *stage = 1;
     IOBufferMemoryDescriptor *bmd = IOBufferMemoryDescriptor::inTaskWithPhysicalMask(
         kernel_task, kIODirectionInOut | (mapper ? (kIOMemoryHostPhysicallyContiguous | kIOMemoryMapperNone) : kIOMemoryPhysicallyContiguous) |
-        (coherentPayload ? 0 : kIOMapInhibitCache), size, DMA_BIT_MASK(64));
+        ((!coherentPayload || inhibitCache) ? kIOMapInhibitCache : 0), size, DMA_BIT_MASK(64));
     if (!bmd) return kIOReturnNoMemory;
     *stage = 2;
     IOReturn result = bmd->prepare();
@@ -368,7 +411,7 @@ bool ItlIwx::dma5Select()
     if (selection) selection->release();
     if (!resolved) { boot5Mark(10, "device DMA policy unresolved; attach refused", 2); return false; }
     pci.pa_tag->setProperty("KGP_ZC5_DMA_MODE", mapped ? "mapped RX/TX" : "original Dexter RX/TX");
-    pci.pa_tag->setProperty("KGP_RX_EXPERIMENT", "AirportItlwm-Tahoe-B1-ZC21-PERF");
+    pci.pa_tag->setProperty("KGP_RX_EXPERIMENT", "AirportItlwm-Tahoe-B1-ZC22-PERF");
     boot5Mark(11, mapped ? "DMA routing completed: mapped" : "DMA routing completed: original Dexter");
     return true;
 }
@@ -4492,18 +4535,13 @@ iwx_dma_contig_alloc(bus_dma_tag_t tag, struct iwx_dma_info *dma,
     return 0;
 }
 
-// ZC13 independent KGP correction: packet TFDs, TX command headers and byte
-// counts are ordinary host RAM, not MMIO. ZC12 requested inhibited caching for
-// them and rewrote them for every packet while holding the service gate.
-// Use the already-established coherent backing primitive on this x86_64
-// target. It verifies one complete aligned IOVM extent, the actual DMA backing
-// descriptor and initial synchronization; failure never falls back to raw PA.
-// Both positively selected routes retain their original mapper choice. AX201
-// is conventional-only under unchanged dma5Select; AX210/AX211 support both.
-// Firmware-command queue 0 and ALL RX allocations keep the old policy. See
-// docs/ZC19_CHANGE_PROVENANCE.md. No external implementation is imported.
-// ZC19 selective KGP adaptation from 31ac210425f497d3d8192982a643807361f1c6b2;
-// dependencies and mode-specific safety: docs/ZC19_CHANGE_PROVENANCE.md.
+// ZC22 split construction/publication: CPU packet assembly uses private cached
+// stack objects; the device-visible TFD, command and byte-count backing requests
+// the ZC8 inhibit-cache policy. Keep the qualified ZC13 mapper/extent/backing-
+// identity checks, independent of the cache option. Payloads stay coherent cached;
+// firmware command queue 0 and RX keep their existing allocation policy.
+// See docs/ZC22_CHANGE_PROVENANCE.txt for the corrective hypothesis, exact byte
+// publication contract, both DMA modes and physical-validation limitations.
 int ItlIwx::iwx_tx_control_alloc(struct iwx_dma_info *dma, bus_size_t size,
                                bus_size_t alignment)
 {
@@ -4512,7 +4550,7 @@ int ItlIwx::iwx_tx_control_alloc(struct iwx_dma_info *dma, bus_size_t size,
         (alignment && (alignment & (alignment - 1)))) return 1;
     unsigned stage = 0;
     return allocatePacketBacking2H(dma, size, alignment ? unsigned(alignment) : 1,
-                                   &stage, fDma5Mapper, true) == kIOReturnSuccess ? 0 : 1;
+                                   &stage, fDma5Mapper, true, true) == kIOReturnSuccess ? 0 : 1;
 #else
     // No claim of coherent-cache support for an unqualified architecture.
     return 1;
@@ -4615,7 +4653,7 @@ iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
     }
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 &&
         !pci.pa_tag->setProperty("KGP_RX_EXPERIMENT",
-            "AirportItlwm-Tahoe-B1-ZC21-PERF")) {
+            "AirportItlwm-Tahoe-B1-ZC22-PERF")) {
         err = ENOMEM; goto fail;
     }
     return 0;
@@ -5809,9 +5847,11 @@ iwx_tvqm_enable_txq(struct iwx_softc *sc, int tid, int ssn, uint32_t size)
             goto retain;
         }
     }
-    // An empty ring begins at the firmware's producer AND consumer coordinate.
-    // gen3 coordinates span 65536; physical descriptor slots still wrap at 256.
-    ring->cur = ring->tail = wr_idx;
+    // ZC22 correction to ZC21: cur is a full firmware producer coordinate;
+    // tail indexes data[] and must start in the physical descriptor domain.
+    // Preserve the same empty slot while retaining the full WRPTR coordinate.
+    ring->cur = wr_idx;
+    ring->tail = wr_idx & (ring->ring_count - 1);
     ring->qid = fwqid;
     if (!tx5RingReleasable(&sc->txq[fwqid])) {
         err = -EBUSY;
@@ -8269,6 +8309,14 @@ void
 iwx_clear_tx_desc(struct iwx_softc *sc, struct iwx_tx_ring *ring, int idx)
 {
     struct iwx_tfh_tfd *desc = &ring->desc[idx];
+    // ZC22: retired packet slots need only lose their valid-TB count. Next
+    // publication replaces every byte in the firmware fetch extent, including
+    // reserved/unused bytes. Avoid an inhibited read/clear loop in RX completion.
+    // Never touch command TB0 backing; its bidirectional lifetime is unchanged.
+    if (ring->qid != IWX_DQA_CMD_QUEUE) {
+        desc->num_tbs = 0;
+        return;
+    }
     uint8_t num_tbs = le16toh(desc->num_tbs) & 0x1f;
     int i;
     
@@ -9230,6 +9278,8 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
     struct iwx_node *in = (struct iwx_node *)ni;
     struct iwx_tx_ring *ring;
     struct iwx_tx_data *data;
+    struct iwx_tfh_tfd prepared_desc;
+    struct iwx_device_cmd prepared_command = {};
     struct iwx_tfh_tfd *desc;
     struct iwx_device_cmd *cmd;
     struct iwx_tx_cmd_gen2 *tx_gen2;
@@ -9307,11 +9357,12 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
             mbuf_freem(m); return ENOMEM;
         }
     }
-    desc = &ring->desc[idx];
+    // ZC22: cached CPU-only assembly; DMA addresses still name ring backing.
+    desc = &prepared_desc;
     memset(desc, 0, sizeof(*desc));
     data = &ring->data[idx];
     
-    cmd = &ring->cmd[idx];
+    cmd = &prepared_command;
     cmd->hdr.cmd = IWX_TX_CMD;
     cmd->hdr.group_id = 0;
     cmd->hdr.qid = ring->qid;
@@ -9404,9 +9455,7 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
         mbuf_freem(m);
         return ENOMEM;
     }
-    data->m = m;
-    data->in = in;
-    data->type = type;
+
 
     DPRINTFN(3, ("sending data: 嘤嘤嘤 tid=%d qid=%d idx=%d queued=%d len=%d nsegs=%d flags=0x%08x rate_n_flags=0x%08x offload_assist=%u\n",
           tid, ring->qid, ring->cur, ring->queued, totlen, nsegs, le32toh(flags),
@@ -9449,10 +9498,23 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
     //        (char *)(void *)desc - (char *)(void *)ring->desc_dma.vaddr,
     //        sizeof (*desc), BUS_DMASYNC_PREWRITE);
     
+    // Validate/copy before transferring the caller's mbuf/node reference.
+    // On failure no WRPTR is issued; a mapped prepared copy is conservatively
+    // quarantined by the existing abort path, never treated as completed.
+    if (!iwx_tx_publish_control(ring, unsigned(idx), desc, cmd)) {
+        if (dma5Mapped()) tx2IRetire(data, false);
+        __atomic_fetch_or(&fTx2JAdmission, kTx2JClosed, __ATOMIC_ACQ_REL);
+        __atomic_store_n(&fTx2IBlocked, 1U, __ATOMIC_RELEASE);
+        mbuf_freem(m);
+        return EINVAL;
+    }
+    data->m = m;
+    data->in = in;
+    data->type = type;
     iwx_tx_update_byte_tbl(sc, ring, idx, totlen, num_tbs);
     
     // ZC14 TX-1: pinned OSSynchronizeIO is empty; emit the intended publication fence.
-    if (dma5Mapped()) iwx_dma_publish_barrier(); // coherent payload/descriptor stores precede MMIO
+    if (dma5Mapped()) iwx_dma_publish_barrier(); // payload plus copied control stores precede MMIO
     /* Kick TX ring. */
     ring->cur = (ring->cur + 1) % getTxQueueSize();
     IWX_WRITE(sc, IWX_HBUS_TARG_WRPTR, ring->qid << 16 | ring->cur);
@@ -16627,6 +16689,8 @@ dexterOriginal_iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni,
     struct iwx_node *in = (struct iwx_node *)ni;
     struct iwx_tx_ring *ring;
     struct iwx_tx_data *data;
+    struct iwx_tfh_tfd prepared_desc;
+    struct iwx_device_cmd prepared_command = {};
     struct iwx_tfh_tfd *desc;
     struct iwx_device_cmd *cmd;
     struct iwx_tx_cmd_gen2 *tx_gen2;
@@ -16683,11 +16747,12 @@ dexterOriginal_iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni,
         return EINVAL;
     }
     idx = (ring->cur & (ring->ring_count - 1));
-    desc = &ring->desc[idx];
+    // ZC22: cached CPU-only assembly; DMA addresses still name ring backing.
+    desc = &prepared_desc;
     memset(desc, 0, sizeof(*desc));
     data = &ring->data[idx];
     
-    cmd = &ring->cmd[idx];
+    cmd = &prepared_command;
     cmd->hdr.cmd = IWX_TX_CMD;
     cmd->hdr.group_id = 0;
     cmd->hdr.qid = ring->qid;
@@ -16777,9 +16842,7 @@ dexterOriginal_iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni,
         mbuf_freem(m);
         return ENOMEM;
     }
-    data->m = m;
-    data->in = in;
-    data->type = type;
+
 
     DPRINTFN(3, ("sending data: 嘤嘤嘤 tid=%d qid=%d idx=%d queued=%d len=%d nsegs=%d flags=0x%08x rate_n_flags=0x%08x offload_assist=%u\n",
           tid, ring->qid, ring->cur, ring->queued, totlen, nsegs, le32toh(flags),
@@ -16822,12 +16885,23 @@ dexterOriginal_iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni,
     //        (char *)(void *)desc - (char *)(void *)ring->desc_dma.vaddr,
     //        sizeof (*desc), BUS_DMASYNC_PREWRITE);
     
+    // Validate/copy before transferring the caller's mbuf/node reference.
+    // On failure no WRPTR is issued; a mapped prepared copy is conservatively
+    // quarantined by the existing abort path, never treated as completed.
+    if (!iwx_tx_publish_control(ring, unsigned(idx), desc, cmd)) {
+        if (dma5Mapped()) tx2IRetire(data, false);
+        __atomic_fetch_or(&fTx2JAdmission, kTx2JClosed, __ATOMIC_ACQ_REL);
+        __atomic_store_n(&fTx2IBlocked, 1U, __ATOMIC_RELEASE);
+        mbuf_freem(m);
+        return EINVAL;
+    }
+    data->m = m;
+    data->in = in;
+    data->type = type;
     iwx_tx_update_byte_tbl(sc, ring, idx, totlen, num_tbs);
     
-    // ZC13: packet control RAM is now coherent cached memory in this positive
-    // conventional route too. Order payload/header/TFD/byte-count stores before
-    // the MMIO doorbell, matching the mapped route. No mapped packet addresses
-    // or TX ownership changes are introduced by this publication barrier.
+    // ZC22: copied control bytes and coherent payload stores precede MMIO.
+    // Keep the explicit publication ordering in this conventional route too.
     // ZC14 TX-1: pinned OSSynchronizeIO is empty; emit the intended publication fence.
     iwx_dma_publish_barrier();
     /* Kick TX ring. */

@@ -1,0 +1,189 @@
+B1-ZC22-PERF — SPLIT CPU CONSTRUCTION / DEVICE CONTROL PUBLICATION
+2026-10-19; existing Clean VTD session 01a09618-9d6f-7f20-8890-0338ed887257.
+
+1. Decision and exact baseline
+Full ZC21 bb9dbebbe09b01fec1f918f1fdd04ab6e9a49d14,
+tree cec37385155f4a0827bfb707a6a40be2663f674e. It has direct ASIX evidence and
+retains the ZC21 TVQM/BA correctness repair, ZC16 restart/power safeguards,
+RX mapping/cache exchange and qualified DMA paths. The new branch shares the
+existing ZC8 Git database. Frozen sources and binaries are not modified.
+
+This is an ACTIVE corrective implementation aimed at the reproduced TCP RX
+regression. It is neither another command-cache-only setting nor an ACK pacing
+policy. A physical RX improvement or preservation of TX>400 is not proved by
+source, host tests or compilation. No further physical test is requested during
+this development phase; the future plan is for KGP's later decision.
+
+2. Established evidence and effective-source focus
+Latest matched ASIX AX210 mapped receiver means:
+ZC8 TX265.43/261.31, RX581.44/558.95;
+ZC21 TX475.45/477.57, RX501.99/450.62 Mbps (P1/P4).
+Elapsed 2..8s RX means remain 588.69/556.77 versus516.68/446.80.
+The original client intervals show ZC8 22/24 RX-P1 and18/24 RX-P4 regular
+intervals >550 Mbps; ZC21 1/24 and0/24. This is not a startup-only deficit or a
+rigid500-Mbps cap. Short high server-sender tails are not receiver evidence.
+Both latest UDP RX600 campaigns are ~601.6–601.8 Mbps with zero reported loss;
+earlier intermittent losses and the ZC20 R3 TX600 anomaly remain historical facts.
+
+The exact effective ZC8->ZC13 transformation includes intermediate observers and
+producer servicing, but those are not sufficient explanations: ZC19 selectively
+returns to ZC8 packet/notification/consumer bodies and still has the RX deficit.
+The common executed transformation is the packet-control allocation conversion
+31ac210425f497d3d8192982a643807361f1c6b2, direct parent
+cda7ae51561dee54ac21b01a70d60755205f5eb6. It changes TFD, packet command/header
+and byte-count backing together from requested inhibit-cache to checked default
+cached/coherent backing. Actual field encoding, queue sizes and packet-completion
+policy remain unchanged. ZC20 changed command cache only, retaining TX but failing
+to restore RX. No queue-2 rejection exists in our baseline; actual affected ZC13
+ASIX snapshots already show TID0/QID2 BA and millions of normal retirements.
+
+SOURCE/BINARY-PROVEN cost: each original packet path clears a whole256-byte TFD
+in the device backing, then fills active TB fields. The reviewed frozen ZC8 and
+ZC21 x86_64 binaries both emit this256-byte operation. A3-TB descriptor has only
+32 active bytes and firmware fetches one64-byte chunk, as encoded in the existing
+byte-count entry. Completion also reads and clears retired TB metadata in that
+same device backing. TCP RX generates substantial outgoing ACK TX work; bulk UDP
+RX does not generate comparable per-datagram TCP ACK work. No TCP parser is needed
+to identify that shared TX control path. This distinguishes a relevant executed
+resource interaction, not the original initiating physical loss layer.
+
+CORRECTIVE HYPOTHESIS: separate fast CPU construction from the device-visible
+control storage. Restore the ZC8 requested control-memory cache attributes for
+ALL three classes, while eliminating most of the old repeated inhibited stores
+and reads. That removes direct cached CPU/device control sharing from the common
+ZC13 transformation while retaining an efficient CPU construction path. The
+physical reason cached control coincides with the RX penalty remains unresolved;
+no stale-DMA or PAT defect is invented. If ACK/service timing is responsible,
+this implementation may change it too, without protocol-specific policy.
+
+3. Complete production changes
+P1 — allocatePacketBacking2H / iwx_tx_control_alloc (ItlIwx.cpp)
+Separate inhibitCache from coherentPayload/backing validation, following the
+safety separation already used in ZC20 10df3a65644503339b4cefb6a2c59e5e7a1dbfc2.
+All old callers retain default behavior. Only packet-control allocation passes
+both validation=true and inhibitCache=true. One complete aligned IOVM extent,
+actual memory-descriptor identity, positive mapper qualification, prepare and
+initial synchronize remain checked. No old raw allocator or physical fallback is
+transplanted. IODMACommand remains kMapped/InOut. Payload backing stays cached;
+firmware-command queue0 and every RX allocation keep their existing policy.
+Requested cache policy is source/binary evidence; effective PAT is unmeasured.
+
+P2 — iwx_tx and dexterOriginal_iwx_tx
+Construct the identical TFD fields and packet command/MAC header in separate
+CPU-only automatic objects. No additional packet allocation, persistent shadow
+pool or asynchronous callback is introduced. Device addresses still name the
+qualified persistent ring backing, never the stack. The command object is zero
+initialized, including publication padding. Existing payload preparation, field
+encoding, TID/queue selection, flags, crypto and packet shape remain unchanged.
+After payload mapping and field construction, a new bounded helper validates the
+view and copies command bytes first, then the complete TFD fetch extent. Only
+then transfer the mbuf/node reference, write the byte-count entry, use the existing
+hardware fence and issue the unchanged WRPTR. No deferred ACK or doorbell batching.
+
+P3 — new static iwx_tx_publish_control
+Validate slot, physical storage extents, control-pointer identity, TB count,
+command bytes, TB0/TB1 lengths and their existing device-visible command addresses.
+Reject invalid views before any device-backing write. Copy exactly the command
+extent described by the two command TBs and round the descriptor prefix to the
+64-byte fetch granularity used by the existing byte-count encoding. The full
+fetched prefix includes zeroed reserved/unused bytes. Bytes outside that fetch
+extent need not be rewritten: firmware uses num_tbs and fetch-chunk count, and
+all backing was initialized at allocation/reset. Source ABI defines these fields.
+If this internal validation fails, no WRPTR is issued. The caller has not yet
+transferred mbuf/node ownership; it frees its mbuf, leaves node release to the
+existing caller and quarantines any prepared mapped copy via existing abort logic.
+Admission is closed/blocked. No unproven mapped buffer is recycled as completion.
+
+P4 — iwx_clear_tx_desc
+For positively retired packet queues, clear only num_tbs. Avoid the inhibited
+read and per-TB zero loop on RX completion. Every byte in the next descriptor's
+fetched prefix will be overwritten from the zeroed CPU object before WRPTR.
+Retired payload pointers outside the next active/fetched prefix are not valid
+TBs and cannot be consumed under the descriptor contract. Firmware-command
+queue0 retains its original clearing behavior. Device-written command TB0 scratch
+is not read, freed or reused early; it is a separate buffer and remains governed
+by the existing packet completion/reset lifetime. No hardware completion is inferred.
+
+P5 — iwx_tvqm_enable_txq: physical consumer coordinate
+Correct a ZC21 edge case independently of the performance hypothesis. ZC21 set
+cur and tail to the full firmware write index. But iwx_ampdu_txq_advance indexes
+ring->data[tail] directly, then wraps modulo ring_count. Therefore tail must start
+as wr_idx & (ring_count-1), while cur retains the full firmware coordinate. A
+65535 start on a256-slot ring now means cur65535/tail255; actual completion wraps
+255->0 safely. Preserve the entire negative-error, response/free, ambiguous DMA
+retention, queue-role/bounds and per-TID BA repair. No evidence locates this edge
+case in the measured RX regression; the regression predates ZC21.
+
+P6 — candidate identity
+Two existing marker strings identify AirportItlwm-Tahoe-B1-ZC22-PERF.
+Health KGP_ZC19 schema19/1, publication cadence, fault fields and epochs unchanged.
+No packet telemetry, worker, timer, RX observer or kernel logging is added.
+
+No other production changes. The header/driver structures, firmware images,
+SDK, Apple-facing output queue, RX/notification bodies, reordering/BA-RX fixes,
+completion tokens, reset, power policy and mapper selection remain exact ZC21.
+The effective diff and source checks enumerate every exception above.
+
+4. Why this can preserve high TX while recovering RX
+A typical gen3 QoS command spans58 bytes, padded to60; a3-TB TFD uses32 active
+bytes but fetches64. New device-control publication writes64+60+2=126 bytes,
+including the byte-count entry, then2 bytes on retirement. The original path
+performs a256-byte clear plus32 active descriptor-field writes before command
+stores and byte-count update (at least348 logical bytes including the58 distinct
+command bytes). Command construction also used overlapping zero/field writes.
+The new CPU zeroing/construction is cached/private; only final bytes reach the
+inhibited backing. These are source-level byte budgets, not measured PCIe traffic,
+CPU time or a bandwidth promise. Large scatter lists can require all256 TFD bytes.
+The reduced descriptor and completion traffic aims to retain the TX CPU-cost
+benefit instead of simply reverting to slow ZC8 TX. Restored DMA control policy
+and reduced shared-memory access target the version-dependent TCP RX interaction.
+UDP RX, its resources and its notification path are unchanged. AX211's strong RX
+must still be protected by later physical qualification; host tests cannot do so.
+
+5. Ownership, ordering, lifecycle and modes
+Both mapped and conventional packet TX use the helper; there is no chip-only or
+TCP-only gate. AX201/family22000 remains conventional-only. AX210/AX211 retain both
+qualified routes; other attached IWX retains existing qualification. IWM/IWN are
+untouched. Existing mapped payload backing/address identity and conventional
+cursor semantics remain, including fail-closed unknown mapper states.
+The CPU objects are bounded stack locals and have no DMA mapping/host-reference
+lifetime. Stack use is reviewed in emitted kernel code. Persistent DMA ring
+allocation, reset, positive completion, STOP_MASTER/quarantine and epochs retain
+the old lifetime. Every fence stays before the original WRPTR. A fence orders
+stores; it is not claimed to establish cache coherence or physical completion.
+No control allocation or blocking operation is introduced in packet completion.
+ZC16 restart/power mechanisms remain source-identical; physical wake is unproven.
+
+6. Validation and provenance
+New models execute the actual publication helper, byte-count encoder, descriptor
+retirement, actual caller failure-transfer block, checked allocator and TVQM/BA
+functions. Cover slot ends/wrap, all TB fetch domains, command extents, untouched
+byte guards, TB0 device-write isolation, local/mapped failure ownership, exact
+fetch-byte equivalence, command-queue exclusion, coordinate65535 retirement and
+release/acquire publication/completion under TSan. Existing RX/ownership/PC1,
+BA/reorder, command and lifecycle models remain. Source checks reverse the exact
+staging edits and prove packet construction/field encoding is unchanged; remaining
+production code and retained source inputs must match ZC21. Sanitizers are host
+proof only. The integrated validation passed35/35 suites:2902 publication cases and20000
+modeled wraps under each sanitizer,69 TVQM/BA/actual-retirement cases under each,
+checked allocation failures, existing safety/lifecycle suites and13 health-guard
+cases plus current marker checks in both modes. Preliminary harness runs passed;
+two harmless howmany macro warnings were guarded before the integrated run.
+Final report records actual build attempts and binary identity. Version-specific
+ZC13_CONTROL and ZC21_TVQM tests remain historical references; ZC22 validation
+selects their new updated equivalents, not incompatible historical expectations.
+
+Original KGP sources reused/adapted: ZC13 31ac210 (qualified control allocation),
+ZC20 10df3a6 (independent cache/validation option), ZC21 a4922ff (TVQM contract
+repair, retained with physical-tail correction). Existing fence provenance remains
+KGP a635d22/87b05e5. New staged publication/completion design is independent KGP
+work; no external source implementation imported. Existing license headers remain.
+
+7. Explicit uncertainty and rejected next steps
+This does not claim caching itself is defective, identify a physical loss layer,
+force ACK pacing/priority, change rates or promise550–600 Mbps. TX could fall if
+publication cost still dominates; the physical outcome is not replaced by models.
+No new pacing trial, captures, reboots or environmental troubleshooting are
+requested in this phase. The completed candidate and future comparison plan are
+the deliverable. Old recommendations to demand another unchanged-ZC20 pacing test
+are superseded by this implementation mandate, not erased from historical records.
