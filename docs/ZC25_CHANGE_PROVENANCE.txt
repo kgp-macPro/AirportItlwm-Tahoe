@@ -119,3 +119,12 @@ mock. The reporting methods independently execute in their dedicated both-mode
 report/health models. Initial logs remain validation-final-01; second full run
 uses validation-final-02. This is a test fixture dependency, not a driver error,
 sanitzer finding, hidden skipped ownership check or failed Release build.
+
+Second integration run35/37: the newly copied pool harness still asserted old
+per-notification periodic snapshot counts. Its full ownership workload ran, but
+that deliberately changed reporting assertion failed. Update this ZC25-only
+fixture to execute the actual watchdog capture/publish at the old modeled1Hz
+points, assert rxZcReport(0) remains a no-op, preserve the arm record, and check
+pressure/recovery under the distinct periodic keys. Production code unchanged;
+all original historical tests remain byte-exact. Final targeted reruns plus
+unchanged successful suites form the final37-result validation manifest.

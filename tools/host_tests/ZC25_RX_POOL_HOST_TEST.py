@@ -153,11 +153,14 @@ struct iwx_dma_info{IOMemoryDescriptor*buffer=nullptr;uint64_t paddr=0;void*vadd
 struct RxData{mbuf_t m=nullptr;};
 struct iwx_rx_ring{RxData data[512];unsigned cur=0;iwx_dma_info free_desc_dma,stat_dma,used_desc_dma;void*desc=nullptr,*stat=nullptr;};
 using RxRing=iwx_rx_ring;struct Softc{RxRing rxq;unsigned sc_generation=0;};
-struct Provider:public OSObject{unsigned publications=0;uint64_t wire[64]={},pressure[24]={},recovery[24]={};
+struct Provider:public OSObject{unsigned publications=0;uint64_t wire[64]={},pressure[24]={},recovery[24]={},periodic[64]={},periodicPressure[24]={},periodicRecovery[24]={};
  bool setProperty(const char*name,void*p,size_t n){assert(n==sizeof(wire)||n==sizeof(pressure)||n==160);++publications;
  if(!strcmp(name,"KGP_RX_ZC4"))memcpy(wire,p,n);
  else if(!strcmp(name,"KGP_RX_ZC4_FIRST_PRESSURE"))memcpy(pressure,p,n);
- else if(!strcmp(name,"KGP_RX_ZC4_LAST_RECOVERY"))memcpy(recovery,p,n);return true;}};
+ else if(!strcmp(name,"KGP_RX_ZC4_LAST_RECOVERY"))memcpy(recovery,p,n);
+ else if(!strcmp(name,"KGP_RX_ZC4_PERIODIC"))memcpy(periodic,p,n);
+ else if(!strcmp(name,"KGP_RX_ZC4_PERIODIC_FIRST_PRESSURE"))memcpy(periodicPressure,p,n);
+ else if(!strcmp(name,"KGP_RX_ZC4_PERIODIC_LAST_RECOVERY"))memcpy(periodicRecovery,p,n);return true;}};
 STORAGE
 class ItlIwx:public OSObject{
 public:
@@ -253,12 +256,16 @@ int main(){
  for(int mode=1;mode<=3;++mode){ItlIwx d;initial(d);auto*p=d.fRxZcPool;terminal(d);gate(d,false);cleanupFail=mode;assert(d.rxZcFree());pump();assert(p->failedCleanup());assert(p->life->closeState==4);cleanupFail=0;poweroff(p);empty();}
  // Partial successful retirement followed by mapping pressure does not lose stack ownership.
  {ItlIwx d;initial(d);auto*m=receive(d,0);auto*c=clone(m);mbuf_freem(m);cleanup(d);mbuf_freem(c);empty();}
- // Rolling telemetry, first-pressure and last-recovery survive 120 publication budget and no hot-path text.
+ // Periodic watchdog telemetry retains first-pressure/recovery without hot-path publication.
  {ItlIwx d;initial(d);unsigned n=d.provider.publications;for(int i=0;i<100;++i)d.rxZcReport(0);assert(d.provider.publications==n);
-  for(int i=0;i<200;++i){d.now+=1000000001ULL;d.rxZcReport(0);}assert(d.fRxZcSnapshots==201);
-  std::vector<mbuf_t>h;for(unsigned k=0;k<1536;++k)h.push_back(receive(d,k%512));receive(d,0,false);pump();mbuf_freem(receive(d,0));d.now+=1000000001ULL;d.rxZcReport(0);
-  assert(d.provider.wire[1]==202&&d.provider.wire[19]==1&&d.provider.wire[20]==1&&d.provider.wire[21]==0);
-  assert(d.provider.pressure[1]==1&&d.provider.recovery[1]==2);for(auto m:h)mbuf_freem(m);cleanup(d);empty();}
+  assert(d.fRxZcSnapshots==1); // Packet report calls are now unconditional no-ops.
+  for(int i=0;i<200;++i){d.now+=1000000001ULL;d.rxZcReport(0);d.rxZcCapturePeriodic();
+   gate(d,false);d.rxZcPublishPeriodic();gate(d,true);}assert(d.fRxZcSnapshots==201);
+  assert(d.provider.wire[1]==1&&d.provider.periodic[1]==201);
+  std::vector<mbuf_t>h;for(unsigned k=0;k<1536;++k)h.push_back(receive(d,k%512));receive(d,0,false);pump();mbuf_freem(receive(d,0));d.now+=1000000001ULL;d.rxZcReport(0);d.rxZcCapturePeriodic();
+  gate(d,false);d.rxZcPublishPeriodic();gate(d,true);
+  assert(d.provider.wire[1]==1&&d.provider.periodic[1]==202&&d.provider.periodic[19]==1&&d.provider.periodic[20]==1&&d.provider.periodic[21]==0);
+  assert(d.provider.periodicPressure[1]==1&&d.provider.periodicRecovery[1]==2);for(auto m:h)mbuf_freem(m);cleanup(d);empty();}
  {ItlIwx d;d.fDma5Provider=&d.provider;initial(d);uint64_t wire[40]={5};
   d.rxZcTelemetry(wire);assert(d.fRxZcPool->telemetryPending);pump();
   assert(!d.fRxZcPool->telemetryPending);
