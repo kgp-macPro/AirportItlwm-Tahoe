@@ -79,3 +79,32 @@ https://github.com/torvalds/linux/blob/v6.12/drivers/net/wireless/intel/iwlwifi/
 https://github.com/torvalds/linux/blob/v6.12/drivers/net/wireless/intel/iwlwifi/pcie/tx.c
 First-TB direction/alignment/separate body mapping and coherent allocation,
 not a Linux API transplant. New IOKit implementation authored locally.
+
+REVIEW / FINAL SOURCE HARDENING
+New publication arithmetic now rejects base+slot offset wrap BEFORE addition,
+plus remainder overflow and the known first/second TB 4GiB edge. An adversarial
+host test reproduced acceptance of wrapped address0 before this check; qualified
+IODMA production reachability was not established. This is fail-closed input
+validation, not evidence for the physical TCP defect. Payload TB construction
+is unchanged; these checks are NOT a complete new payload FH workaround.
+
+The RX periodic snapshot qualifies acquire-Closing -> Running -> Pool under the
+main gate. It never touches an unarmed/stopped pool. Initial ring construction
+precedes watchdog activation; later reconstruction holds Closing through setup.
+Only a fixed scalar copy is kept across gate release. Forced close/fault records
+retain the original key; an old periodic copy can publish after close safely to
+a DISTINCT key. Counters reset per RX pool lifetime. KGP_ZC19 schema19/1 remains
+256B and retains the actual mode, fault, epoch and watchdog progress contract.
+No new timer, worker, packet parser, trace allocation, rate or queue policy.
+
+Publication from the watchdog is bounded snapshot work plus outside-gate
+setProperty calls; the pool snapshot still takes its EXISTING short lock. This
+is not a claim of a lock-free capture or measured overhead reduction. Ordinary
+notification calls return before time/pool/export work. Forced lifecycle calls
+retain existing allocation behavior; fault ENFORCEMENT is unchanged even though
+normal first-fault diagnostic publication waits for a successful watchdog tick.
+
+Traceability: the first TX implementation is365f5c8c3ee43f045e72a34244bcd492b28e7f71.
+The following independent commit moves RX reporting and completes fail-closed
+address arithmetic. Host/source validation and final binary identity follow in
+the archived validation/build reports, without a claim of physical success.

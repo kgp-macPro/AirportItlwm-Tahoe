@@ -307,8 +307,12 @@ static bool iwx_tx_publish_control(struct iwx_tx_ring *ring, unsigned idx,
     uint64_t first, second;
     memcpy(&first, &tfd->tbs[0].addr, sizeof(first));
     memcpy(&second, &tfd->tbs[1].addr, sizeof(second));
+    // Reject arithmetic wrap before constructing a device-visible address.
+    if (ring->cmd_dma.paddr > UINT64_MAX - command_offset ||
+        ring->first_tb_dma.paddr > UINT64_MAX - first_offset) return false;
     const uint64_t command_address = ring->cmd_dma.paddr + command_offset;
     const uint64_t scratch_address = ring->first_tb_dma.paddr + first_offset;
+    if (command_address > UINT64_MAX - IWX_FIRST_TB_SIZE) return false;
     const uint64_t remainder_address = command_address + IWX_FIRST_TB_SIZE;
     const size_t remainder_bytes = command_bytes - IWX_FIRST_TB_SIZE;
     if (ring->data[idx].cmd_paddr != command_address ||
@@ -1922,7 +1926,9 @@ bool ItlIwx::rxZcSetup()
     fRxZcPublished=fRxZcTerminal=fRxZcRunning=fRxZcCleanHandoff=false;
     fRxZcFault=fRxZcGeneration=fRxZcEpoch=0;
     fRxZcSynced=fRxZcReplaced=fRxZcStarved=fRxZcNotif=0;
-    fRxZcLastReport=fRxZcSnapshots=fRxZcPropertyFailures=0;
+    fRxZcLastReport=0;
+    __atomic_store_n(&fRxZcSnapshots,0ULL,__ATOMIC_RELAXED);
+    __atomic_store_n(&fRxZcPropertyFailures,0ULL,__ATOMIC_RELAXED);
     fRxZcReportedFault=fRxZcPressure=false;
     fRxZcEpisodes=fRxZcRecoveries=fRxZcBatchQueued=fRxZcBatchMax=0;
     memset(fRxZcFirstPressure,0,sizeof(fRxZcFirstPressure));
@@ -2085,12 +2091,14 @@ void ItlIwx::rxZcPressureRecord(uint64_t *v,unsigned event)
 }
 void ItlIwx::rxZcReport(unsigned reason)
 {
-    if (!pci.pa_tag) return;
+    // ZC25: ordinary RX notification paths perform no reporting work. The
+    // existing watchdog captures a bounded copy and publishes outside the main
+    // gate. Forced lifecycle records keep their independent original key.
+    if (!reason || !pci.pa_tag) return;
     const uint64_t now=time2GNow(); const bool fault=rxZcFailed();
-    if (!reason && !(fault && !fRxZcReportedFault) && now-fRxZcLastReport<1000000000ULL) return;
     fRxZcReportedFault|=fault; fRxZcLastReport=now;
     uint64_t v[64]={};
-    v[0]=4; v[1]=++fRxZcSnapshots; v[2]=reason; v[3]=fRxZcFault;
+    v[0]=4; v[1]=__atomic_add_fetch(&fRxZcSnapshots,1ULL,__ATOMIC_RELAXED); v[2]=reason; v[3]=fRxZcFault;
     v[4]=fRxZcRunning; v[5]=fRxZcPublished; v[6]=fRxZcTerminal; v[7]=fRxZcClosing;
     v[8]=fRxZcSynced; v[9]=fRxZcReplaced; v[10]=fRxZcStarved;
     v[11]=fRxZcGeneration; v[12]=fRxZcEpoch; v[13]=fPc1ResetEpoch; v[14]=fPc1TerminalEpoch;
@@ -2107,11 +2115,64 @@ void ItlIwx::rxZcReport(unsigned reason)
         v[45]=__atomic_load_n(&fRxZcLife->closeState,__ATOMIC_ACQUIRE);
     }
     v[46]=kRxZcCount; v[47]=IWX_RX_MQ_RING_COUNT; v[48]=fRxZcPool!=nullptr;
-    v[49]=fRxZcCleanHandoff; v[50]=fRxZcPropertyFailures;
-    if (!pci.pa_tag->setProperty("KGP_RX_ZC4",v,sizeof(v))) ++fRxZcPropertyFailures;
-    if (fRxZcFirstPressure[0] && !pci.pa_tag->setProperty("KGP_RX_ZC4_FIRST_PRESSURE",fRxZcFirstPressure,sizeof(fRxZcFirstPressure))) ++fRxZcPropertyFailures;
-    if (fRxZcLastRecovery[0] && !pci.pa_tag->setProperty("KGP_RX_ZC4_LAST_RECOVERY",fRxZcLastRecovery,sizeof(fRxZcLastRecovery))) ++fRxZcPropertyFailures;
+    v[49]=fRxZcCleanHandoff; v[50]=__atomic_load_n(&fRxZcPropertyFailures,__ATOMIC_RELAXED);
+    if (!pci.pa_tag->setProperty("KGP_RX_ZC4",v,sizeof(v))) __atomic_fetch_add(&fRxZcPropertyFailures,1ULL,__ATOMIC_RELAXED);
+    if (fRxZcFirstPressure[0] && !pci.pa_tag->setProperty("KGP_RX_ZC4_FIRST_PRESSURE",fRxZcFirstPressure,sizeof(fRxZcFirstPressure))) __atomic_fetch_add(&fRxZcPropertyFailures,1ULL,__ATOMIC_RELAXED);
+    if (fRxZcLastRecovery[0] && !pci.pa_tag->setProperty("KGP_RX_ZC4_LAST_RECOVERY",fRxZcLastRecovery,sizeof(fRxZcLastRecovery))) __atomic_fetch_add(&fRxZcPropertyFailures,1ULL,__ATOMIC_RELAXED);
 }
+void ItlIwx::rxZcCapturePeriodic()
+{
+    // Called only by the existing watchdog's successful main-gate snapshot.
+    // These buffers belong to that watchdog, never to packet/lifecycle writers.
+    fRxZcPeriodicReady=false;
+    if (!getMainWorkLoop() || !getMainWorkLoop()->inGate() || !dma5Mapped() ||
+        __atomic_load_n(&fRxZcClosing,__ATOMIC_ACQUIRE) || !fRxZcRunning ||
+        !fRxZcPool) return;
+    const uint64_t now=time2GNow();
+    auto *v=fRxZcPeriodic;
+    memset(v,0,sizeof(fRxZcPeriodic));
+    v[0]=4; v[1]=__atomic_add_fetch(&fRxZcSnapshots,1ULL,__ATOMIC_RELAXED); v[2]=0; v[3]=fRxZcFault;
+    v[4]=fRxZcRunning; v[5]=fRxZcPublished; v[6]=fRxZcTerminal; v[7]=fRxZcClosing;
+    v[8]=fRxZcSynced; v[9]=fRxZcReplaced; v[10]=fRxZcStarved;
+    v[11]=fRxZcGeneration; v[12]=fRxZcEpoch; v[13]=fPc1ResetEpoch; v[14]=fPc1TerminalEpoch;
+    v[15]=__atomic_load_n(&fPc1Fault,__ATOMIC_ACQUIRE); v[16]=fPc1Suspended;
+    v[17]=now; v[18]=fRxZcNotif; v[19]=fRxZcEpisodes; v[20]=fRxZcRecoveries; v[21]=fRxZcPressure;
+    v[22]=fRxZcBatchQueued; v[23]=fRxZcBatchMax;
+    if (fRxZcPool) fRxZcPool->snapshot(v+24);
+    if (fRxZcLife) {
+        v[40]=__atomic_load_n(&fRxZcLife->live,__ATOMIC_RELAXED);
+        v[41]=__atomic_load_n(&fRxZcLife->created,__ATOMIC_RELAXED);
+        v[42]=__atomic_load_n(&fRxZcLife->freed,__ATOMIC_RELAXED);
+        v[43]=__atomic_load_n(&fRxZcLife->callbacks,__ATOMIC_RELAXED);
+        v[44]=__atomic_load_n(&fRxZcLife->detached,__ATOMIC_RELAXED);
+        v[45]=__atomic_load_n(&fRxZcLife->closeState,__ATOMIC_ACQUIRE);
+    }
+    v[46]=kRxZcCount; v[47]=IWX_RX_MQ_RING_COUNT; v[48]=fRxZcPool!=nullptr;
+    v[49]=fRxZcCleanHandoff; v[50]=__atomic_load_n(&fRxZcPropertyFailures,__ATOMIC_RELAXED);
+    memcpy(fRxZcPeriodicFirstPressure,fRxZcFirstPressure,sizeof(fRxZcPeriodicFirstPressure));
+    memcpy(fRxZcPeriodicLastRecovery,fRxZcLastRecovery,sizeof(fRxZcPeriodicLastRecovery));
+    fRxZcPeriodicReady=true;
+}
+
+void ItlIwx::rxZcPublishPeriodic()
+{
+    // A distinct key closes the forced-vs-periodic publication race: an older
+    // captured periodic record can NEVER overwrite a newer forced stop/fault
+    // record. Snapshot serials are monotonic within the existing RX lifetime;
+    // select matching generation/reset epoch before comparing serials.
+    if (!fRxZcPeriodicReady || !pci.pa_tag || !getMainWorkLoop() ||
+        getMainWorkLoop()->inGate()) return;
+    fRxZcPeriodicReady=false;
+    if (!pci.pa_tag->setProperty("KGP_RX_ZC4_PERIODIC",fRxZcPeriodic,sizeof(fRxZcPeriodic)))
+        __atomic_fetch_add(&fRxZcPropertyFailures,1ULL,__ATOMIC_RELAXED);
+    if (fRxZcPeriodicFirstPressure[0] && !pci.pa_tag->setProperty(
+        "KGP_RX_ZC4_PERIODIC_FIRST_PRESSURE",fRxZcPeriodicFirstPressure,sizeof(fRxZcPeriodicFirstPressure)))
+        __atomic_fetch_add(&fRxZcPropertyFailures,1ULL,__ATOMIC_RELAXED);
+    if (fRxZcPeriodicLastRecovery[0] && !pci.pa_tag->setProperty(
+        "KGP_RX_ZC4_PERIODIC_LAST_RECOVERY",fRxZcPeriodicLastRecovery,sizeof(fRxZcPeriodicLastRecovery)))
+        __atomic_fetch_add(&fRxZcPropertyFailures,1ULL,__ATOMIC_RELAXED);
+}
+
 // B1-ZC5 END
 
 bool ItlIwx::rx2HAllocate(unsigned slot)
@@ -17334,6 +17395,7 @@ IOReturn ItlIwx::zc19Snapshot(OSObject *, void *context, void *, void *, void *)
             __atomic_load_n(&that->fZc18Stats[i],__ATOMIC_RELAXED):that->fZc18Stats[i];
     w[28]=that->fZc19Miss; w[29]=that->fZc19PublishFail;
     w[30]=0; w[31]=0;
+    that->rxZcCapturePeriodic();
     return kIOReturnSuccess;
 }
 void ItlIwx::zc19Publish()
@@ -17346,6 +17408,7 @@ void ItlIwx::zc19Publish()
     if (getMainCommandGate()->attemptAction(zc19Snapshot,this)!=kIOReturnSuccess) {
         ++fZc19Miss; return;
     }
+    rxZcPublishPeriodic();
     if (!pci.pa_tag->setProperty("KGP_ZC19",fZc19Health,sizeof(fZc19Health)))
         ++fZc19PublishFail;
 }

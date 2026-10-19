@@ -714,6 +714,13 @@ public:
     bool rxZcFree();
     void rxZcPressureRecord(uint64_t *,unsigned);
     void rxZcReport(unsigned);
+    // ZC25 watchdog-owned immutable-after-capture publication buffers.
+    // Never written by notification paths; no retained pool/mbuf/DMA pointer.
+    uint64_t fRxZcPeriodic[64]={};
+    uint64_t fRxZcPeriodicFirstPressure[24]={}, fRxZcPeriodicLastRecovery[24]={};
+    bool fRxZcPeriodicReady=false;
+    void rxZcCapturePeriodic();
+    void rxZcPublishPeriodic();
 
     // PC1 control is serialized by the existing main workloop, not a new worker.
     struct Pc1Advance { iwx_tx_ring *ring; int index; unsigned generation; };
