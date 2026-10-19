@@ -1,0 +1,31 @@
+B1-ZC22-PERF — FUTURE KGP-ONLY QUALIFICATION PLAN
+Prepared for later evaluation; NO request to perform physical tests during this
+development phase. KGP alone decides installation, mode, boot and timing.
+
+Use the established AX210/ASIX wired-peer setup and unchanged corrected benchmark
+protocol. No system_profiler/CoreWLAN pre-test, periodic registry sampler, new
+pacing comparison, adapter/AP change or capture workload is needed for this plan.
+
+When KGP chooses to evaluate:
+1. Check actual loaded UUID against the delivered executable. Check scan,
+   association and basic connectivity. Capture normal endpoint health.
+2. A short initial comparison can use separate TCP TX P1/P4 and RX P1/P4 plus
+   UDP TX500/RX600, preserving original client/server JSON and normal health.
+   Compare with the already established ZC8 and ZC21 data; do not establish the
+   existence of the RX gap again. Judge all directions in the SAME candidate.
+3. For the complete unchanged42-case campaign, the identity-correct runner is:
+   /bin/bash "$HOME/Desktop/AirportItlwm/B1-ZC22-PERF/tools/ZC22_3x14_PORTABLE_IP_PROMPT.sh" ZC22
+   It prompts for the current wired peer and binds actual Wi-Fi IPv4/en2.
+   For an already conventional configuration, prefix EXPECTED_MODE=conventional.
+   Equal adjacent health publication is valid; rollback versus LAST fails;
+   FINAL must exceed INITIAL. UUID/marker/mode/fault/epoch checks remain strict.
+4. Success needs TX>400 (preferably470–490) together with RX near550–600 and
+   UDP RX600 near the offered rate with low loss. A TX reduction to ZC8 levels
+   does not meet the goal. Preserve every round/interval, errors and interruptions;
+   do not combine best TX/RX from different attempts or use short sender tails.
+5. Association/recovery, repeated sleep/wake, both AX210 modes and AX211/AX201
+   non-regression remain release gates. AX201 stays conventional-only. Hardware
+   cache/PAT and DMA lifetime are not established by host models or a clean build.
+
+The candidate is an implementation hypothesis, not an experimentally confirmed
+throughput solution. No physical traffic/test was initiated by Codex.
