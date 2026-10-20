@@ -1,0 +1,115 @@
+KGP_ZC28_SERVICE — schema 28/1, saved-only decoder and tests
+=========================================================
+
+Source provenance:
+The observer model extracts the literal zc28Note, zc28Aggregate, zc28Capture,
+zc28Publish and iwx_rx_packet_len functions and packet structures from the
+selected source worktree. Set ZC28_SOURCE_ROOT to that worktree. The model
+mocks provider export, workloop gate and queue snapshot; the actual queue
+implementation and packet completion are tested independently.
+
+Production observation contract:
+No successful packet, BA notification, release or RX-batch observer calls,
+clocks or counter RMWs remain from ZC27. The rare records replace selected
+former console events: single TX failure, aggregate TX response, TLC update,
+conventional RX allocation/cursor failure. Relaxed atomics are retained there
+because allocation failure can occur outside the main gate. The aggregate
+observer only reads the fixed frame_count after a non-underflowing length
+check; it neither walks advertised frame arrays nor validates the full RX
+parser. Reachability/frequency of aggregated TX responses with this firmware
+is not inferred from its existence. A counter is an observed event, not proof
+that any particular firmware API normally emits it.
+
+The existing watchdog calls zc28Capture only through gated zc19Snapshot. It
+copies the already-captured health metadata, obtains the queue snapshot using
+the queue's existing lock and loads eight rare atomics. It adds no clock read.
+Existing watchdog execution then exports KGP_ZC28_SERVICE outside the main
+gate. Publication failure is one watchdog-owned scalar, visible in the next
+successful capture. No new worker, timer, allocation for history or hot-path
+printing is introduced by these helpers. This does not assert zero overhead.
+
+Wire layout: exactly 32 little-endian unsigned QWORDs, 256 bytes.
+
+ 0  schema = 28
+ 1  revision = 1
+ 2  bytes = 256
+ 3  copied KGP_ZC19 health publication counter (not an independent counter)
+ 4  copied KGP_ZC19 uptime in nanoseconds (same existing uptime clock)
+ 5  actual selected DMA mode: 0 unknown/unqualified, 1 conventional, 2 mapped
+ 6  current driver generation, copied from health
+ 7  current reset epoch, copied from health
+ 8  current firmware-command epoch, copied from health
+ 9  finite capacity-wake handoff compiled present = 1
+10  queue snapshot valid: 0 unavailable, 1 captured
+11  watchdog publication-failure count
+12..15 reserved zero
+16  queue service begins
+17  queue service ends
+18  eligible capacity-wake checks deferred while serviceDepth != 0
+19  eligible waiting capacity obligations taken/cleared
+20  maximum finite service depth
+21  current finite service depth
+22  queue-local epoch
+23  queue reserved zero
+24  single TX failure events
+25  last raw single status/type: status bits0..15, type bits16..23
+26  aggregate TX response events
+27  last observer-readable advertised frame_count; retained if a later event's
+    fixed header is too short. No new malformed-header count is supplied.
+28  TLC update events
+29  last normalized rate bits0..31 | notification API version bits32..63
+30  conventional RX allocation failures
+31  conventional RX cursor/map failures
+
+Counter meanings and scope:
+Queue begin/end count function invocations, not packets or hardware batches.
+Word18 counts eligible checks, not distinct blocked episodes or milliseconds.
+Word19 counts taking an eligible waiting obligation, not peer receipt, a host
+TCP ACK, exact upper-stack service or the actual duration until resumed work.
+A missing owner/interface can prevent a signal after an obligation is taken.
+Word21 is a point-in-time queue snapshot, usually zero after the finite consumer
+scope. The queue object lifetime and epoch differ from the HAL attachment.
+Queue close/reset changes must be interpreted using the actual queue source;
+no cross-file or cross-epoch deltas are fabricated by the decoder.
+
+Rare counters belong to the HAL attachment and are not reset when generation,
+reset or command epochs change. Last raw zero values are valid when events have
+occurred. Counts and last values use separate relaxed atomic operations and
+can be observed between updates; no coherent event tuple is guaranteed.
+None of these counters is a packet-delivery, RF retry, TCP retransmission,
+DMA-completion or current hardware occupancy proof.
+
+Saved-only decoder:
+  python3 tools/decode_zc28_service.py /absolute/path/ROUND_01/BEFORE.plist
+  python3 tools/decode_zc28_service.py /path/INITIAL.plist /path/FINAL.plist
+
+The decoder never performs live IORegistry, profiler, network or driver queries.
+It recursively finds exactly one provider containing KGP_ZC28_SERVICE, requires
+the exact AirportItlwm-Tahoe-B1-ZC28-SERVICE marker and strict 256-byte schema.
+It does not select a global highest counter or silently choose one provider.
+Same-provider KGP_ZC19 mode/generation/reset/command fields must match before
+the diagnostic lifetime is trusted. Missing/malformed/mismatched health keeps
+the valid diagnostic record explicitly UNTRUSTED RAW; no fault is invented.
+Mode0 remains unqualified. A publication/time mismatch is reported, not called
+a hardware fault: IORegistry exports are not one globally atomic transaction.
+Sampled health fault flags are reported separately from lifetime trust.
+
+Input files remain independent. Equal epochs do not prove equal boot/HAL
+identity. No automatic subtraction across files is performed, even if values
+or epochs happen to match. Preserve loaded UUID/hash, boot records, original
+health records and benchmark identity guard evidence separately.
+
+Tests:
+  ZC28_SOURCE_ROOT=/absolute/worktree python3 tools/host_tests/ZC28_SERVICE_OBSERVER_HOST_TEST.py address,undefined
+  ZC28_SOURCE_ROOT=/absolute/worktree python3 tools/host_tests/ZC28_SERVICE_OBSERVER_HOST_TEST.py thread
+  python3 tools/host_tests/ZC28_SERVICE_DECODER_TEST.py
+
+Tests cover literal helpers, exact prefix allocations/underflow, frame counts
+0..255, raw masks/zero values, attachment retention, null/detached queue,
+external publication restrictions, publication failure and concurrent atomic
+rare writers with a sole watchdog. Queue is mocked with an existing mutex;
+these tests do not certify production DMA, hardware timings, the full parser,
+global snapshot atomicity or physical performance. The decoder tests valid
+both-mode records, ambiguity, malformed input/schema/marker, every lifetime
+mismatch, absent health, raw-zero meaning, copied publication behavior and
+independent multiple input files.

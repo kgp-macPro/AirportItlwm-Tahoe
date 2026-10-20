@@ -1,15 +1,19 @@
 #!/bin/bash
 # Maintained SHARED entry point; traffic protocol AIRPORTITLWM_3X14_NO_PROFILER_V1.
 # Derived from portable runner SHA256 00cf96aadddc0a130ef4c030bc80d4bea293bdf1e2e96a631c0fa1968956f15e
-# ZC25 identity plus directional RPM text; no extra snapshot, traffic or sampling.
+# r4: explicit external-build validation profile; KGP guard contracts unchanged.
+# r5: simple LAOBAMAC/ZCxx plus mapped/conventional arguments; traffic unchanged.
+# r6: explicit LAOBAMAC build 44/47/53 selection; existing calls remain supported.
+# Traffic, order, durations, snapshot schedule and raw evaluation stay r3.
+# External identity checks occur at the eight existing boundaries only.
 # AirportItlwm — reusable 3x14 physical benchmark, complete iperf3 raw logs,
 # and ONE final Internet-based Apple networkQuality test.
 # macOS Tahoe / Bash 3.2 compatible. Does not modify EFI, driver or network settings.
 #
 # Usage:
-#   /bin/bash AirportItlwm_3x14_PORTABLE.sh ZC18
-#   /bin/bash AirportItlwm_3x14_PORTABLE.sh ZC8
-#   /bin/bash AirportItlwm_3x14_PORTABLE.sh "/absolute/path/to/AirportItlwm.kext"
+#   /bin/bash AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh ZC18
+#   /bin/bash AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh ZC8
+#   /bin/bash AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh "/absolute/path/to/AirportItlwm.kext"
 #
 # Prompts for the wired peer's IPv4 unless IPERF_SERVER is explicitly provided.
 # For another machine (e.g. Luiz's AX211) set WIFI_IFACE, DEVICE_LABEL,
@@ -23,16 +27,38 @@ set -Eeuo pipefail
 
 usage() {
   cat <<'HELP'
-Usage: /bin/bash AirportItlwm_3x14_PORTABLE.sh ZC26|ZC25|ZC24|ZC23|ZC22|ZC21|ZC20|ZC19|ZC8|ZC13|ZC18|/absolute/path/AirportItlwm.kext
+Usage: /bin/bash AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh ZC28|ZC27|ZC26|ZC25|ZC24|ZC23|ZC22|ZC21|ZC20|ZC19|ZC8|ZC13|ZC18|/absolute/path/AirportItlwm.kext
 
-When started, the script asks for the wired iperf3 server's CURRENT IPv4.
+Simple calls:
+  /bin/bash AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh LAOBAMAC 44 mapped
+  /bin/bash AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh LAOBAMAC 47 conventional
+  /bin/bash AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh LAOBAMAC 53 mapped
+Explicit numbered builds expect ~/Desktop/Laobamac/<number>/AirportItlwm.kext.
+Build 44 = d695c97, build 47 = bbe368e, build 53 = 738d4c6.
+LAOBAMAC_KEXT can override the numbered candidate path.
+The earlier two-argument LAOBAMAC calls retain their r5 defaults below.
+  /bin/bash AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh LAOBAMAC mapped
+  /bin/bash AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh LAOBAMAC conventional
+  /bin/bash AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh ZC26 mapped
+  /bin/bash AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh ZC26 conventional
+LAOBAMAC defaults to ~/Desktop/AirportItlwm/LAOBAMAC-738d4c6/AirportItlwm.kext
+and the source declaration 738d4c61b5a64433b27c1ab09dba94916ab77d8d.
+Optional LAOBAMAC_KEXT and LAOBAMAC_SOURCE_REF override those for another build.
+The selected mode is a user-declared configuration for an external build,
+NOT a DMA-mode switch or driver-verified KGP mode. No KGP health is fabricated.
+
+When started, the script asks for the wired peer's CURRENT IPv4.
 There is NO hard-coded or remembered server IP. Use dots, not commas.
 To skip the interactive prompt, explicitly set IPERF_SERVER=192.168.178.33.
 
 Optional environment variables (set for another host such as Luiz's AX211):
   WIFI_IFACE=en2                  Wi-Fi interface used by AirportItlwm
   DEVICE_LABEL=AX210             Name recorded in output/ZIP (e.g. AX211)
-  EXPECTED_MODE=mapped           mapped or conventional
+  EXPECTED_MODE=mapped           KGP: mapped or conventional
+  BENCHMARK_PROFILE=kgp          kgp (default) or explicitly external
+  EXPECTED_MODE=unverified       Required/default for external profile
+  EXTERNAL_SOURCE_REF=<40hex>    User-declared source commit, external only
+  CANDIDATE_LABEL=LAOBAMAC_...    Safe external label, must not be ZC<number>
   IPERF_SERVER=<IPv4>            Optional non-interactive peer IPv4
   IPERF_PORT=5201                iperf3 port on the wired peer
   AIRPORTITLWM_ROOT=~/Desktop/AirportItlwm  Candidate directory root
@@ -45,6 +71,13 @@ Candidate label ZC18 resolves to:
   $AIRPORTITLWM_ROOT/B1-ZC18-PERF/AirportItlwm.kext
 An absolute kext path is also accepted for other folder layouts.
 The loaded AirportItlwm x86_64 UUID MUST match the candidate on disk.
+The LAOBAMAC shortcut supplies the external profile and default path automatically.
+Advanced external calls require BENCHMARK_PROFILE=external plus an ABSOLUTE kext path
+and EXTERNAL_SOURCE_REF=<40-hex-commit>. Missing KGP diagnostics are explicitly
+UNAVAILABLE, never healthy/zero or a verified mapped/conventional DMA mode.
+External profile checks loaded UUID and unchanged candidate hashes at the SAME
+eight existing snapshot boundaries. It rejects KGP driver markers. Source ref
+is a user declaration, not proof that a downloaded binary matches that commit.
 ZC8 uses verified legacy markers; KGP_TX_2I may be absent in conventional.
 ZC19/ZC21/ZC22/ZC25 require KGP_ZC19 schema19/1; ZC10–18 use KGP_ZC10 10/2.
 
@@ -54,6 +87,42 @@ The wired iperf3 peer must be running `iperf3 -s` with its Wi-Fi OFF.
 No automatic reconnect, reboot, EFI installation or network changes.
 HELP
 }
+# r6 numbered shortcut expansion BEGIN
+LAOBAMAC_BUILD_NUMBER=""
+if [[ $# -eq 3 && ( "$1" == LAOBAMAC || "$1" == laobamac ) ]]; then
+  case "$3" in mapped|conventional) ;; *) echo 'STOP: third argument must be mapped or conventional'; exit 2 ;; esac
+  LAOBAMAC_BUILD_NUMBER="$2"
+  case "$LAOBAMAC_BUILD_NUMBER" in
+    44) LAOBAMAC_SELECTED_REF=d695c971420cc8af0daa286dcd3297e8236c0a63 ;;
+    47) LAOBAMAC_SELECTED_REF=bbe368ec7d55a5395d08c729e88eeaabebae8255 ;;
+    53) LAOBAMAC_SELECTED_REF=738d4c61b5a64433b27c1ab09dba94916ab77d8d ;;
+    *) echo 'STOP: supported LAOBAMAC build numbers are 44, 47 and 53'; exit 2 ;;
+  esac
+  if [[ -n "${LAOBAMAC_SOURCE_REF:-}" && "$LAOBAMAC_SOURCE_REF" != "$LAOBAMAC_SELECTED_REF" ]]; then
+    echo 'STOP: LAOBAMAC_SOURCE_REF conflicts with the selected numbered build'; exit 2
+  fi
+  LAOBAMAC_SOURCE_REF="$LAOBAMAC_SELECTED_REF"
+  LAOBAMAC_KEXT="${LAOBAMAC_KEXT:-$HOME/Desktop/Laobamac/$LAOBAMAC_BUILD_NUMBER/AirportItlwm.kext}"
+  set -- "$1" "$3"
+fi
+# r6 numbered shortcut expansion END
+# r5 shortcut expansion BEGIN
+EXTERNAL_DECLARED_MODE="${EXTERNAL_DECLARED_MODE:-unspecified}"
+if [[ $# -eq 2 ]]; then
+  case "$2" in mapped|conventional) ;; *) echo 'STOP: second argument must be mapped or conventional'; exit 2 ;; esac
+  if [[ "$1" == LAOBAMAC || "$1" == laobamac ]]; then
+    EXTERNAL_DECLARED_MODE="$2"
+    BENCHMARK_PROFILE=external
+    EXPECTED_MODE=unverified
+    EXTERNAL_SOURCE_REF="${LAOBAMAC_SOURCE_REF:-738d4c61b5a64433b27c1ab09dba94916ab77d8d}"
+    CANDIDATE_LABEL="LAOBAMAC_${LAOBAMAC_BUILD_NUMBER:+${LAOBAMAC_BUILD_NUMBER}_}${EXTERNAL_SOURCE_REF:0:7}_${EXTERNAL_DECLARED_MODE}"
+    set -- "${LAOBAMAC_KEXT:-${AIRPORTITLWM_ROOT:-$HOME/Desktop/AirportItlwm}/LAOBAMAC-${EXTERNAL_SOURCE_REF:0:7}/AirportItlwm.kext}"
+  elif [[ "$1" =~ ^[Zz][Cc][0-9]+$ ]]; then
+    EXPECTED_MODE="$2"
+    set -- "$1"
+  fi
+fi
+# r5 shortcut expansion END
 if [[ $# -ne 1 || "$1" == "--help" || "$1" == "-h" ]]; then
   usage
   if [[ $# -eq 1 && ( "$1" == "--help" || "$1" == "-h" ) ]]; then exit 0; fi
@@ -65,11 +134,23 @@ BASE="${AIRPORTITLWM_TEST_DIR:-$ROOT/TESTS}"
 IFACE="${WIFI_IFACE:-en2}"
 PORT="${IPERF_PORT:-5201}"
 DEVICE="${DEVICE_LABEL:-AX210}"
-MODE="${EXPECTED_MODE:-mapped}"
+PROFILE="${BENCHMARK_PROFILE:-kgp}"
+case "$PROFILE" in kgp|external) ;; *) echo 'STOP: BENCHMARK_PROFILE must be kgp or external'; exit 2 ;; esac
+if [[ "$PROFILE" == external ]]; then
+  case "$EXTERNAL_DECLARED_MODE" in unspecified|mapped|conventional) ;; *) echo 'STOP: invalid external declared configuration'; exit 2 ;; esac
+  MODE="${EXPECTED_MODE:-unverified}"
+  [[ "$MODE" == unverified ]] || { echo 'STOP: external profile requires EXPECTED_MODE=unverified; actual DMA mode cannot be certified'; exit 2; }
+  [[ "$1" == /* ]] || { echo 'STOP: external profile requires an absolute kext path'; exit 2; }
+  [[ "${EXTERNAL_SOURCE_REF:-}" =~ ^[a-fA-F0-9]{40}$ ]] || { echo 'STOP: external EXTERNAL_SOURCE_REF must be a 40-hex source commit declaration'; exit 2; }
+else
+  MODE="${EXPECTED_MODE:-mapped}"
+fi
 GAP_SECONDS="${TEST_GAP_SECONDS:-2}"
 IOREG_SERVICE="${IOREG_WIFI_SERVICE:-ARPT}"
 
-case "$MODE" in mapped|conventional) ;; *) echo 'STOP: EXPECTED_MODE must be mapped or conventional'; exit 2 ;; esac
+if [[ "$PROFILE" == kgp ]]; then
+  case "$MODE" in mapped|conventional) ;; *) echo 'STOP: EXPECTED_MODE must be mapped or conventional'; exit 2 ;; esac
+fi
 [[ "$IFACE" =~ ^[a-zA-Z][a-zA-Z0-9]*$ ]] || { echo 'STOP: Invalid WIFI_IFACE'; exit 2; }
 [[ "$IOREG_SERVICE" =~ ^[a-zA-Z0-9_,.-]+$ ]] || { echo 'STOP: Invalid IOREG_WIFI_SERVICE'; exit 2; }
 [[ "$PORT" =~ ^[0-9]+$ ]] && (( 10#$PORT >= 1 && 10#$PORT <= 65535 )) || {
@@ -121,11 +202,18 @@ fi
 printf 'iperf3 server: %s:%s | Wi-Fi: %s | device: %s | mode: %s\n' \
   "$SERVER" "$PORT" "$IFACE" "$DEVICE" "$MODE"
 
+if [[ "$PROFILE" == external ]]; then
+  printf 'External declared configuration: %s | actual driver DMA mode: unverified\n' "$EXTERNAL_DECLARED_MODE"
+fi
 CANDIDATE_INPUT="$1"
 if [[ "$CANDIDATE_INPUT" == */* ]]; then
   KEXT="${CANDIDATE_INPUT%/}"
   KEXT_PARENT="$(basename "$(dirname "$KEXT")")"
-  if [[ "$KEXT_PARENT" == B1-ZC20-TX-CMD-UC ]]; then
+  if [[ "$KEXT_PARENT" == B1-ZC28-SERVICE ]]; then
+    LABEL=ZC28
+  elif [[ "$KEXT_PARENT" == B1-ZC27-STABILITY ]]; then
+    LABEL=ZC27
+  elif [[ "$KEXT_PARENT" == B1-ZC20-TX-CMD-UC ]]; then
     LABEL=ZC20
   elif [[ "$KEXT_PARENT" =~ ^B1-(ZC[0-9]+)-PERF$ ]]; then
     LABEL="${BASH_REMATCH[1]}"
@@ -137,14 +225,23 @@ else
   [[ "$LABEL" =~ ^ZC[0-9]+$ ]] || {
     echo "STOP: Use ZC<number> or an absolute AirportItlwm.kext path"; exit 2;
   }
-  if [[ "$LABEL" == ZC20 ]]; then
+  if [[ "$LABEL" == ZC28 ]]; then
+    KEXT="$ROOT/B1-ZC28-SERVICE/AirportItlwm.kext"
+  elif [[ "$LABEL" == ZC27 ]]; then
+    KEXT="$ROOT/B1-ZC27-STABILITY/AirportItlwm.kext"
+  elif [[ "$LABEL" == ZC20 ]]; then
     KEXT="$ROOT/B1-ZC20-TX-CMD-UC/AirportItlwm.kext"
   else
     KEXT="$ROOT/B1-${LABEL}-PERF/AirportItlwm.kext"
   fi
 fi
 # For custom directory layouts, e.g. Luiz's frozen ZC8 stored elsewhere.
-if [[ -n "${CANDIDATE_LABEL:-}" ]]; then
+if [[ "$PROFILE" == external ]]; then
+  LABEL="$(printf '%s' "${CANDIDATE_LABEL:-EXTERNAL}" | tr '[:lower:]' '[:upper:]')"
+  [[ "$LABEL" =~ ^[A-Z0-9][A-Z0-9_.-]{0,63}$ && ! "$LABEL" =~ ^ZC[0-9]+$ ]] || {
+    echo 'STOP: external label must be 1-64 safe characters and cannot impersonate ZC<number>'; exit 2;
+  }
+elif [[ -n "${CANDIDATE_LABEL:-}" ]]; then
   LABEL="$(printf '%s' "$CANDIDATE_LABEL" | tr '[:lower:]' '[:upper:]')"
   [[ "$LABEL" =~ ^ZC[0-9]+$ ]] || { echo 'STOP: Invalid CANDIDATE_LABEL'; exit 2; }
 fi
@@ -164,6 +261,22 @@ UUID_OUTPUT="$(xcrun dwarfdump --uuid "$EXECUTABLE" 2>&1)" || {
 }
 UUID="$(printf '%s\n' "$UUID_OUTPUT" | awk '/^UUID: / && /\(x86_64\)/ {print $2; exit}')"
 [[ -n "$UUID" ]] || { echo 'STOP: No x86_64 UUID in candidate'; exit 1; }
+BUNDLE_ID='com.zxystd.AirportItlwm'
+EXTERNAL_EXE_SHA=''
+EXTERNAL_INFO_SHA=''
+if [[ "$PROFILE" == external ]]; then
+  BUNDLE_ID="$(python3 - "$KEXT/Contents/Info.plist" <<'PY_EXTERNAL_BUNDLE'
+import plistlib,re,sys
+p=plistlib.load(open(sys.argv[1],'rb'))
+b=p.get('CFBundleIdentifier','')
+if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]*',b) or p.get('CFBundleExecutable')!='AirportItlwm':
+    raise SystemExit('STOP: invalid external AirportItlwm bundle metadata')
+print(b)
+PY_EXTERNAL_BUNDLE
+  )" || exit 1
+  EXTERNAL_EXE_SHA="$(shasum -a 256 "$EXECUTABLE" | awk '{print $1}')"
+  EXTERNAL_INFO_SHA="$(shasum -a 256 "$KEXT/Contents/Info.plist" | awk '{print $1}')"
+fi
 
 mkdir -p "$BASE"
 STAMP="$(date +%Y%m%d_%H%M%S)"
@@ -178,16 +291,17 @@ PREVIOUS_HEALTH=""
 
 # Fixed traffic protocol unchanged from frozen ZC22; revision covers tooling only.
 PROTOCOL_VERSION='AIRPORTITLWM_3X14_NO_PROFILER_V1'
-RUNNER_REVISION='shared-2026-10-19-r2'
+RUNNER_REVISION='shared-2026-10-20-r7-service'
 RUNNER_SOURCE="${BASH_SOURCE[0]}"
 record_protocol() {
   python3 - "$RUNNER_SOURCE" "$OUT" "$PROTOCOL_VERSION" "$RUNNER_REVISION" "$1" \
     "$LABEL" "$KEXT" "$UUID" "$DEVICE" "$IFACE" "${WIFI_IP:-}" "$SERVER" \
-    "$PORT" "$MODE" "$GAP_SECONDS" "$IOREG_SERVICE" "$ROOT" "$BASE" "$BASH_VERSION" <<'PY_PROTOCOL'
+    "$PORT" "$MODE" "$GAP_SECONDS" "$IOREG_SERVICE" "$ROOT" "$BASE" "$BASH_VERSION" \
+    "$PROFILE" "${EXTERNAL_SOURCE_REF:-}" "$BUNDLE_ID" "$EXTERNAL_DECLARED_MODE" <<'PY_PROTOCOL'
 from pathlib import Path
 import datetime,hashlib,json,sys
 (source,folder,version,revision,phase,label,kext,uuid,device,iface,wifi_ip,server,
- port,mode,gap,service,root,base,bash)=sys.argv[1:]
+ port,mode,gap,service,root,base,bash,profile,declared_commit,bundle_id,declared_dma)=sys.argv[1:]
 p=Path(folder);src=Path(source).resolve();copy=p/'EXECUTED_RUNNER.sh'
 if not copy.exists():copy.write_bytes(src.read_bytes())
 copy_sha=hashlib.sha256(copy.read_bytes()).hexdigest()
@@ -209,7 +323,16 @@ matrix += [{'name':'UDP_'+direction+str(rate),'seconds':5,'offered_mbps':rate,'p
 settings={'protocol_version':version,'runner_revision':revision,'phase':phase,
  'candidate':label,'candidate_path':kext,'expected_loaded_uuid':uuid,'device_label':device,
  'wifi_interface':iface,'wifi_ipv4':wifi_ip or None,'server_ipv4':server,'server_port':int(port),
- 'expected_actual_mode':mode,'binding':(wifi_ip+'%'+iface) if wifi_ip else None,
+ 'expected_actual_mode':mode if profile=='kgp' else None,
+ 'validation_profile':profile,'candidate_bundle_id':bundle_id,
+ 'declared_external_source_commit':declared_commit.lower() if profile=='external' else None,
+ 'external_source_build_correspondence_verified':False if profile=='external' else None,
+ 'declared_external_dma_configuration':declared_dma if profile=='external' else None,
+ 'external_actual_dma_mode_verified':False if profile=='external' else None,
+ 'kgp_guard_profile_enabled':profile=='kgp',
+ 'numeric_kgp_health_available':profile=='kgp' and label!='ZC8',
+ 'external_boundary_identity_checks':profile=='external',
+ 'binding':(wifi_ip+'%'+iface) if wifi_ip else None,
  'rounds':3,'tests_per_round':matrix,'between_iperf_tests_seconds':int(gap),
  'matches_frozen_zc22_default_pauses':int(gap)==2,
  'iperf_fixed_options':['-4','--get-server-output','-J'],
@@ -220,7 +343,9 @@ settings={'protocol_version':version,'runner_revision':revision,'phase':phase,
 (p/'EFFECTIVE_SETTINGS.json').write_text(json.dumps(settings,indent=2)+'\n')
 (p/'BENCHMARK_PROTOCOL.txt').write_text(version+'\nRunner revision: '+revision+'\nRunner SHA256: '+expected+
  '\nTraffic/order/durations/raw evaluation equal frozen ZC22. Nondefault gap is explicitly recorded.\n'+
- 'Changes: identity/schema support; self-copy/hash/settings provenance; directional RPM display. No new traffic or polling.\n')
+ 'Changes: explicit external validation profile; KGP guards preserved; self-copy/hash/settings provenance.\n'+
+ 'External: UUID/hash identity checks at the same eight boundaries; KGP DMA/epoch/fault telemetry unavailable.\n'+
+ 'Traffic/order/durations/online evaluation unchanged; no extra traffic, 1Hz sampling or profiler.\n')
 if not valid:raise SystemExit('STOP: executed runner source/copy changed during collection; archive cannot be marked complete')
 PY_PROTOCOL
 }
@@ -240,6 +365,12 @@ finish() {
     fi
     printf 'EXIT_CODE=%s\nCOMPLETED_IPERF_TESTS=%s\nEXPECTED_IPERF_TESTS=42\nONLINE_STATUS=%s\nLAST_STAGE=%s\n' \
       "$rc" "$completed" "$online_status" "$stage"
+    printf 'VALIDATION_PROFILE=%s\n' "$PROFILE"
+    if [[ "$PROFILE" == external ]]; then
+      echo 'ACTUAL_DMA_MODE_VERIFIED=false'
+      echo 'NUMERIC_KGP_HEALTH_VERIFIED=false'
+      echo 'COMPLETION_SCOPE=42_TESTS_ONLINE_AND_BOUNDARY_IDENTITY_ONLY'
+    fi
     date '+FINISHED_LOCAL=%Y-%m-%dT%H:%M:%S%z'
     date -u '+FINISHED_UTC=%Y-%m-%dT%H:%M:%SZ'
   } > "$OUT/RUN_STATUS.txt"
@@ -310,8 +441,9 @@ record_protocol initial
 
 check_snapshot() {
   local plist="$1"; local ref="$2"; local previous="$3"; local phase="$4"
-  python3 - "$plist" "$ref" "$previous" "$MODE" "$LABEL" "$phase" <<'PY'
-import json,plistlib,struct,sys,hashlib
+  BENCHMARK_PROFILE="$PROFILE" BENCHMARK_EXPECTED_UUID="$UUID" BENCHMARK_BUNDLE_ID="$BUNDLE_ID" BENCHMARK_EXPECTED_SERVICE="$IOREG_SERVICE" \
+    python3 - "$plist" "$ref" "$previous" "$MODE" "$LABEL" "$phase" <<'PY'
+import json,plistlib,struct,sys,hashlib,os
 source, ref, previous, expected_mode, label, phase=sys.argv[1:]
 with open(source,'rb') as f:root=plistlib.load(f)
 blobs=[]
@@ -328,13 +460,49 @@ def walk(o):
     elif isinstance(o,list):
         for v in o:walk(v)
 walk(root)
-if label in ('ZC19','ZC20','ZC21','ZC22','ZC23','ZC24','ZC25','ZC26'):
+profile=os.environ.get('BENCHMARK_PROFILE','kgp')
+if profile not in ('kgp','external'):sys.exit('STOP: invalid validation profile')
+if profile=='external':
+    if expected_mode!='unverified':sys.exit('STOP: external actual DMA mode is unverified')
+    if phase not in ('boundary','final'):sys.exit('STOP: unknown external snapshot phase')
+    if (not isinstance(root,list) or len(root)!=1 or not isinstance(root[0],dict) or
+        root[0].get('IORegistryEntryName')!=os.environ.get('BENCHMARK_EXPECTED_SERVICE') or
+        not isinstance(root[0].get('IORegistryEntryID'),int) or root[0]['IORegistryEntryID']<=0):
+        sys.exit('STOP: external requires exactly one matching IORegistry device snapshot')
+    if blobs or zc19 or any(legacy_fields.values()):
+        sys.exit('STOP: external profile cannot bypass KGP driver guards')
+    if label.startswith('ZC') and label[2:].isdigit():sys.exit('STOP: external label impersonates KGP candidate')
+    identity=json.load(open(source.rsplit('.',1)[0]+'.identity.json'))
+    if (identity.get('loaded_uuid')!=os.environ.get('BENCHMARK_EXPECTED_UUID','').upper() or
+        identity.get('bundle_id')!=os.environ.get('BENCHMARK_BUNDLE_ID') or
+        identity.get('candidate_hashes_unchanged') is not True):
+        sys.exit('STOP: external boundary identity not verified')
+    health={'Format':'EXTERNAL_NO_KGP_HEALTH_V1','ValidationProfile':'external',
+            'LoadedUUID':identity['loaded_uuid'],'BundleIdentifier':identity['bundle_id'],
+            'IORegistryDeviceID':root[0]['IORegistryEntryID'],
+            'DeclaredSourceCommit':identity['declared_source_commit'],
+            'Mode':None,'ActualDMAModeVerified':False,
+            'NumericFaultAndResetCountersVerified':False,
+            'GenerationEpochAndPublicationProgressVerified':False,
+            'KGPHealthStatus':'UNAVAILABLE_NOT_ZERO',
+            'SourceBuildCorrespondenceVerified':False,
+            'BoundaryIdentityVerified':True}
+    if ref!='NONE':
+        old=json.load(open(ref))
+        if any(old.get(k)!=health[k] for k in ('Format','LoadedUUID','BundleIdentifier','DeclaredSourceCommit','IORegistryDeviceID')):
+            sys.exit('STOP: external identity declaration changed')
+    with open(source.rsplit('.',1)[0]+'.health.json','w') as f:json.dump(health,f,indent=2)
+    print('EXTERNAL: boundary UUID/hashes verified; actual DMA mode and KGP health UNAVAILABLE')
+    sys.exit(0)
+if label in ('ZC19','ZC20','ZC21','ZC22','ZC23','ZC24','ZC25','ZC26','ZC27','ZC28'):
     if blobs or len(zc19)!=1 or len(zc19[0])!=256:
         sys.exit('STOP: expected exactly one ZC19 256-byte health record, no ZC10 schema')
     w=struct.unpack('<32Q',zc19[0])
     if w[:3]!=(19,1,256) or not w[3] or not w[4]:sys.exit('STOP: invalid/unpublished ZC19 schema')
     if w[5]!=(2 if expected_mode=='mapped' else 1):sys.exit('STOP: wrong ZC19 actual DMA mode')
-    marker='AirportItlwm-Tahoe-B1-ZC20-TX-CMD-UC' if label=='ZC20' else 'AirportItlwm-Tahoe-B1-'+label+'-PERF'
+    marker=('AirportItlwm-Tahoe-B1-ZC28-SERVICE' if label=='ZC28' else
+            'AirportItlwm-Tahoe-B1-ZC27-STABILITY' if label=='ZC27' else
+            'AirportItlwm-Tahoe-B1-ZC20-TX-CMD-UC' if label=='ZC20' else 'AirportItlwm-Tahoe-B1-'+label+'-PERF')
     if legacy_fields['KGP_RX_EXPERIMENT']!=[marker]:
         sys.exit('STOP: wrong ZC19 marker')
     if any(w[i] for i in [8,9,10,13,14]):sys.exit('STOP: ZC19 PC1/TX/command/suspend/RX fault state')
@@ -439,9 +607,36 @@ if ref!='NONE':
 PY
 }
 
+external_identity_snapshot() {
+  local file="$1"
+  kmutil showloaded --list-only -v > "${file%.plist}.loaded.txt" 2>&1 || return $?
+  python3 - "${file%.plist}.loaded.txt" "$EXECUTABLE" "$KEXT/Contents/Info.plist" \
+    "$UUID" "$BUNDLE_ID" "$EXTERNAL_EXE_SHA" "$EXTERNAL_INFO_SHA" \
+    "$EXTERNAL_SOURCE_REF" "${file%.plist}.identity.json" <<'PY_EXTERNAL_IDENTITY'
+import hashlib,json,plistlib,re,sys
+from pathlib import Path
+loaded,exe,info,uuid,bundle,exe_sha,info_sha,commit,out=sys.argv[1:]
+records=[line for line in Path(loaded).read_text().splitlines() if bundle in line.split()]
+if len(records)!=1:raise SystemExit('STOP: external bundle must have exactly one loaded record')
+uuids=re.findall(r'(?<![A-Fa-f0-9])[A-Fa-f0-9]{8}(?:-[A-Fa-f0-9]{4}){3}-[A-Fa-f0-9]{12}(?![A-Fa-f0-9])',records[0])
+if len(uuids)!=1 or uuids[0].upper()!=uuid.upper():raise SystemExit('STOP: external loaded UUID mismatch')
+actual_exe=hashlib.sha256(Path(exe).read_bytes()).hexdigest()
+actual_info=hashlib.sha256(Path(info).read_bytes()).hexdigest()
+p=plistlib.loads(Path(info).read_bytes())
+if actual_exe!=exe_sha or actual_info!=info_sha or p.get('CFBundleIdentifier')!=bundle:
+    raise SystemExit('STOP: external candidate changed during collection')
+if not re.fullmatch(r'[a-fA-F0-9]{40}',commit):raise SystemExit('STOP: malformed external source declaration')
+Path(out).write_text(json.dumps({'bundle_id':bundle,'loaded_uuid':uuid.upper(),
+ 'loaded_record':records[0],'candidate_hashes_unchanged':True,
+ 'executable_sha256':actual_exe,'info_plist_sha256':actual_info,
+ 'declared_source_commit':commit.lower(),'source_build_correspondence_verified':False},indent=2)+'\n')
+PY_EXTERNAL_IDENTITY
+}
+
 capture() {
   local file="$1"; local phase="${2:-boundary}"
   ioreg -a -l -r -n "$IOREG_SERVICE" > "$file"
+  if [[ "$PROFILE" == external ]]; then external_identity_snapshot "$file" || return $?; fi
   check_snapshot "$file" "${INITIAL_HEALTH:-NONE}" "${PREVIOUS_HEALTH:-NONE}" "$phase" || return $?
   PREVIOUS_HEALTH="${file%.plist}.health.json"
 }
@@ -558,7 +753,7 @@ stage="PREFLIGHT"
   ps -axo pid,pcpu,pmem,comm | grep -Ei 'xcodebuild|clang|ld|codex' || true
 } > "$OUT/PREFLIGHT.txt" 2>&1
 
-LOADED="$(grep -F 'com.zxystd.AirportItlwm' "$OUT/PREFLIGHT.txt" || true)"
+LOADED="$(grep -F "$BUNDLE_ID" "$OUT/PREFLIGHT.txt" || true)"
 if [[ -z "$LOADED" || "$LOADED" != *"$UUID"* ]]; then
   echo "STOP: expected candidate UUID $UUID NOT loaded"
   echo "$LOADED"
@@ -567,6 +762,13 @@ fi
 
 {
   printf 'CANDIDATE=%s\nKEXT_PATH=%s\nEXPECTED_UUID=%s\n' "$LABEL" "$KEXT" "$UUID"
+  printf 'VALIDATION_PROFILE=%s\nBUNDLE_IDENTIFIER=%s\n' "$PROFILE" "$BUNDLE_ID"
+  if [[ "$PROFILE" == external ]]; then
+    printf 'DECLARED_SOURCE_COMMIT=%s\nDECLARED_DMA_CONFIGURATION=%s\n' "$EXTERNAL_SOURCE_REF" "$EXTERNAL_DECLARED_MODE"
+    echo 'SOURCE_BUILD_CORRESPONDENCE_VERIFIED=false'
+    echo 'ACTUAL_DMA_MODE_VERIFIED=false'
+    echo 'NUMERIC_KGP_HEALTH_VERIFIED=false'
+  fi
   printf 'SHA256_EXECUTABLE='; shasum -a 256 "$EXECUTABLE"
   printf 'SHA256_INFO_PLIST='; shasum -a 256 "$KEXT/Contents/Info.plist"
   printf 'LOADED_RECORD=%s\n' "$LOADED"
@@ -599,6 +801,10 @@ Wi-Fi device: $DEVICE
 Wi-Fi interface/IP: $IFACE / $WIFI_IP
 Wired iperf3 peer: $SERVER:$PORT
 Mode: $MODE
+Validation profile: $PROFILE
+External declared source commit: ${EXTERNAL_SOURCE_REF:-N/A}
+External declared DMA configuration (not verified): $EXTERNAL_DECLARED_MODE
+External profile: no KGP DMA/fault/epoch/publication-health certification.
 Matrix: 3 rounds x (TCP TX P1/RX P1/TX P4/RX P4 each 8s;
         UDP TX and RX at 100/250/400/500/600 Mbps, payload 1200B, 5s each)
 Between iperf3 tests: ${GAP_SECONDS}s

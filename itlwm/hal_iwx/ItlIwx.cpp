@@ -426,7 +426,7 @@ bool ItlIwx::dma5Select()
     if (selection) selection->release();
     if (!resolved) { boot5Mark(10, "device DMA policy unresolved; attach refused", 2); return false; }
     pci.pa_tag->setProperty("KGP_ZC5_DMA_MODE", mapped ? "mapped RX/TX" : "original Dexter RX/TX");
-    pci.pa_tag->setProperty("KGP_RX_EXPERIMENT", "AirportItlwm-Tahoe-B1-ZC26-PERF");
+    pci.pa_tag->setProperty("KGP_RX_EXPERIMENT", "AirportItlwm-Tahoe-B1-ZC28-SERVICE");
     boot5Mark(11, mapped ? "DMA routing completed: mapped" : "DMA routing completed: original Dexter");
     return true;
 }
@@ -2648,60 +2648,7 @@ enum {
     IWX_RATE_INVALID = IWX_RATE_COUNT,
 };
 
-struct iwx_rate_mcs_info {
-    char    mbps[IWX_MAX_MCS_DISPLAY_SIZE];
-    char    mcs[IWX_MAX_MCS_DISPLAY_SIZE];
-};
-
-/* mbps, mcs */
-static const struct iwx_rate_mcs_info iwx_rate_mcs[IWX_RATE_COUNT] = {
-    {  "1", "BPSK DSSS"},
-    {  "2", "QPSK DSSS"},
-    {"5.5", "BPSK CCK"},
-    { "11", "QPSK CCK"},
-    {  "6", "BPSK 1/2"},
-    {  "9", "BPSK 1/2"},
-    { "12", "QPSK 1/2"},
-    { "18", "QPSK 3/4"},
-    { "24", "16QAM 1/2"},
-    { "36", "16QAM 3/4"},
-    { "48", "64QAM 2/3"},
-    { "54", "64QAM 3/4"},
-    { "60", "64QAM 5/6"},
-};
-
 #define IWX_MCS_INDEX_PER_STREAM    (8)
-
-static const char *iwx_rs_pretty_ant(u8 ant)
-{
-    static const char * const ant_name[] = {
-        [IWX_ANT_NONE] = "None",
-        [IWX_ANT_A]    = "A",
-        [IWX_ANT_B]    = "B",
-        [IWX_ANT_AB]   = "AB",
-    };
-
-    if (ant > ARRAY_SIZE(ant_name))
-        return "UNKNOWN";
-
-    return ant_name[ant];
-}
-
-static const char *iwx_rs_pretty_bw(u8 bw)
-{
-    static const char * const pretty_bw[] = {
-        "20Mhz",
-        "40Mhz",
-        "80Mhz",
-        "160 Mhz",
-        "320Mhz",
-    };
-
-    if (bw > ARRAY_SIZE(pretty_bw))
-        return "UNKNOWN";
-
-    return pretty_bw[bw];
-}
 
 static uint8_t iwx_rs_extract_rate(uint32_t rate_n_flags)
 {
@@ -2745,118 +2692,6 @@ static int iwx_hwrate_to_plcp_idx(uint32_t rate_n_flags)
     }
 
     return IWX_RATE_INVALID;
-}
-
-static int iwx_rs_pretty_print_rate_v1(char *buf, int bufsz, const u32 rate)
-{
-    char *type;
-    uint8_t mcs = 0, nss = 0;
-    uint8_t ant = (rate & IWX_RATE_MCS_ANT_AB_MSK) >> IWX_RATE_MCS_ANT_POS;
-    uint32_t bw = (rate & IWX_RATE_MCS_CHAN_WIDTH_MSK_V1) >>
-        IWX_RATE_MCS_CHAN_WIDTH_POS;
-
-    if (!(rate & IWX_RATE_MCS_HT_MSK_V1) &&
-        !(rate & IWX_RATE_MCS_VHT_MSK_V1) &&
-        !(rate & IWX_RATE_MCS_HE_MSK_V1)) {
-        int index = iwx_hwrate_to_plcp_idx(rate);
-
-        return snprintf(buf, bufsz, "Legacy | ANT: %s Rate: %s Mbps",
-                 iwx_rs_pretty_ant(ant),
-                 index == IWX_RATE_INVALID ? "BAD" :
-                 iwx_rate_mcs[index].mbps);
-    }
-
-    if (rate & IWX_RATE_MCS_VHT_MSK_V1) {
-        type = "VHT";
-        mcs = rate & IWX_RATE_VHT_MCS_RATE_CODE_MSK;
-        nss = ((rate & IWX_RATE_VHT_MCS_NSS_MSK)
-               >> IWX_RATE_VHT_MCS_NSS_POS) + 1;
-    } else if (rate & IWX_RATE_MCS_HT_MSK_V1) {
-        type = "HT";
-        mcs = rate & IWX_RATE_HT_MCS_INDEX_MSK_V1;
-        nss = ((rate & IWX_RATE_HT_MCS_NSS_MSK_V1)
-               >> IWX_RATE_HT_MCS_NSS_POS_V1) + 1;
-    } else if (rate & IWX_RATE_MCS_HE_MSK_V1) {
-        type = "HE";
-        mcs = rate & IWX_RATE_VHT_MCS_RATE_CODE_MSK;
-        nss = ((rate & IWX_RATE_VHT_MCS_NSS_MSK)
-               >> IWX_RATE_VHT_MCS_NSS_POS) + 1;
-    } else {
-        type = "Unknown"; /* shouldn't happen */
-    }
-
-    return snprintf(buf, bufsz,
-             "0x%x: %s | ANT: %s BW: %s MCS: %d NSS: %d %s%s%s%s%s",
-             rate, type, iwx_rs_pretty_ant(ant), iwx_rs_pretty_bw(bw), mcs, nss,
-             (rate & IWX_RATE_MCS_SGI_MSK_V1) ? "SGI " : "NGI ",
-             (rate & IWX_RATE_MCS_STBC_MSK) ? "STBC " : "",
-             (rate & IWX_RATE_MCS_LDPC_MSK_V1) ? "LDPC " : "",
-             (rate & IWX_RATE_HE_DUAL_CARRIER_MODE_MSK) ? "DCM " : "",
-             (rate & IWX_RATE_MCS_BF_MSK) ? "BF " : "");
-}
-
-static bool iwx_he_is_sgi(u32 rate_n_flags)
-{
-    u32 type = rate_n_flags & IWX_RATE_MCS_HE_TYPE_MSK;
-    u32 ltf_gi = rate_n_flags & IWX_RATE_MCS_HE_GI_LTF_MSK;
-
-    if (type == IWX_RATE_MCS_HE_TYPE_SU ||
-        type == IWX_RATE_MCS_HE_TYPE_EXT_SU)
-        return ltf_gi == IWX_RATE_MCS_HE_SU_4_LTF_08_GI;
-    return false;
-}
-
-static int iwx_rs_pretty_print_rate(char *buf, int bufsz, const uint32_t rate)
-{
-    char *type;
-    u8 mcs = 0, nss = 0;
-    u8 ant = (rate & IWX_RATE_MCS_ANT_AB_MSK) >> IWX_RATE_MCS_ANT_POS;
-    u32 bw = (rate & IWX_RATE_MCS_CHAN_WIDTH_MSK) >>
-        IWX_RATE_MCS_CHAN_WIDTH_POS;
-    u32 format = rate & IWX_RATE_MCS_MOD_TYPE_MSK;
-    bool sgi;
-
-    if (format == IWX_RATE_MCS_CCK_MSK ||
-        format == IWX_RATE_MCS_LEGACY_OFDM_MSK) {
-        int legacy_rate = rate & IWX_RATE_LEGACY_RATE_MSK;
-        int index = format == IWX_RATE_MCS_CCK_MSK ?
-            legacy_rate :
-            legacy_rate + IWX_FIRST_OFDM_RATE;
-
-        return snprintf(buf, bufsz, "Legacy | ANT: %s Rate: %s Mbps",
-                 iwx_rs_pretty_ant(ant),
-                 index == IWX_RATE_INVALID ? "BAD" :
-                 iwx_rate_mcs[index].mbps);
-    }
-
-    if (format ==  IWX_RATE_MCS_VHT_MSK)
-        type = "VHT";
-    else if (format == IWX_RATE_MCS_HT_MSK)
-        type = "HT";
-    else if (format == IWX_RATE_MCS_HE_MSK)
-        type = "HE";
-    else if (format == IWX_RATE_MCS_EHT_MSK)
-        type = "EHT";
-    else
-        type = "Unknown"; /* shouldn't happen */
-
-    mcs = format == IWX_RATE_MCS_HT_MSK ?
-        IWX_RATE_HT_MCS_INDEX(rate) :
-        rate & IWX_RATE_MCS_CODE_MSK;
-    nss = ((rate & IWX_RATE_MCS_NSS_MSK)
-           >> IWX_RATE_MCS_NSS_POS) + 1;
-    sgi = format == IWX_RATE_MCS_HE_MSK ?
-        iwx_he_is_sgi(rate) :
-        rate & IWX_RATE_MCS_SGI_MSK;
-
-    return snprintf(buf, bufsz,
-             "0x%x: %s | ANT: %s BW: %s MCS: %d NSS: %d %s%s%s%s%s",
-             rate, type, iwx_rs_pretty_ant(ant), iwx_rs_pretty_bw(bw), mcs, nss,
-             (sgi) ? "SGI " : "NGI ",
-             (rate & IWX_RATE_MCS_STBC_MSK) ? "STBC " : "",
-             (rate & IWX_RATE_MCS_LDPC_MSK) ? "LDPC " : "",
-             (rate & IWX_RATE_HE_DUAL_CARRIER_MODE_MSK) ? "DCM " : "",
-             (rate & IWX_RATE_MCS_BF_MSK) ? "BF " : "");
 }
 
 #if NBPFILTER > 0
@@ -4607,12 +4442,10 @@ iwx_dma_contig_alloc(bus_dma_tag_t tag, struct iwx_dma_info *dma,
     return 0;
 }
 
-// ZC25: keep ZC22 private CPU construction, but separate DMA directions.
-// Only dedicated first-TB scratch requests inhibition; the device-read-only
-// TFD, command remainder and byte count use the checked coherent cached backing.
-// IOKit direction remains conservative InOut; these are hardware access roles,
-// not an unverified change to IODMACommand prepare/sync semantics. Queue 0 and
-// packet payloads retain their existing policies and qualification.
+// ZC26/ZC28 use ZC22 private cached CPU construction and three checked
+// inhibition-requested control backings (TFD, shared TB0/TB1 command, bytecount).
+// No separate ZC25 scratch allocation. Conservative InOut sync/qualification
+// unchanged; requested cache policy is not a measured hardware PAT state.
 int ItlIwx::iwx_tx_control_alloc(struct iwx_dma_info *dma, bus_size_t size,
                                bus_size_t alignment)
 {
@@ -4724,7 +4557,7 @@ iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
     }
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 &&
         !pci.pa_tag->setProperty("KGP_RX_EXPERIMENT",
-            "AirportItlwm-Tahoe-B1-ZC26-PERF")) {
+            "AirportItlwm-Tahoe-B1-ZC28-SERVICE")) {
         err = ENOMEM; goto fail;
     }
     return 0;
@@ -8369,7 +8202,7 @@ iwx_rx_tx_cmd_single(struct iwx_softc *sc, struct iwx_rx_packet *pkt,
     txfail = (status != IWX_TX_STATUS_SUCCESS);
     
     if (txfail) {
-        XYLog("%s %d OUTPUT_ERROR type=%d status=%d\n", __FUNCTION__, __LINE__, txd->type, status);
+        zc28Note(3,unsigned(status),unsigned(txd->type),0);
         ifp->netStat->outputErrors++;
         if (txd->type == IEEE80211_FC0_TYPE_MGT)
             iwx_toggle_tx_ant(sc, &sc->sc_mgmt_last_antenna_idx);
@@ -8513,27 +8346,6 @@ iwx_ampdu_txq_advance(struct iwx_softc *sc, struct iwx_tx_ring *ring, int idx, b
     }
 }
 
-#define IWX_AGG_TX_STATE_(x) case IWX_AGG_TX_STATE_ ## x: return #x
-static const char *iwx_get_agg_tx_status(uint16_t status)
-{
-    switch (status & IWX_AGG_TX_STATE_STATUS_MSK) {
-            IWX_AGG_TX_STATE_(TRANSMITTED);
-            IWX_AGG_TX_STATE_(UNDERRUN);
-            IWX_AGG_TX_STATE_(BT_PRIO);
-            IWX_AGG_TX_STATE_(FEW_BYTES);
-            IWX_AGG_TX_STATE_(ABORT);
-            IWX_AGG_TX_STATE_(TX_ON_AIR_DROP);
-            IWX_AGG_TX_STATE_(LAST_SENT_TRY_CNT);
-            IWX_AGG_TX_STATE_(LAST_SENT_BT_KILL);
-            IWX_AGG_TX_STATE_(SCD_QUERY);
-            IWX_AGG_TX_STATE_(TEST_BAD_CRC32);
-            IWX_AGG_TX_STATE_(RESPONSE);
-            IWX_AGG_TX_STATE_(DUMP_TX);
-            IWX_AGG_TX_STATE_(DELAY_TX);
-    }
-
-    return "UNKNOWN";
-}
 
 void ItlIwx::
 iwx_rx_tx_cmd(struct iwx_softc *sc, struct iwx_rx_packet *pkt,
@@ -8559,17 +8371,7 @@ iwx_rx_tx_cmd(struct iwx_softc *sc, struct iwx_rx_packet *pkt,
     sc->sc_tx_timer = 0;
 
     if (tx_resp->frame_count > 1) {
-        for (int i = 0; i < tx_resp->frame_count; i++) {
-            uint16_t fstatus = le16_to_cpu((&tx_resp->status)[i].status);
-
-            XYLog("status %s (0x%04x), try-count (%d) qid (%d) seq (0x%x)\n",
-                         iwx_get_agg_tx_status(fstatus),
-                         fstatus & IWX_AGG_TX_STATE_STATUS_MSK,
-                         (fstatus & IWX_AGG_TX_STATE_TRY_CNT_MSK) >>
-                         IWX_AGG_TX_STATE_TRY_CNT_POS,
-                         qid,
-                         le16_to_cpu((&tx_resp->status)[i].sequence));
-        }
+        zc28Aggregate(pkt); // No per-frame Release formatting/output.
     } else {
         tid = tx_resp->ra_tid & 0x0f;
         memcpy(&ssn, &tx_resp->status + tx_resp->frame_count, sizeof(ssn));
@@ -11799,7 +11601,6 @@ iwx_rs_update(struct iwx_softc *sc, struct iwx_tlc_update_notif *notif)
     struct ieee80211_rateset *rs = &ni->ni_rates;
     uint32_t rate_n_flags;
     int i;
-    char pretty_rate[100];
     uint8_t notifver;
     uint32_t format;
 
@@ -11809,15 +11610,9 @@ iwx_rs_update(struct iwx_softc *sc, struct iwx_tlc_update_notif *notif)
 
     rate_n_flags = le32toh(notif->rate);
     notifver = iwx_lookup_notif_ver(sc, IWX_DATA_PATH_GROUP, IWX_TLC_MNG_UPDATE_NOTIF);
-    if (notifver < 3 || notifver == IWX_FW_CMD_VER_UNKNOWN) {
-        iwx_rs_pretty_print_rate_v1(pretty_rate, sizeof(pretty_rate),
-                                    rate_n_flags);
+    if (notifver < 3 || notifver == IWX_FW_CMD_VER_UNKNOWN)
         rate_n_flags = iwx_new_rate_from_v1(rate_n_flags);
-    } else {
-        iwx_rs_pretty_print_rate(pretty_rate, sizeof(pretty_rate),
-                                 rate_n_flags);
-    }
-    XYLog("%s new rate: %s\n", __FUNCTION__, pretty_rate);
+    zc28Note(5,rate_n_flags,notifver,0);
     format = rate_n_flags & IWX_RATE_MCS_MOD_TYPE_MSK;
     if (format == IWX_RATE_MCS_VHT_MSK ||
         format == IWX_RATE_MCS_HE_MSK ||
@@ -13052,6 +12847,16 @@ iwx_init(struct _ifnet *ifp)
 IOReturn ItlIwx::
 _iwx_start_task(OSObject *target, void *arg0, void *arg1, void *arg2, void *arg3)
 {
+    auto *serviceIfp=static_cast<_ifnet *>(arg0);
+    auto *serviceSc=static_cast<iwx_softc *>(serviceIfp->if_softc);
+    auto *serviceHal=container_of(serviceSc,ItlIwx,com);
+    struct CapacityHandoff {
+        ifq_service token={};
+        ~CapacityHandoff() { ifq_end_service(&token); }
+    } handoff;
+    if (serviceHal->getMainWorkLoop() && serviceHal->getMainWorkLoop()->inGate())
+        ifq_begin_service(&serviceIfp->if_snd,&handoff.token);
+
     // ZC8: acknowledge gate entry for BOTH routes. The conventional packet
     // body remains unchanged; only its scheduling notification is shared.
     if (arg1) static_cast<Start2LContext *>(arg1)->entered = true;
@@ -16285,11 +16090,12 @@ dexterOriginal_iwx_rx_addbuf(struct iwx_softc *sc, int size, int idx)
     //    err = bus_dmamap_load_mbuf(sc->sc_dmat, data->map, m,
     //        BUS_DMA_READ|BUS_DMA_NOWAIT);
     if (m == NULL) {
-        XYLog("could not allocate RX mbuf\n");
+        zc28Note(7,ENOMEM,unsigned(idx),0);
         return ENOMEM;
     }
     data->map->dm_nsegs = data->map->cursor->getPhysicalSegments(m, &data->map->dm_segs[0], 1);
     if (data->map->dm_nsegs == 0) {
+        zc28Note(8,ENOMEM,unsigned(idx),0);
         /* XXX */
         if (fatal)
             panic("%s: could not load RX mbuf", DEVNAME(sc));
@@ -17053,17 +16859,7 @@ dexterOriginal_iwx_rx_tx_cmd(struct iwx_softc *sc, struct iwx_rx_packet *pkt,
     sc->sc_tx_timer = 0;
 
     if (tx_resp->frame_count > 1) {
-        for (int i = 0; i < tx_resp->frame_count; i++) {
-            uint16_t fstatus = le16_to_cpu((&tx_resp->status)[i].status);
-
-            XYLog("status %s (0x%04x), try-count (%d) qid (%d) seq (0x%x)\n",
-                         iwx_get_agg_tx_status(fstatus),
-                         fstatus & IWX_AGG_TX_STATE_STATUS_MSK,
-                         (fstatus & IWX_AGG_TX_STATE_TRY_CNT_MSK) >>
-                         IWX_AGG_TX_STATE_TRY_CNT_POS,
-                         qid,
-                         le16_to_cpu((&tx_resp->status)[i].sequence));
-        }
+        zc28Aggregate(pkt); // No per-frame Release formatting/output.
     } else {
         tid = tx_resp->ra_tid & 0x0f;
         memcpy(&ssn, &tx_resp->status + tx_resp->frame_count, sizeof(ssn));
@@ -17342,6 +17138,46 @@ dexterOriginal_intrFilter(OSObject *object, IOFilterInterruptEventSource *src)
     return true;
 }
 
+// ZC28: rare former console events only. NO successful-packet, BA, release
+// or notification-batch observer calls/RMW/clocks. Task allocation failures may
+// occur outside the gate, so rare fields retain relaxed atomics.
+void ItlIwx::zc28Note(unsigned event,uint64_t a,uint64_t b,uint64_t c)
+{
+    if(event==3) {
+        __atomic_fetch_add(&fZc28Rare[0],1ULL,__ATOMIC_RELAXED);
+        __atomic_store_n(&fZc28Rare[1],(a&0xffffU)|((b&0xffU)<<16),__ATOMIC_RELAXED);
+    } else if(event==5) {
+        __atomic_fetch_add(&fZc28Rare[4],1ULL,__ATOMIC_RELAXED);
+        __atomic_store_n(&fZc28Rare[5],(a&0xffffffffULL)|(b<<32),__ATOMIC_RELAXED);
+    } else if(event==7 || event==8)
+        __atomic_fetch_add(&fZc28Rare[event==7?6:7],1ULL,__ATOMIC_RELAXED);
+    (void)c;
+}
+void ItlIwx::zc28Aggregate(const struct iwx_rx_packet *pkt)
+{
+    __atomic_fetch_add(&fZc28Rare[2],1ULL,__ATOMIC_RELAXED);
+    const size_t n=iwx_rx_packet_len(pkt);
+    if(n>=sizeof(pkt->hdr)+offsetof(struct iwx_tx_resp,status)) {
+        const auto *r=reinterpret_cast<const iwx_tx_resp *>(pkt->data);
+        __atomic_store_n(&fZc28Rare[3],uint64_t(r->frame_count),__ATOMIC_RELAXED);
+    }
+}
+void ItlIwx::zc28Capture()
+{
+    auto *w=fZc28Wire;
+    w[0]=28;w[1]=1;w[2]=sizeof(fZc28Wire);
+    w[3]=fZc19Health[3];w[4]=fZc19Health[4];w[5]=fZc19Health[5];
+    w[6]=fZc19Health[6];w[7]=fZc19Health[11];w[8]=fZc19Health[12];
+    w[9]=1;w[10]=0;w[11]=fZc28PubFail;for(unsigned i=12;i<24;++i)w[i]=0;
+    w[10]=ifq_service_snapshot(&com.sc_ic.ic_if.if_snd,w+16)?1:0;
+    for(unsigned i=0;i<8;++i)w[24+i]=__atomic_load_n(&fZc28Rare[i],__ATOMIC_RELAXED);
+}
+void ItlIwx::zc28Publish()
+{
+    if(!pci.pa_tag || !getMainWorkLoop() || getMainWorkLoop()->inGate()) return;
+    if(!pci.pa_tag->setProperty("KGP_ZC28_SERVICE",fZc28Wire,sizeof(fZc28Wire))) ++fZc28PubFail;
+}
+
 // ZC19 independent minimal health publication, using the corrected controller-
 // owned gate convention from KGP c1b1d9a72aaae80ee3819996ecaa35a0d568c0ed.
 // Only the already existing watchdog calls this; no packet observer/worker.
@@ -17372,6 +17208,7 @@ IOReturn ItlIwx::zc19Snapshot(OSObject *, void *context, void *, void *, void *)
     w[28]=that->fZc19Miss; w[29]=that->fZc19PublishFail;
     w[30]=0; w[31]=0;
     that->rxZcCapturePeriodic();
+    that->zc28Capture();
     return kIOReturnSuccess;
 }
 void ItlIwx::zc19Publish()
@@ -17385,6 +17222,7 @@ void ItlIwx::zc19Publish()
         ++fZc19Miss; return;
     }
     rxZcPublishPeriodic();
+    zc28Publish();
     if (!pci.pa_tag->setProperty("KGP_ZC19",fZc19Health,sizeof(fZc19Health)))
         ++fZc19PublishFail;
 }

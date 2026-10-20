@@ -1,0 +1,160 @@
+B1-ZC28-SERVICE — finite software-capacity handoff, not a physical fix claim
+=======================================================================
+Selected baseline: COMPLETE frozen ZC26,48e9a31e68c328b5f19e5bdc81901e900d350738.
+Existing ZC8 common object database; new isolated branch/worktree:
+ experiment/track-b1-zc28-service-handoff-20261020
+ TRACK-B1-ZC28-SERVICE
+Marker AirportItlwm-Tahoe-B1-ZC28-SERVICE. No frozen source is overwritten.
+
+Decision and evidence
+---------------------
+ZC26 retains useful TX/UDP/WAN and required integration/safety. It is not claimed
+stable or final: its severe conventional mixed TCP/UDP both-direction collapse
+and recovery before abort remain unresolved. Later mapped variability is separate.
+The full morning transfer was read,163manifest entries verified,40originals matched
+bySHA rather than upload suffix,1643completed endpoint/peertext pairs plus1partial
+read with original per-stream/second data.38accepted42+online,1four-TCPpartial and
+1source-mutated43-result/noonline attempt are not one comparable population.
+Supporting evidence is under EVIDENCE/2026-10-20_CONTINUITY_TAKEOVER, with all
+new26/27/22/8/53 results and r4–r6/current r6 provenance. No broad new campaign
+was requested or run. Full native unchangedr6 offline37/37passed MacBash3.2.57.
+
+ZC27 was physically tested conventional, not just build-proven. First campaign
+TX470.19/470.74, then later379.40/362.70 and370.49/369.31; useful laterRX does
+not create one successful combined configuration. All24saved selectedaggregate/
+single-failure counters0 contradict a status-print storm for THESE slowTX states.
+It does not prove such events absent from earlier26. Extra27observer has binary-
+proven2LOCKRMWs/submission,1/resource-release,5/normalBA plus batch/timing updates
+on successful traffic. First27campaign was fast: cost causality is NOT established.
+New28 does not import this always-on successful-packet/BA/release/timing observer.
+
+Actual corrective mechanism
+----------------------------
+ZC26 KgpOutputQueue::lockDequeue returns one software slot and immediately takes
+waiting producer wake after unlocking queue, while IWX consumer still holds main
+workloop gate. A concurrent producer may refill one slot, fail its gate attempt,
+fill/refuse again and rearm waiting for the next slot. This source-permitted
+amplification is finite/ring bounded, not a proven lost wake or pool leak.
+
+ZC28 adds a retained single-use queue service token at the EXISTING IWX gated
+consumer entry, before mapped/conventional dispatch. takeWake leaves the pending
+software-capacity obligation armed while serviceDepth>0. Outermost end rechecks
+CURRENT open/capacity/waiter/owner under SAME queue lock, retains interface, drops
+lock and signals once. Token is cleared BEFORE wake/reentry and releases its
+queue after signaling. No lock is held across packet service or a stack callback.
+Nested/reentrant service scopes balance on all returns; caller frame supplies
+RAII lifetime. Stop/flush closes pull, clears waiting and advances reservation
+epoch; outstanding tokens retain only queue, never packet/node. Detach can clear
+owner and release public queue reference; token remains valid until balanced end.
+The main-gated public queue lookup uses existing interface/detach contract, not
+permission for arbitrary nongated concurrent q->queue destruction.
+
+THIS IS NARROWER THAN FULL ZC12:
+- outputStart hardware-oactive refusal remains byte-exact26.
+- ALL positive completion low-water restarts/signalOutputThread remain exact26.
+- no frontend bypass, packet-admission policy, ring size, batching, ACK priority,
+  credit ordering, new timer or worker. Only timing of software-capacity wake.
+- at scope-end oactive may refuse producer; existing later positive low-water
+  completion clears/restarts/signals it. No completion obligation is suppressed.
+- no ZC23 feedback cookie scope, whole-notification handoff or early-credit port.
+- other HALs never enter this scope; IWM/IWN immediate behavior remains (depth0).
+
+Expected effect: reduce repeated cross-thread wake/gate-retry work and tiny
+producer refills during a finite consumer pass, preserving useful bounded host
+admission. Actual-source model:32unscoped wakes vs1scoped with identical packet
+ownership/progression. This is a corrective scheduling hypothesis, NOT proof
+of lower kernel cost, restored throughput or complete incident causality.
+
+Mandatory counterevidence
+--------------------------
+Original frozen ZC13 already inherited BROADER ZC12 capacity handoff yet had
+ASIXRXdeficit. This is NOT a newly discovered explanation of historical13loss.
+Pure sustained UDP RX after previous TX/control backlog has drained has no TCP
+ACK producer; capacity handoff cannot independently explain that collapse unless
+pendingTX/control work or contention exists. The saved records do not establish
+that boundary. Severe26all-direction event,27laterTX-only slowdown, ordinaryRX
+plateaus/startup/dips andWAN latency remain distinct observations.
+First27campaign fast, later26boot repeats worseRX,22has16.6%RX600loss,8has18.3%
+TX400burst/loss: no universal warmup, uptime leak, perfect8/22 fallback, generic
+AP ceiling or all-transport root cause is asserted. Successful53TX~480 is shared
+configuration evidence, not absolute PHY/CPU ceiling.53RX~440–470 is exceeded by
+8and betterKGP22/26, so not systemRXcapacity limit. External framework cohort and
+unverified numerichealth differ. No old44/47audit repeated, no new external code.
+
+Other retained correction / observation
+----------------------------------------
+Selected27Release-formatting removal is retained as separate service hygiene:
+aggregate TX response branch, single failure, TLC pretty string, conventional
+allocation failure. Keep error/antenna/completion/rate state exact. Only8RARE
+atomic counters replace those former console events. No success/BA/release/
+RXbatch observer calls, clocks, perpacketlog/property allocation or history.
+Actual aggregate observer reads fixed frame_count after safe non-underflowing
+prefix check; no frame-array iteration or full FWparser-hardening claim.
+Existing watchdog gated capture copies currenthealthmetadata without new clock,
+8queue words under existing queue lock,8rare atomic loads.256B KGP_ZC28_SERVICE
+published outside gate; KGP_ZC19 unchanged. See ZC28_SERVICE_TELEMETRY.txt.
+Counters are cheap observations, not zero overhead or per-flow latency proof.
+Two additional queue-lock sections/retain+release per service; depth check on
+eligible capacity wake, simple queue-locked stats. No perpacket locked counter
+instruction or clock added. Internal packet-queue locks pre-exist. Eligible
+checks deferred are NOT distinct blocked episodes or saved wake count/time.
+If deferred checks remain0 in a slow case, this path cannot explain it.
+
+Exact production scope
+-----------------------
+_ifq.cpp: serviceDepth/stats, takeWake deferral, begin/end/snapshot; all old
+reserve/commit/epoch/membership/flush/pull/detach methods conserved.
+_ifq.h: single-use token +three APIs, no new frontend policy field.
+ItlIwx.cpp: RAII prefix in _iwx_start_task (conventional body exact), selected
+log sinks/pure display helpers, rare helpers and existingwatchdogcapture/export,
+two marker strings and stale26allocator COMMENT corrected. HPPfixedhostarrays.
+All other packet/command/BA/reorder/cache/lifecycle/backing code exact26.
+
+Required guarantees preserved
+------------------------------
+ZC22 privatecached CPU construction, threechecked inhibited-requested DMA-control
+backings/sharedTB0TB1, full publication BEFORE device notification. No25fourth
+scratch/cachepolicy or24wide-store variant. ALL FOUR full publication barriers
+remain; oneACKexecutes one alternative packet site, twoothersqueue setup.
+Positive DMA qualification/backing identity, finalhostreferences, replacement-
+before-delivery, TXcompletion/resetproofs, STOP_MASTER/quarantine, epochs/command/
+TVQM/error/ambiguousDMAretention,ZC16restart/power/reorder and management/recovery
+remain. AX201 conventional-only, AX210/211qualifiedboth; no IWM/IWNopt-in.
+Source preservation is not repeatwake/otherhardware qualification.
+
+Validation and pending physical proof
+--------------------------------------
+Actual queue/fullmapped+conventional consumer/unchangedfrontend/realcompletion
+model tests normal/failure/finalbatch, oactive/softwarecapacity interplay,
+allretained wake obligations, nested/reentry,token-beforecallback,detach,
+close/flush/reopen/oldepoch, concurrentproducers/snapshot/ownership. Bothsanitizers.
+Actualrarehelpers test underflow/prefix/count0..255,concurrency,gatedcopy/offgate
+export/failure,clocksabsent; saved-onlydecoder24cases. ActualTXhandler andrate
+old/newdifferentials retainall non-diagnostic effects. Fullsourcegate and inherited
+DMA/lifecycle/command/ring/cache/queue/drainmodels; finalreport records actualsuite
+outcomes/buildattempts/cleanHEAD/tree/inputSHA/UUID, not an invented self-commit.
+Initialpreflightfixtures had expectednewidentity inbytecomparison and lacked
+Loop::inGate; fixed tests only. No failedKextbuild implied by harness errors.
+
+Provenance/attribution
+----------------------
+Capacity-handoff algorithm selectively adapted from independent KGP ZC12
+cda7ae51561dee54ac21b01a70d60755205f5eb6 (_ifq and service wrapper). Neither whole
+old architecture nor unsafe physical allocator imported.27display-only removal
+origin014b852. r6tooling from authenticated forwardedpacket SHA2404f184...,
+newr7only adds28identity/path; retains external44/47/53profiles and strict KGP
+UUID/marker/route/fault/epoch/LASTrollback/FINALprogress guards. Historical runners
+unchanged. No externaldriverimplementation code imported. CompleteVS26diff and
+separatecurrentr6->r7toolingdiff are supplied atdelivery. No trafficprotocol change.
+
+Future KGP-only evaluation
+---------------------------
+Do not prescribe repeated unchanged baselinecampaigns or hidden preconditioning.
+One28candidate: loadedUUID/scan/connectivity first, record actualmode/priortraffic;
+ordinary commonprotocol ifKGPchooses, allunfavorable rawresults retained. Evaluate
+usefulTX/RX/UDP andWAN directionalRPM/tails separately. No new intrusivepolling or
+profiler. Meaningful outcome includes queueeligibledeferral/wake counts, not only
+highmeans; no sourcecounters are peerreceipt. Physical incidentfix/performance and
+observercost remain UNPROVEN. Mapped/conventional separate, AX211/AX201/wake and
+broaddistribution deferred pending KGPacceptance. Canonicalhandover currentstate
+updated atallmilestones; no access to unforwarded separateChatGPTmessages.

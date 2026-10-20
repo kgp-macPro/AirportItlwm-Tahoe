@@ -722,6 +722,13 @@ public:
     void rxZcCapturePeriodic();
     void rxZcPublishPeriodic();
 
+    // ZC28 fixed watchdog-owned wire + rare atomic error/rate summaries.
+    uint64_t fZc28Rare[8]={}, fZc28Wire[32]={}, fZc28PubFail=0;
+    void zc28Note(unsigned,uint64_t=0,uint64_t=0,uint64_t=0);
+    void zc28Aggregate(const struct iwx_rx_packet *);
+    void zc28Capture();
+    void zc28Publish();
+
     // PC1 control is serialized by the existing main workloop, not a new worker.
     struct Pc1Advance { iwx_tx_ring *ring; int index; unsigned generation; };
     uint32_t fPc1ResetEpoch=0, fPc1TerminalEpoch=0, fPc1ExpectedGeneration=0;

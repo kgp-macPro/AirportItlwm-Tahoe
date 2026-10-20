@@ -16,6 +16,8 @@ class KgpOutputQueue : public IOPacketQueue {
     OSDeclareDefaultStructors(KgpOutputQueue)
     _ifnet *owner = nullptr;
     uint32_t reserved = 0;
+    uint32_t serviceDepth = 0;
+    uint64_t serviceStats[5] = {}; // Existing queue lock, never per-packet atomic RMW.
     uint64_t epoch = 1;
     bool pullOpen = false, waiting = false;
 
@@ -24,7 +26,11 @@ class KgpOutputQueue : public IOPacketQueue {
     }
     IONetworkInterface *takeWake() {
         if (!waiting || !pullOpen || !available()) return nullptr;
+        // ZC28: retain the capacity obligation until this finite IWX service
+        // finishes. Admission and completion wakeups are otherwise unchanged.
+        if (serviceDepth) { ++serviceStats[2]; return nullptr; }
         waiting = false;
+        ++serviceStats[3];
         auto *iface = owner ? owner->iface : nullptr;
         if (iface) iface->retain(); // Survives a concurrent interface detach.
         return iface;
@@ -44,6 +50,26 @@ public:
         if (q && !q->initWithCapacity(capacity)) { q->release(); q = nullptr; }
         if (q) q->owner = ifp;
         return q;
+    }
+    void beginService() {
+        IOSimpleLockLock(_lock);
+        ++serviceDepth; ++serviceStats[0];
+        if (serviceDepth > serviceStats[4]) serviceStats[4] = serviceDepth;
+        retain();
+        IOSimpleLockUnlock(_lock);
+    }
+    void endService() {
+        IOSimpleLockLock(_lock);
+        --serviceDepth; ++serviceStats[1]; // Balanced retained single-use token.
+        auto *iface = takeWake();
+        IOSimpleLockUnlock(_lock);
+        wake(iface); release(); // No stack callback/destruction under queue lock.
+    }
+    void serviceSnapshot(uint64_t *words) {
+        IOSimpleLockLock(_lock);
+        for (unsigned i=0;i<5;++i) words[i]=serviceStats[i];
+        words[5]=serviceDepth; words[6]=epoch; words[7]=0;
+        IOSimpleLockUnlock(_lock);
     }
     bool reserve(ifq_reservation *ticket, uint32_t limit = 1) {
         IOSimpleLockLock(_lock);
@@ -159,6 +185,30 @@ void ifq_start_pull(struct _ifqueue *q)
 void ifq_stop_pull(struct _ifqueue *q)
 {
     if (q->queue) static_cast<KgpOutputQueue *>(q->queue)->closePull();
+}
+
+// Called only from the existing gated IWX consumer. Other HALs never enter
+// a scope, so their immediate capacity-return behavior remains unchanged.
+void ifq_begin_service(struct _ifqueue *q, struct ifq_service *token)
+{
+    if (q->queue) {
+        auto *queue=static_cast<KgpOutputQueue *>(q->queue);
+        queue->beginService(); token->queue=queue;
+    }
+}
+void ifq_end_service(struct ifq_service *token)
+{
+    if (token->queue) {
+        auto *queue=static_cast<KgpOutputQueue *>(token->queue);
+        token->queue=nullptr; // Before wake/reentry: never release twice.
+        queue->endService();
+    }
+}
+bool ifq_service_snapshot(struct _ifqueue *q, uint64_t *words)
+{
+    if (!q->queue) return false;
+    static_cast<KgpOutputQueue *>(q->queue)->serviceSnapshot(words);
+    return true;
 }
 
 void ifq_init(struct _ifqueue *ifq, struct _ifnet *ifp, unsigned int maxLen)

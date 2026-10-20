@@ -43,6 +43,13 @@ void ifq_cancel(struct ifq_reservation *);
 void ifq_start_pull(struct _ifqueue *);
 void ifq_stop_pull(struct _ifqueue *);
 
+// ZC28 single-use token retains only queue lifetime, never a packet or node.
+// Begin/end in existing IWX main-gated service; snapshot8words under queue lock.
+struct ifq_service { IOPacketQueue *queue; };
+void ifq_begin_service(struct _ifqueue *, struct ifq_service *);
+void ifq_end_service(struct ifq_service *);
+bool ifq_service_snapshot(struct _ifqueue *, uint64_t *);
+
 void ifq_init(struct _ifqueue *ifq, struct _ifnet *ifp, unsigned int maxLen);
 
 void ifq_destroy(struct _ifqueue *ifq);
