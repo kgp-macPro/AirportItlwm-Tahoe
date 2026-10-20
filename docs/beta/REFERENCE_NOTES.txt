@@ -1,0 +1,96 @@
+FROZEN PUBLIC COMPARISON BETA REFERENCES — 20 OCTOBER 2026
+
+This package contains five KGP kexts, laobamac53, the SAME r7 runner used by KGP,
+and one original complete strong reference-result ZIP for each of those six
+builds, plus a ZC28 conventional reference (seven original ZIPs in total). Original result ZIPs are copied byte-for-byte, not reconstructed.
+Their original iperf3 logs retain UDP lost_packets/lost_percent and interval
+data, TCP retransmissions, and final online networkQuality output. TCP
+retransmissions must not be converted into an invented packet-loss percentage.
+
+Selected three-round receiver means, decimal Mbps, each from ONE full campaign:
+ZC8  (19 Oct 15:07): TX P1/P4 265.4/261.3; RX P1/P4 581.4/558.9.
+ZC19 (18 Oct 12:28): TX 477.3/483.0; RX 473.4/457.5.
+ZC22 (19 Oct 17:15): TX 480.7/481.9; RX 553.1/523.6.
+ZC26 (20 Oct 00:32): TX 481.2/481.5; RX 548.1/512.9.
+ZC28 (20 Oct 14:58): TX 479.9/478.0; RX 501.6/497.1.
+laobamac53 (20 Oct 12:25, declared mapped): TX 482.0/478.8; RX 461.1/443.3.
+These are useful internally coherent references, not mixed-run direction peaks,
+not an exhaustive ranking, and not a claim of loss-free or universal stability.
+
+History: the no-system_profiler comparison corrected a real KGP TCP-TX-P1
+measurement perturbation. Cached TX-control work around ZC13 enabled roughly
+480–490 Mbps TX. Later TX ordering, RX-buffer exchange, lifecycle/BA work and
+the private cached construction/device-facing control separation were retained
+and reconciled through ZC19/22/26. Changing the wired M1 MacBook peer adapter
+from Realtek RTL8156 to ASIX AX88179B coincided with much better RX; those old
+and new cohorts must not be treated as an unchanged environment.
+
+Known adverse behavior: ZC26 had a severe conventional collapse of both TCP/UDP
+directions and recovered before the user's abort. That remains unresolved.
+ZC28 coalesces software-queue capacity wakes during IWX send service, retains
+hardware-completion wakes and omits frequent ZC27 successful-packet observation.
+Codex reports 49/49 checks and one Release build; physical benefit is not proven.
+
+Three new ZC28 mapped campaigns, all in ONE 14:31:14 boot:
+14:40 TX 399.9/475.3, RX 536.8/478.2;
+14:49 TX 471.1/475.8, RX 494.2/493.1;
+14:58 TX 479.9/478.0, RX 501.6/497.1.
+The first included later TX P1 averaging 247 Mbps with several full seconds at
+about 90/32/87/126 Mbps, and UDP TX 500 sender 284/receiver 271 Mbps. The latter
+had about 98% host iperf CPU; the former about 2.5%. Neither establishes the same
+cause as the historical severe conventional incident. RX 400 had a 2.38% overall
+loss case with 11.92% in one interval; RX 600 was 596–602 Mbps with some loss in
+eight of nine cases, maximum 0.49%. These three result ZIPs all completed their
+42 cases and online stage, with 735 internal manifest entries verified.
+Only the selected third ZC28 reference ZIP is included as the single good
+reference for that build; the adverse earlier observations are disclosed here.
+UPDATE — THREE ZC28 CONVENTIONAL CAMPAIGNS NOW INSPECTED
+All three completed 42 iperf3 tests and the online stage. All 735 internal
+SHA256 entries match. Same r7 runner, same ZC28 UUID, actual Mode 1; all three
+were in ONE boot at 16:38:35 CEST. No sustained collapse in these campaigns.
+Campaign receiver means, TCP TX P1/P4; RX P1/P4, Mbps:
+16:45:27 — 485.0/484.6; 524.2/513.0.
+16:52:22 — 484.8/484.7; 533.8/496.0.
+17:00:08 — 482.7/484.4; 521.0/509.6.
+All nine TCP RX P1 cases exceeded 500 Mbps (503.4–561.2). TCP RX P4 ranged
+481.7–524.8 Mbps, with seven of nine cases above 500. These are encouraging
+repeated results, not new all-time RX records or proof of 600-Mbps TCP RX.
+UDP RX600 delivered 599.9–601.8 Mbps, two of nine cases loss-free; maximum
+whole-case reported loss 0.2935%. Other RX rates did have loss bursts: up to
+1.0526% whole-case / 5.2589% in one RX500 interval. TX500/600 sender rates
+were only 458.8–467.1 Mbps, with receiver goodput 450.1–457.4 Mbps. Do not
+interpret the low TX loss as successful delivery of the requested 500/600.
+Online DL 74.36/75.77/69.07 and raw UL 38.51/40.30/36.24 Mbps; upload RPM
+40.00/19.07/36.75 and self-upload HTTP response maxima 8.95/13.30/9.56 seconds.
+No Ookla screenshot or result URL was included in these three archives.
+The FIRST complete conventional ZIP is included, retaining its own losses
+and online output. The other two campaigns are described in full in
+ZC28_CONVENTIONAL_ANALYSIS.txt; they are not hidden or combined into a fake run.
+ZC28 is a justified comparison beta. Stop local code iteration for now and
+collect AX211/AX201 feedback against ZC8/19/22/26 and the external control.
+The mapped anomaly, long-run/sleep-wake stability and the historical severe
+conventional cause remain unresolved.
+
+Raw online ZC28 DL 75.33/75.84/78.52 and UL 34.84/39.22/41.07 Mbps were recorded,
+but self-upload-loaded responses reached 12.88/11.67/22.09 seconds. KGP's nominal
+80/30 Internet service cannot qualify 600-Mbps LAN speed; raw UL above 30 is not
+proof of that sustained wire rate. Do not silently normalize raw output.
+No new ZC28 Ookla result was supplied with those three archives.
+
+Historical goals: Luiz (@LuizMeliga on TM) reported AX211 ZC8 RX around
+606/637 Mbps; @netiave (TM) / @funcio (IM), one AX201 tester, reported
+ZC5/BOOTFIX1 RX around 601/569 Mbps. Reproducibility on later builds is untested.
+Normal KGP TX often matches laobamac53 and better KGP RX exceeds it on this
+setup. The whole host/AP/wired-peer path may contribute to the remaining RX
+difference; AX210/firmware/driver behavior has not been excluded.
+Public beta scope: AX201/AX210/AX211 owners on Intel-based macOS Tahoe 26.x,
+invited through IM and TM with one common GitHub download. ZC28 is the entry
+test; the historical candidates and external control remain available for
+voluntary comparisons. Use the common routine and report both good and adverse
+results before any further engineering decision. Experimental beta status
+does not establish stability or compatibility on every host/card/AP.
+
+20 October source-linkage update: external53 CI run53 head738d4c6, artifact
+digest matching the complete original download, nested release asset digest and
+all tested bundle bytes are now linked. No independent rebuild; exact CI
+Xcode job log remains unavailableHTTP403. Full pinned sources/licenses enclosed.

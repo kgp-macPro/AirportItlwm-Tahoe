@@ -1,0 +1,68 @@
+LOCAL REVIEW — INTRODUCTION-ONLY REPLACEMENT, NOT POSTED.
+Editing boundary: replace ONLY the existing introductory project/release/beta
+text. Do NOT replace, correct, adapt or reattach ANY existing forensic/debugging
+material or attachments, including wording, commands, identities, filenames,
+links or upload instructions. Preserve the earliest existing AppleVTD-debugging
+or Full Forensic Capture section and everything thereafter verbatim. This
+includes existing accidental wording; its correction is out of scope.
+The TM live introduction was not retrievable in this run; no claim of a full
+live-post diff is made. Apply the boundary against the actual forum editor.
+
+----- BEGIN PROPOSED TM INTRODUCTION -----
+AirportItlwm-Tahoe — Intel Wi-Fi with AppleVTD/IOMMU and an AWDL baseline on macOS Tahoe
+
+AirportItlwm-Tahoe is an independent Intel Wi-Fi driver based on the
+OpenIntelWireless/itlwm foundation and DexterSLamb's implementation. The installed
+bundle remains AirportItlwm.kext. It uses KGP's restored legacy wireless
+environment; it is not a complete native Continuity implementation.
+
+QUALIFIED 1.0.0 RELEASE
+The frozen 1.0.0 release is qualified on KGP's AX210 / PCI 8086:2725 setup under
+Tahoe 26.6.2 (25G83), with scoped additional 26.7 evidence. Qualification covers
+infrastructure Wi-Fi, DHCP/traffic, recovery cycles and the recorded AWDL/P2P,
+AirPlay and Screen Mirroring baseline. Runtime captures and user-observed
+results are distinguished in the release documentation. This is not universal
+Intel/platform qualification. AirDrop, Continuity Camera, Personal Hotspot and
+BE200 remain outside the qualified feature set.
+
+The stable 1.0.0 release, installation requirements, exact release identity,
+source/build records and credits remain available at:
+https://github.com/kgp-macPro/AirportItlwm-Tahoe
+The original forensic references below describe that frozen 1.0.0 release;
+they are not identities or performance certificates for experimental beta builds.
+
+EXPERIMENTAL 1.1.0 BETA — ONE COMPARISON CAMPAIGN
+AirportItlwm-Tahoe 1.1.0 Beta is a separate experimental comparison, not a new
+qualified stable release. Start with ZC28; ZC8/19/22/26 are optional historical
+KGP controls and unchanged laobamac53 is a separately attributed external
+control. The aim is dependable fast TX, useful RX and normal Internet behavior
+across AX201/AX210/AX211 systems. Earlier AX201/AX211 tester results motivated
+this work; ZC28 qualification on those peer systems remains pending.
+
+Detailed campaign post in THIS forum: [INSERT_TM_CAMPAIGN_PERMALINK_AFTER_KGP_POSTS]
+Complete setup, backup/rollback and all test commands: https://github.com/kgp-macPro/AirportItlwm-Tahoe/blob/main/README_TESTS.txt
+Beta package: AirportItlwm-Tahoe-1.1.0-Beta.zip
+Prerelease: https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/tag/v1.1.0-beta.1
+Results: https://github.com/kgp-macPro/AirportItlwm-Tahoe/issues/2
+
+Prerequisites DIFFER: KGP candidates require OCLP-CustoMac 3.0.3, its Skywalk
+replacement, AMFIPass.kext with -amfipassbeta and the matching supported
+framework/boot configuration. External53's native Wi-Fi does not require those
+components for Wi-Fi. Changing a kext does not undo existing root patches;
+record the ACTUAL environment and use the separate installation paths.
+AX201 stays KGP conventional-only even with system AppleVTD active. Qualified
+AX210/AX211 tests must establish their actual Mode1 / Mode2 route. External53
+mode labels are declared configurations, not KGP numerical route proof.
+
+Beta results: one campaign/comment in the single central GitHub results thread
+or the equivalent shared IM/TM beta thread. Attach one Return-ZIP containing
+the untouched runner ZIP, Ookla screenshot/result link and short notes. Include
+failures/slow runs; link existing reports instead of duplicating uploads.
+Separate issues are reserved for concrete bugs needing independent investigation.
+
+Thanks to Luiz (@LuizMeliga: https://www.tonymacx86.com/members/1658846/) and @netiave (https://www.tonymacx86.com/members/1548699/) for earlier hardware reports, and to every upstream,
+firmware/SDK and research contributor. KGP directs development and performs the
+local physical tests, with ChatGPT/Codex assistance under human review. Full
+attribution remains in CREDITS.md and the detailed campaign post.
+
+----- END INTRODUCTION — LEAVE ALL EXISTING DEBUGGING/FORENSICS AND ATTACHMENTS UNCHANGED -----

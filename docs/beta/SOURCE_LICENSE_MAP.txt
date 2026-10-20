@@ -1,0 +1,106 @@
+AirportItlwm-Tahoe 1.1.0 Beta — source, binary and license map
+Tag v1.1.0-beta.1; ZIP AirportItlwm-Tahoe-1.1.0-Beta.zip.
+Approved experimental prerelease package. Public name does not change any binary internal version.
+
+Each KGP source enclosure is the complete exact committed build input, including
+all headers/interfaces/project/build scripts, vendored MacKernelSDK05094e5e...
+and the generated include/FwBinary.cpp. Every member/hash/mode was compared with
+its preserved BUILD_INPUT manifest. ZC19 is built f18801f..., not tooling251fb7.
+These are independent historical snapshots, not merged code or patches alone.
+
+Root LICENSE texts are GPL version2. Per-file OpenBSD/BSD/ISC and other inherited
+copyright/license notices remain in the FULL source, not superseded by this map.
+MacKernelSDK's actual Apple Public Source License2.0 text and original header
+notices are included for each version. Intel's original binary-firmware notice
+and constraints are included separately; firmware is not relicensed as GPL code.
+KGP, OpenIntelWireless/zxystd, DexterSLamb, NKN/maddog860, OpenBSD, Intel, Apple,
+Acidanthera and other original per-file authors retain their respective credit.
+Mieze/IntelLucy is architectural prior art, not a claim of copied code.
+This is an inventory of included source/licenses, not a legal opinion.
+
+ZC8
+ Bundle: AirportItlwm/B1-ZC8-PERF/AirportItlwm.kext
+ UUID: 3677F904-4052-3E8D-8FF2-ED839F677A8B
+ Executable SHA256: c0a5ed739434fe24fd49776c5c034786bf88a6d360d8f7d7efd353c3f77472d7
+ Info.plist SHA256: 8714070289249126ea0bfb18747fb749ce5821967ee503cd58e4496f692b02d0
+ Source commit/tree: db22bb90b72b440b657246940fd8da17dbee23a4 / 004db4fbdb5972e2617b9a9cc5aff8d83564e6f7
+ Source archive: ZC8_CORRESPONDING_SOURCE_db22bb90b72b.tar.gz
+ Archive SHA256: d6b69e060e50cba2ef2e7ccf8b44d1a2dbb01e47abc57356bd86096177a67bb5
+ Linkage: exact frozen build-input manifest; all archive members/hash/mode verified, no rebuild
+
+ZC19
+ Bundle: AirportItlwm/B1-ZC19-PERF/AirportItlwm.kext
+ UUID: 1C2D5EBC-764D-3EF2-9714-11ADF9A2016A
+ Executable SHA256: 56704aaf87536e5812706ecfb97498d1fd2a09cf0b45941e74f2eb3f8e8ad624
+ Info.plist SHA256: 8714070289249126ea0bfb18747fb749ce5821967ee503cd58e4496f692b02d0
+ Source commit/tree: f18801f700b433199cf45808eaa674c92ec4f422 / 7269b802b1be0af1f2de546f93ba766c1abd1b82
+ Source archive: ZC19_CORRESPONDING_SOURCE_f18801f700b4.tar.gz
+ Archive SHA256: b6eac623aa5955b835406a46053e28c5fcb67e2fb0d88daa993c68d9acc93709
+ Linkage: exact frozen build-input manifest; all archive members/hash/mode verified, no rebuild
+
+ZC22
+ Bundle: AirportItlwm/B1-ZC22-PERF/AirportItlwm.kext
+ UUID: 2A585737-88B2-3F5C-B203-28DA9F00341D
+ Executable SHA256: 055bad456b53a70ba98c72e3580fcb59405c48fe09b85831a3fda1371c2a14ce
+ Info.plist SHA256: 8714070289249126ea0bfb18747fb749ce5821967ee503cd58e4496f692b02d0
+ Source commit/tree: 7dd260fbfb9d612574a6b18fbb042d4963402eda / 8fd1de800bd66c9e0fa5f83b385c165b4e253006
+ Source archive: ZC22_CORRESPONDING_SOURCE_7dd260fbfb9d.tar.gz
+ Archive SHA256: f2831033ec8f8a330eb7dc7b2dccfe104c14d5d2e8cb026fedced711555442bb
+ Linkage: exact frozen build-input manifest; all archive members/hash/mode verified, no rebuild
+
+ZC26
+ Bundle: AirportItlwm/B1-ZC26-PERF/AirportItlwm.kext
+ UUID: 71D99616-428A-3D46-AFCC-9E9FD6E850AF
+ Executable SHA256: a475f204f7717d349373ccd2f2040df4401da5b1936af890ddc84ec0b5e81778
+ Info.plist SHA256: 8714070289249126ea0bfb18747fb749ce5821967ee503cd58e4496f692b02d0
+ Source commit/tree: 48e9a31e68c328b5f19e5bdc81901e900d350738 / b9673f3509aa8523a3220194fc80e0f90628dc21
+ Source archive: ZC26_CORRESPONDING_SOURCE_48e9a31e68c3.tar.gz
+ Archive SHA256: 0eb1590afc8b651e7f0a068ddbf5aba3ba8fa6c12604d04a076de8265fc6b0a3
+ Linkage: exact frozen build-input manifest; all archive members/hash/mode verified, no rebuild
+
+ZC28
+ Bundle: AirportItlwm/B1-ZC28-SERVICE/AirportItlwm.kext
+ UUID: 469CBE97-EEB4-3084-99C4-433E73F4FC23
+ Executable SHA256: c48b9a0a018e86f572a65166750f383f571133de5de4b9e7578e42129a1a1185
+ Info.plist SHA256: 8714070289249126ea0bfb18747fb749ce5821967ee503cd58e4496f692b02d0
+ Source commit/tree: 483940988c502379fb6d3dcde885dca83f00b7aa / c92481ec7f00f744e058ef398114cffc4de0955a
+ Source archive: ZC28_CORRESPONDING_SOURCE_483940988c50.tar.gz
+ Archive SHA256: e074dec31ad7b87d5d0ce5eac7685ca65e39b50c4f5fdb51f413659f4a5ef9a9
+ Linkage: exact frozen build-input manifest; all archive members/hash/mode verified, no rebuild
+
+LAOBAMAC53
+ Bundle: Laobamac/53/AirportItlwm.kext
+ UUID: AEF5621B-B1D8-3487-BC9D-92E035BC087E
+ Executable SHA256: 259bac9432bffa8bf9c73411d8ac8f4a854552375e9f60ba0870ea3151ed973c
+ Info.plist SHA256: 7c40b4f5357b2285ddba9d2f650d639aed13fbb2b046fb3746be98ebaf258770
+ Source commit/tree: 738d4c61b5a64433b27c1ab09dba94916ab77d8d / e457c606c1ca201d30048e7c0bdcb9fb17e2a44a
+ Source archive: laobamac53-source.tar.gz
+ Archive SHA256: a0f036eb462e13d7995781569acf266d1683f5a3c55f916a1c3d2d49895d4c73
+ Linkage: upstream run53 head SHA + published artifact digest equals complete original outer ZIP + nested release asset digest + byte-identical tested bundle; independent source rebuild NOT performed
+
+laobamac53 linkage details (stronger than a matching archive filename):
+Run53 https://github.com/laobamac/itlwm/actions/runs/39107858290 has head738d4c61... .
+Artifact12128299619 digest02f45a5f... equals the LOCAL complete outer download.
+Its only member is AirportItlwm-Tahoe-v2.4.0-RELEASE-alpha-738d4c6.zip; digest
+25680aa3... equals the published release asset. Two extractions were performed;
+all resulting bundle files exactly equal the frozen physically used build53.
+The pinned workflow installs MacKernelSDK3f750085caa17ec3a7880f11c11bf4f48cd6a164,
+whose complete source/license archive is enclosed alongside the external source.
+API/workflow/source-tree records are included. This is upstream artifact/source
+linkage, not an independent byte-for-byte rebuild. Public job logs returned403;
+exact CI tool invocation is unavailable. The frozen Info.plist declares Xcode16.4 (16F6), macOS SDK15.5 (24F74), host build24G830; those are binary metadata, not a rerun or independent log verification. Its mutable alpha
+tag/target_commitish is not used as the source pin. No external code port or
+rebuild/replacement of build53 occurred. External numeric route/fault telemetry
+remains unavailable even though source linkage is now established.
+
+Building from enclosures:
+Extract a selected *_CORRESPONDING_SOURCE_*.tar.gz into its own empty directory;
+all five contain their exact vendored SDK and generated firmware translation unit.
+For the external archive, extract the declared itlwm source, then extract the
+included SDK3f750085 archive into that tree as MacKernelSDK (strip its top folder).
+Use the included SOURCE_BUILD_README.txt and original build records/workflow.
+A rebuild is a new binary and has no inherited physical qualification.
+Apple Xcode/MacOSX SDK are system build tools, not copied into the package.
+Full original license notices accompany the snapshots; no 'source later' promise
+replaces them. The old ZC4 written offer is retained only as prior publication
+history, not as this beta's source enclosure mechanism.

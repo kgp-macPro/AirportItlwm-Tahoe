@@ -1,0 +1,269 @@
+ZC28 CONVENTIONAL — ORIGINAL-LOG ANALYSIS AND HANDOVER SUPPLEMENT
+20 October 2026; local timestamps in CEST. Original archives remain unchanged.
+
+DECISION
+ZC28 conventional is a useful comparison-beta state. The three consecutive
+campaigns retain high TCP TX with no recurrence of the severe mapped TX dip
+or the historical sustained conventional collapse in these inspected cases.
+Do not build another candidate just to continue local iteration now. Compare
+the frozen ZC8/19/22/26/28 and laobamac53 on the peer AX211 and AX201 systems.
+This is no proof of a permanent repair, long-run stability, or sleep/wake.
+Observer/completion/service investigation remains UNFINISHED. No causal
+physical benefit of the service handoff is isolated by this boot-to-boot set.
+
+SCOPE AND VERIFICATION
+Three archives; each 42 cases plus online stage; 126 complete iperf3 cases.
+CRC passes and all 245 internal SHA256 entries per archive match (735 total).
+No unlisted payload files. All separate server logs equal embedded originals;
+all test stderr, online stderr and summary-error files are empty.
+Receiver byte/time goodput independently agrees with saved bit-rate fields.
+All commands/JSON use the same 8s TCP P1/P4 and 5s UDP1200 100/250/400/500/600
+routine over en2, bound 192.168.178.135%en2, to wired peer 192.168.178.33:5201.
+Two-second test pauses and the normal sequential final networkQuality remain.
+r7-service unchanged SHA256: be9c07168daf7b8ffd6f6c71ba4f62117d1e28334c4a64a9a063b2a115cc19ed
+ZC28 loaded UUID: 469CBE97-EEB4-3084-99C4-433E73F4FC23
+Executable SHA256: c48b9a0a018e86f572a65166750f383f571133de5de4b9e7578e42129a1a1185
+One boot, 16:38:35 CEST; macOS 26.7.1 (25G241), AX210, numeric DMA Mode 1.
+APPLEVTD.txt is empty in all three. Do not treat an empty capture as a full
+EFI/DMAR configuration audit. Numeric actual Mode 1 is directly verified.
+24 health and 24 service snapshots align in publication/time/mode. Health
+generation 1, Pc1Reset 1 and CommandEpoch 2 stay constant throughout; captured
+fault/blocked/frozen/suspended/RxFault fields are zero; PublishFailures zero.
+PublishMiss rises 2->355 across the cohort. It is not a packet-loss counter;
+do not claim all observation counters are zero or zero events between samples.
+Service raw words are preserved below; queue-stat semantic decoding requires
+the final source-matched decoder. No field meaning is guessed from magnitude.
+
+CAMPAIGN RECEIVER MEANS — DECIMAL MBPS; TX P1 / TX P4 / RX P1 / RX P4
+ZC28_AX210_3X14_conventional_20261020_164527_EJOvrp.zip
+  SHA256 6b4a3c9c70f6327576f6b7e2d7788ed9aeac0db312a169efd1877539f8bad238
+  484.992 / 484.620 / 524.233 / 512.961
+ZC28_AX210_3X14_conventional_20261020_165222_nUUFOr.zip
+  SHA256 8ce7424e8f45f1542e1c926130c7153c1d826ccd2be5a645bf8d30ee344a2f27
+  484.757 / 484.676 / 533.794 / 496.009
+ZC28_AX210_3X14_conventional_20261020_170008_QsHMcG.zip
+  SHA256 ecb2213efe37eca380a6abe5e5727622a24e1c5728cc3c57991205cc1e9c5396
+  482.667 / 484.367 / 520.984 / 509.628
+
+ALL NINE CASES PER TCP DIRECTION
+TCP_TX_P1: mean 484.139; range 478.812–493.843; lowest full client interval 459.578 Mbps.
+  TCP sender retransmissions per case range 0–745; summed count 2572. This is NOT packet-loss percent.
+TCP_TX_P4: mean 484.554; range 482.589–487.204; lowest full client interval 430.177 Mbps.
+  TCP sender retransmissions per case range 2534–5138; summed count 37010. This is NOT packet-loss percent.
+TCP_RX_P1: mean 526.337; range 503.427–561.162; lowest full client interval 419.167 Mbps.
+  TCP sender retransmissions per case range 256–2714; summed count 14860. This is NOT packet-loss percent.
+TCP_RX_P4: mean 506.199; range 481.683–524.779; lowest full client interval 444.552 Mbps.
+  TCP sender retransmissions per case range 717–4249; summed count 28041. This is NOT packet-loss percent.
+RX P1 exceeds 500 Mbps in 9/9 cases. RX P4 exceeds it in 7/9. There is no
+new demonstrated 600-Mbps TCP RX, nor a new all-time RX record: preserved
+ZC8 mapped reference was RX 581.442/558.947 with only TX 265.430/261.315;
+ZC22 mapped 553.057/523.615 with TX 480.654/481.913; ZC26 mapped 548.071/512.909
+with TX 481.230/481.480. Those historical values are from the supplied handover;
+their four raw archives were not reread in this pass.
+Preserved ZC22 conventional 10:45 was TX 483.779/483.130,RX 498.488/508.276;
+laobamac53 declared-conventional 12:37 was TX 480.565/475.546,RX 471.291/441.566.
+Thus the new cohort is a good balance of TX and RX, not universal dominance.
+
+UDP — ALL NINE CASES PER RATE/DIRECTION
+UDP_TX100: receiver 99.644–99.652; sender 99.999–100.001 Mbps; zero-loss 9/9; maximum saved whole-case loss 0.00000%; maximum displayed/JSON full-interval loss 0.00000%.
+UDP_RX100: receiver 100.297–100.333; sender 99.999–100.001 Mbps; zero-loss 9/9; maximum saved whole-case loss 0.00000%; maximum displayed/JSON full-interval loss 0.00000%.
+UDP_TX250: receiver 248.787–249.108; sender 249.996–250.000 Mbps; zero-loss 8/9; maximum saved whole-case loss 0.12364%; maximum displayed/JSON full-interval loss 0.62000%.
+UDP_RX250: receiver 248.807–250.727; sender 250.000–250.001 Mbps; zero-loss 4/9; maximum saved whole-case loss 0.79684%; maximum displayed/JSON full-interval loss 3.98501%.
+UDP_TX400: receiver 398.367–398.474; sender 399.997–399.999 Mbps; zero-loss 9/9; maximum saved whole-case loss 0.00000%; maximum displayed/JSON full-interval loss 0.00000%.
+UDP_RX400: receiver 397.400–401.185; sender 399.999–400.001 Mbps; zero-loss 5/9; maximum saved whole-case loss 0.92085%; maximum displayed/JSON full-interval loss 4.58919%.
+UDP_TX500: receiver 450.060–456.915; sender 458.766–466.349 Mbps; zero-loss 0/9; maximum saved whole-case loss 0.04362%; maximum displayed/JSON full-interval loss 0.14000%.
+UDP_RX500: receiver 496.129–501.438; sender 499.998–500.000 Mbps; zero-loss 4/9; maximum saved whole-case loss 1.05260%; maximum displayed/JSON full-interval loss 5.25894%.
+UDP_TX600: receiver 450.411–457.357; sender 459.879–467.147 Mbps; zero-loss 0/9; maximum saved whole-case loss 0.04969%; maximum displayed/JSON full-interval loss 0.09600%.
+UDP_RX600: receiver 599.929–601.847; sender 599.997–600.000 Mbps; zero-loss 2/9; maximum saved whole-case loss 0.29347%; maximum displayed/JSON full-interval loss 1.44597%.
+UDP TX500/TX600 never offer the requested rate here: sender 458.766–467.147,
+receiver 450.060–457.357 Mbps. Low packet loss therefore does not mean delivery
+of a real 500/600-Mbps offered stream. Host iperf CPU reaches 97.05% in these
+TX cases, supporting an application/scheduling contribution to the sender
+ceiling. This is not proof that the driver has spare capacity or that CPU
+alone explains the ceiling. There is no mapped-like severe TX dip here.
+UDP RX600 saved receiver 599.929–601.847 at nominal sender 600; 2/9 loss-free,
+max whole-case loss 0.29347%. Small receiver excess over nominal sender rate
+is retained as iperf accounting/timing; it is not new radio-capacity proof.
+The worst new RX500 whole-case loss 1.05260% (C2 R2) includes 5.25894% in one
+client interval. RX400 peaks 0.92085% whole-case / 4.58919% in one interval.
+Consequently this is not a loss-free result or a monotonic loss-vs-rate curve.
+
+ONLINE NETWORKQUALITY — RAW OUTPUT, DISTINCT FROM LAN
+C1: DL 74.36066, UL 38.50551 Mbps; DL/UL RPM 385.139/39.998; base RTT 32.207 ms; upload-loaded self HTTP median/p95/max 489.0/8947.0/8947.0 ms; endpoint defra1-edge-fx-038.aaplimg.com.
+C2: DL 75.76526, UL 40.30146 Mbps; DL/UL RPM 250.143/19.066; base RTT 38.035 ms; upload-loaded self HTTP median/p95/max 1269.0/9082.0/13299.0 ms; endpoint frmrs1-edge-fx-003.aaplimg.com.
+C3: DL 69.06726, UL 36.24392 Mbps; DL/UL RPM 453.775/36.748; base RTT 23.676 ms; upload-loaded self HTTP median/p95/max 962.0/7017.0/9563.0 ms; endpoint defra3-edge-bx-011.aaplimg.com.
+All online stages executed successfully. Upload-loaded response tails remain
+8.947/13.299/9.563 seconds. Nominal 80/30 Internet service, endpoint changes
+and mixed WAN/router/host behavior prevent attribution of those tails to
+the driver alone; raw UL above 30 is not a sustained line-speed certification.
+No new Ookla image, result URL or curve is included in these three ZIPs.
+
+MAPPED COMPARISON AND LIMITS
+ZC28_AX210_3X14_mapped_20261020_144057_7zXbzs.zip: 399.911/475.285/536.755/478.216 Mbps.
+ZC28_AX210_3X14_mapped_20261020_144921_5lIpTl.zip: 471.080/475.766/494.210/493.079 Mbps.
+ZC28_AX210_3X14_mapped_20261020_145825_7drjMn.zip: 479.864/478.049/501.609/497.135 Mbps.
+Earlier mapped C1 R3 TCP TX P1 was 247.018 Mbps, with a 32.494-Mbps full client
+interval; its R2 UDP TX500 receiver 271.284 Mbps. Conventional does not repeat
+those severe cases here. These are different boots at different times, not
+randomized or interleaved controlled DMA A/B evidence. Earlier mapped data
+remain adverse evidence against calling ZC28 universally fixed.
+The queue-capacity handoff hypothesis also cannot by itself explain pure
+UDP RX collapse without a waiting TX producer; ZC13 had a related handoff.
+
+PACKAGE AND PUBLICATION STATE
+The first conventional archive is the added coherent reference: it gives
+balanced TX/RX and includes its real losses and online tails. Seven original
+reference ZIPs are now required: six build references including ZC28 mapped,
+plus this ZC28 conventional run. No directions/rounds are stitched together.
+A/B packaging scripts change; the benchmark runner and all kexts do not.
+Corresponding source/license enclosures still require the actual frozen
+Mac build trees and source-to-binary records. This package update does not
+claim those unseen sources are already collected or release-ready.
+Current user decision: public AX201/AX210/AX211 comparison beta on IM and TM.
+Prepare complete source/license enclosures and a short section in the EXISTING
+GitHub README, with both public forum links once the posts exist. Keep
+the test instructions in README_TESTS.txt; do not duplicate the long routine.
+KGP must review the full revised GitHub README, test guide, package contents,
+source/license mapping and announcement BEFORE ANY COMMIT. No commit, push,
+tag, remote release or public forum post has been made here. The new local
+Codex preparation prompt enforces that explicit user review boundary.
+
+COMPLETE CASE LEDGER
+
+C1 ZC28_AX210_3X14_conventional_20261020_164527_EJOvrp.zip
+R1 TCP_TX_P1: receiver=486.397589, sender=490.657092 Mbps; retrans=264; full client intervals Mbps=[482.24,480.16,490.76,498.15,502.32,493.35,479.44,498.84]; host/remote CPU=4.160/6.192%.
+R1 TCP_RX_P1: receiver=508.108601, sender=508.179481 Mbps; retrans=1804; full client intervals Mbps=[451.76,529.33,501.59,517.97,517.97,524.32,521.05,500.88]; host/remote CPU=12.022/10.397%.
+R1 TCP_TX_P4: receiver=483.898837, sender=493.434766 Mbps; retrans=3239; full client intervals Mbps=[535.75,505.21,494.84,442.11,489.23,506.51,497.00,476.84]; host/remote CPU=3.380/7.910%.
+R1 TCP_RX_P4: receiver=507.581517, sender=508.052385 Mbps; retrans=4002; full client intervals Mbps=[503.22,523.39,511.50,491.80,499.89,502.59,508.07,520.14]; host/remote CPU=16.224/10.551%.
+R1 UDP_TX100: receiver=99.646726, sender=99.999220 Mbps; lost=0/52103, saved_loss=0.000000%; full client intervals Mbps=[100.00,99.99,100.00,100.00,100.00]; host/remote CPU=22.848/7.638%.
+R1 UDP_RX100: receiver=100.312798, sender=99.999402 Mbps; lost=0/52270, saved_loss=0.000000%; full client intervals Mbps=[100.34,100.34,100.23,100.35,100.28]; host/remote CPU=4.641/7.771%.
+R1 UDP_TX250: receiver=248.972266, sender=249.996350 Mbps; lost=0/130205, saved_loss=0.000000%; full client intervals Mbps=[249.99,250.00,250.01,250.00,249.99]; host/remote CPU=37.861/14.279%.
+R1 UDP_RX250: receiver=250.719333, sender=250.000259 Mbps; lost=0/130626, saved_loss=0.000000%; full client intervals Mbps=[250.41,251.08,250.90,250.45,250.75]; host/remote CPU=7.737/15.861%.
+R1 UDP_TX400: receiver=398.446008, sender=399.997520 Mbps; lost=0/208337, saved_loss=0.000000%; full client intervals Mbps=[400.00,399.99,400.00,399.99,399.98]; host/remote CPU=37.019/10.785%.
+R1 UDP_RX400: receiver=398.005789, sender=399.999920 Mbps; lost=1610/208916, saved_loss=0.769978%; full client intervals Mbps=[400.39,385.75,401.45,401.22,401.20]; host/remote CPU=12.682/26.612%.
+R1 UDP_TX500: receiver=456.783166, sender=466.001041 Mbps; lost=79/240701, saved_loss=0.032544%; full client intervals Mbps=[500.00,455.62,464.04,452.01,458.31]; host/remote CPU=88.362/7.101%.
+R1 UDP_RX500: receiver=500.685344, sender=499.999123 Mbps; lost=377/261172, saved_loss=0.144209%; full client intervals Mbps=[500.97,501.53,501.53,501.28,498.11]; host/remote CPU=14.413/31.629%.
+R1 UDP_TX600: receiver=455.259981, sender=462.954584 Mbps; lost=85/239238, saved_loss=0.035227%; full client intervals Mbps=[484.96,458.69,456.86,458.35,455.90]; host/remote CPU=96.560/6.939%.
+R1 UDP_RX600: receiver=600.995353, sender=600.000478 Mbps; lost=126/313197, saved_loss=0.040133%; full client intervals Mbps=[601.04,601.62,602.09,601.76,598.44]; host/remote CPU=16.981/36.361%.
+R2 TCP_TX_P1: receiver=482.279090, sender=485.100754 Mbps; retrans=64; full client intervals Mbps=[490.60,477.26,476.81,487.96,471.59,490.71,492.86,492.96]; host/remote CPU=4.539/6.490%.
+R2 TCP_RX_P1: receiver=503.427462, sender=502.959852 Mbps; retrans=1511; full client intervals Mbps=[526.37,564.85,549.79,511.61,529.88,479.79,419.17,446.07]; host/remote CPU=7.932/9.436%.
+R2 TCP_TX_P4: receiver=482.756769, sender=489.045969 Mbps; retrans=5138; full client intervals Mbps=[569.32,467.22,460.46,481.43,475.03,471.73,486.99,500.09]; host/remote CPU=3.348/7.953%.
+R2 TCP_RX_P4: receiver=524.779104, sender=524.830116 Mbps; retrans=3841; full client intervals Mbps=[540.82,518.82,489.65,522.31,550.55,527.42,501.35,547.27]; host/remote CPU=11.799/10.589%.
+R2 UDP_TX100: receiver=99.652139, sender=100.000280 Mbps; lost=0/52084, saved_loss=0.000000%; full client intervals Mbps=[100.00,100.00,99.99,100.00,100.00]; host/remote CPU=13.411/7.651%.
+R2 UDP_RX100: receiver=100.315795, sender=99.999900 Mbps; lost=0/52295, saved_loss=0.000000%; full client intervals Mbps=[100.34,100.23,100.32,100.29,100.39]; host/remote CPU=3.731/7.738%.
+R2 UDP_TX250: receiver=249.066903, sender=249.998372 Mbps; lost=0/130322, saved_loss=0.000000%; full client intervals Mbps=[250.00,250.00,250.00,249.99,250.00]; host/remote CPU=31.596/13.954%.
+R2 UDP_RX250: receiver=250.718043, sender=249.999980 Mbps; lost=0/130620, saved_loss=0.000000%; full client intervals Mbps=[250.40,250.88,250.83,250.64,250.84]; host/remote CPU=7.967/15.910%.
+R2 UDP_TX400: receiver=398.399057, sender=399.997280 Mbps; lost=0/208352, saved_loss=0.000000%; full client intervals Mbps=[399.99,400.01,400.00,400.00,399.99]; host/remote CPU=36.849/12.851%.
+R2 UDP_RX400: receiver=397.400111, sender=399.999363 Mbps; lost=1927/209087, saved_loss=0.920851%; full client intervals Mbps=[400.55,401.31,401.44,400.82,382.94]; host/remote CPU=14.850/26.664%.
+R2 UDP_TX500: receiver=454.942284, sender=460.862441 Mbps; lost=69/238251, saved_loss=0.028733%; full client intervals Mbps=[500.00,448.87,467.81,445.79,441.87]; host/remote CPU=87.575/6.811%.
+R2 UDP_RX500: receiver=501.404245, sender=500.000179 Mbps; lost=0/261400, saved_loss=0.000000%; full client intervals Mbps=[500.54,502.23,501.01,501.61,501.64]; host/remote CPU=14.443/30.716%.
+R2 UDP_TX600: receiver=454.193704, sender=462.161590 Mbps; lost=93/238681, saved_loss=0.038633%; full client intervals Mbps=[491.55,465.06,443.76,461.82,448.63]; host/remote CPU=96.646/6.677%.
+R2 UDP_RX600: receiver=599.929447, sender=599.999881 Mbps; lost=921/313414, saved_loss=0.293466%; full client intervals Mbps=[592.46,601.54,602.10,601.88,601.68]; host/remote CPU=16.893/35.441%.
+R3 TCP_TX_P1: receiver=486.298519, sender=489.528220 Mbps; retrans=328; full client intervals Mbps=[484.45,486.32,482.10,484.61,497.24,491.49,490.59,499.42]; host/remote CPU=3.956/6.381%.
+R3 TCP_RX_P1: receiver=561.161751, sender=561.164007 Mbps; retrans=1421; full client intervals Mbps=[535.79,569.38,576.31,574.65,564.22,571.50,554.76,542.71]; host/remote CPU=8.771/10.216%.
+R3 TCP_TX_P4: receiver=487.204065, sender=495.438350 Mbps; retrans=4970; full client intervals Mbps=[562.97,496.56,458.92,469.48,500.11,484.13,492.97,498.30]; host/remote CPU=3.376/7.954%.
+R3 TCP_RX_P4: receiver=506.522060, sender=506.240947 Mbps; retrans=3734; full client intervals Mbps=[470.58,534.56,518.28,524.99,526.98,471.59,508.88,496.31]; host/remote CPU=11.230/10.308%.
+R3 UDP_TX100: receiver=99.647715, sender=99.999081 Mbps; lost=0/52123, saved_loss=0.000000%; full client intervals Mbps=[100.00,100.01,100.00,99.99,100.00]; host/remote CPU=13.388/7.424%.
+R3 UDP_RX100: receiver=100.297390, sender=99.999980 Mbps; lost=0/52247, saved_loss=0.000000%; full client intervals Mbps=[100.20,100.31,100.32,100.31,100.36]; host/remote CPU=3.169/7.748%.
+R3 UDP_TX250: receiver=248.789811, sender=249.998950 Mbps; lost=0/130212, saved_loss=0.000000%; full client intervals Mbps=[250.00,250.01,249.99,250.00,250.00]; host/remote CPU=24.292/13.015%.
+R3 UDP_RX250: receiver=250.583453, sender=250.000697 Mbps; lost=75/130694, saved_loss=0.057348%; full client intervals Mbps=[250.52,250.80,250.77,250.13,250.69]; host/remote CPU=6.099/15.637%.
+R3 UDP_TX400: receiver=398.427635, sender=399.997440 Mbps; lost=0/208332, saved_loss=0.000000%; full client intervals Mbps=[399.99,400.01,399.99,400.00,399.98]; host/remote CPU=37.539/12.019%.
+R3 UDP_RX400: receiver=399.921273, sender=399.999522 Mbps; lost=701/209187, saved_loss=0.334816%; full client intervals Mbps=[401.08,401.35,401.37,394.29,401.50]; host/remote CPU=9.607/24.498%.
+R3 UDP_TX500: receiver=450.469509, sender=458.765833 Mbps; lost=82/236901, saved_loss=0.034317%; full client intervals Mbps=[489.04,430.26,469.40,453.05,452.00]; host/remote CPU=92.431/6.640%.
+R3 UDP_RX500: receiver=501.367011, sender=499.999562 Mbps; lost=0/261138, saved_loss=0.000000%; full client intervals Mbps=[500.70,501.85,501.35,501.51,501.43]; host/remote CPU=12.108/30.450%.
+R3 UDP_TX600: receiver=453.289650, sender=463.591812 Mbps; lost=98/239657, saved_loss=0.040546%; full client intervals Mbps=[504.69,433.78,465.28,448.79,465.13]; host/remote CPU=96.893/6.657%.
+R3 UDP_RX600: receiver=601.847199, sender=600.000358 Mbps; lost=0/313537, saved_loss=0.000000%; full client intervals Mbps=[600.70,602.68,601.78,601.71,602.37]; host/remote CPU=19.036/35.354%.
+Service raw INITIAL words: [28, 1, 256, 303, 421624920886, 1, 1, 1, 2, 1, 1, 0, 0, 0, 0, 0, 5836, 5836, 0, 0, 1, 0, 2, 0, 0, 0, 0, 0, 3, 12886070041, 0, 0]
+Service raw FINAL words: [28, 1, 256, 577, 818837426142, 1, 1, 1, 2, 1, 1, 0, 0, 0, 0, 0, 1555170, 1555170, 400198, 1011, 1, 0, 2, 0, 0, 0, 0, 0, 47, 12886070041, 0, 0]
+
+C2 ZC28_AX210_3X14_conventional_20261020_165222_nUUFOr.zip
+R1 TCP_TX_P1: receiver=493.842665, sender=497.395546 Mbps; retrans=150; full client intervals Mbps=[488.63,481.28,509.54,491.67,508.49,488.79,508.50,502.17]; host/remote CPU=4.172/6.384%.
+R1 TCP_RX_P1: receiver=557.963809, sender=559.124373 Mbps; retrans=1456; full client intervals Mbps=[548.95,550.66,544.30,551.07,564.83,556.23,578.25,569.49]; host/remote CPU=13.197/11.767%.
+R1 TCP_TX_P4: receiver=486.291100, sender=493.237180 Mbps; retrans=4157; full client intervals Mbps=[552.01,442.85,519.34,490.05,496.50,487.45,430.18,527.55]; host/remote CPU=3.432/8.085%.
+R1 TCP_RX_P4: receiver=514.054039, sender=514.588810 Mbps; retrans=717; full client intervals Mbps=[521.18,493.64,479.14,528.40,519.07,507.69,532.53,530.70]; host/remote CPU=16.335/10.740%.
+R1 UDP_TX100: receiver=99.647916, sender=99.998600 Mbps; lost=0/52091, saved_loss=0.000000%; full client intervals Mbps=[100.00,100.00,100.00,100.00,100.00]; host/remote CPU=20.587/7.636%.
+R1 UDP_RX100: receiver=100.302490, sender=100.000618 Mbps; lost=0/52246, saved_loss=0.000000%; full client intervals Mbps=[100.28,100.32,100.30,100.32,100.30]; host/remote CPU=5.210/7.749%.
+R1 UDP_TX250: receiver=249.077322, sender=249.998341 Mbps; lost=0/130313, saved_loss=0.000000%; full client intervals Mbps=[249.99,250.01,250.00,250.00,249.99]; host/remote CPU=40.268/14.154%.
+R1 UDP_RX250: receiver=250.709137, sender=249.999771 Mbps; lost=0/130580, saved_loss=0.000000%; full client intervals Mbps=[250.45,250.82,250.81,250.79,250.62]; host/remote CPU=10.493/15.933%.
+R1 UDP_TX400: receiver=398.419996, sender=399.996561 Mbps; lost=0/208403, saved_loss=0.000000%; full client intervals Mbps=[400.00,400.00,399.99,399.99,399.98]; host/remote CPU=37.565/12.881%.
+R1 UDP_RX400: receiver=401.185336, sender=399.999761 Mbps; lost=0/209110, saved_loss=0.000000%; full client intervals Mbps=[401.11,401.43,401.29,401.20,400.87]; host/remote CPU=16.902/26.662%.
+R1 UDP_TX500: receiver=451.756436, sender=459.383337 Mbps; lost=102/237237, saved_loss=0.042626%; full client intervals Mbps=[475.39,457.06,455.11,443.33,466.01]; host/remote CPU=92.202/7.013%.
+R1 UDP_RX500: receiver=497.483724, sender=499.999382 Mbps; lost=2026/261149, saved_loss=0.775105%; full client intervals Mbps=[481.36,501.45,501.43,502.03,501.16]; host/remote CPU=20.507/31.601%.
+R1 UDP_TX600: receiver=455.632551, sender=465.128562 Mbps; lost=115/240211, saved_loss=0.047469%; full client intervals Mbps=[498.62,440.40,466.40,457.91,462.28]; host/remote CPU=96.951/6.904%.
+R1 UDP_RX600: receiver=601.604262, sender=600.000000 Mbps; lost=17/313403, saved_loss=0.005416%; full client intervals Mbps=[601.04,601.52,602.41,601.37,601.68]; host/remote CPU=21.443/36.318%.
+R2 TCP_TX_P1: receiver=480.538292, sender=483.901613 Mbps; retrans=609; full client intervals Mbps=[459.58,472.87,486.50,491.45,503.42,484.30,490.95,482.28]; host/remote CPU=4.221/6.288%.
+R2 TCP_RX_P1: receiver=515.987713, sender=515.694163 Mbps; retrans=1983; full client intervals Mbps=[495.62,544.25,548.59,499.45,507.28,534.49,498.50,499.75]; host/remote CPU=11.672/10.531%.
+R2 TCP_TX_P4: receiver=484.470244, sender=494.392707 Mbps; retrans=4658; full client intervals Mbps=[573.27,467.90,498.76,454.17,486.53,493.49,489.78,490.97]; host/remote CPU=3.440/7.947%.
+R2 TCP_RX_P4: receiver=481.683278, sender=481.886193 Mbps; retrans=3138; full client intervals Mbps=[446.60,504.90,468.08,444.55,481.24,485.31,493.41,529.28]; host/remote CPU=15.724/10.025%.
+R2 UDP_TX100: receiver=99.649266, sender=99.999180 Mbps; lost=0/52085, saved_loss=0.000000%; full client intervals Mbps=[100.00,100.00,100.00,100.00,99.99]; host/remote CPU=22.219/7.649%.
+R2 UDP_RX100: receiver=100.313291, sender=100.000279 Mbps; lost=0/52248, saved_loss=0.000000%; full client intervals Mbps=[100.29,100.41,100.18,100.31,100.36]; host/remote CPU=5.227/7.710%.
+R2 UDP_TX250: receiver=249.108329, sender=249.998991 Mbps; lost=0/130317, saved_loss=0.000000%; full client intervals Mbps=[250.01,249.99,250.00,250.00,249.99]; host/remote CPU=43.129/13.646%.
+R2 UDP_RX250: receiver=250.607119, sender=250.000757 Mbps; lost=67/130652, saved_loss=0.051248%; full client intervals Mbps=[250.72,250.76,250.41,250.54,250.60]; host/remote CPU=10.886/15.914%.
+R2 UDP_TX400: receiver=398.474198, sender=399.998400 Mbps; lost=0/208349, saved_loss=0.000000%; full client intervals Mbps=[400.00,399.99,400.01,399.99,399.99]; host/remote CPU=37.086/13.350%.
+R2 UDP_RX400: receiver=401.077637, sender=400.000797 Mbps; lost=0/208903, saved_loss=0.000000%; full client intervals Mbps=[400.81,400.94,401.16,401.24,401.24]; host/remote CPU=17.037/26.786%.
+R2 UDP_TX500: receiver=450.059750, sender=459.355431 Mbps; lost=79/237231, saved_loss=0.033016%; full client intervals Mbps=[478.11,453.58,452.10,451.12,461.84]; host/remote CPU=90.684/6.906%.
+R2 UDP_RX500: receiver=496.128727, sender=499.999761 Mbps; lost=2753/261254, saved_loss=1.052599%; full client intervals Mbps=[500.88,501.36,500.93,476.06,501.41]; host/remote CPU=20.254/31.609%.
+R2 UDP_TX600: receiver=457.356651, sender=467.147148 Mbps; lost=89/241314, saved_loss=0.036570%; full client intervals Mbps=[497.25,463.06,453.33,461.05,461.06]; host/remote CPU=96.857/6.891%.
+R2 UDP_RX600: receiver=601.670034, sender=599.997133 Mbps; lost=11/313427, saved_loss=0.003504%; full client intervals Mbps=[600.79,601.93,601.96,601.32,602.35]; host/remote CPU=23.678/36.364%.
+R3 TCP_TX_P1: receiver=479.891531, sender=483.643528 Mbps; retrans=0; full client intervals Mbps=[488.68,486.99,476.03,481.79,485.58,493.59,468.94,487.52]; host/remote CPU=5.069/6.633%.
+R3 TCP_RX_P1: receiver=527.429047, sender=527.458694 Mbps; retrans=1834; full client intervals Mbps=[486.30,580.97,587.33,553.67,523.84,476.49,502.07,508.77]; host/remote CPU=12.408/11.190%.
+R3 TCP_TX_P4: receiver=483.265284, sender=493.214072 Mbps; retrans=4047; full client intervals Mbps=[561.90,472.61,489.17,464.03,502.27,480.17,486.58,488.65]; host/remote CPU=3.435/7.984%.
+R3 TCP_RX_P4: receiver=492.288648, sender=491.766405 Mbps; retrans=4249; full client intervals Mbps=[498.96,475.97,490.52,470.63,513.02,505.01,505.18,479.13]; host/remote CPU=15.482/9.607%.
+R3 UDP_TX100: receiver=99.648687, sender=100.000280 Mbps; lost=0/52123, saved_loss=0.000000%; full client intervals Mbps=[100.00,100.00,100.00,100.00,100.00]; host/remote CPU=22.057/7.086%.
+R3 UDP_RX100: receiver=100.300424, sender=99.999542 Mbps; lost=0/52246, saved_loss=0.000000%; full client intervals Mbps=[100.27,100.36,100.28,100.28,100.31]; host/remote CPU=4.922/7.795%.
+R3 UDP_TX250: receiver=249.108420, sender=249.999560 Mbps; lost=0/130313, saved_loss=0.000000%; full client intervals Mbps=[249.99,250.00,250.00,250.01,249.99]; host/remote CPU=44.416/12.738%.
+R3 UDP_RX250: receiver=250.643928, sender=250.001373 Mbps; lost=49/130666, saved_loss=0.037452%; full client intervals Mbps=[249.92,251.34,250.89,250.49,250.58]; host/remote CPU=10.717/15.520%.
+R3 UDP_TX400: receiver=398.410818, sender=399.999040 Mbps; lost=0/208375, saved_loss=0.000000%; full client intervals Mbps=[400.00,399.99,400.00,399.99,399.99]; host/remote CPU=36.677/15.133%.
+R3 UDP_RX400: receiver=399.760327, sender=399.999203 Mbps; lost=683/208898, saved_loss=0.326640%; full client intervals Mbps=[394.05,401.00,401.45,401.22,401.03]; host/remote CPU=17.227/24.542%.
+R3 UDP_TX500: receiver=456.725959, sender=466.307770 Mbps; lost=106/240967, saved_loss=0.043619%; full client intervals Mbps=[500.00,449.25,466.13,456.72,459.26]; host/remote CPU=88.471/6.824%.
+R3 UDP_RX500: receiver=501.405985, sender=500.000080 Mbps; lost=0/261382, saved_loss=0.000000%; full client intervals Mbps=[501.10,501.26,501.18,502.09,501.38]; host/remote CPU=20.240/30.380%.
+R3 UDP_TX600: receiver=452.078198, sender=461.806394 Mbps; lost=90/238490, saved_loss=0.037416%; full client intervals Mbps=[477.10,447.22,464.92,463.26,456.57]; host/remote CPU=97.049/6.634%.
+R3 UDP_RX600: receiver=600.603930, sender=600.000358 Mbps; lost=516/313346, saved_loss=0.164372%; full client intervals Mbps=[600.59,602.36,601.77,593.26,605.02]; host/remote CPU=23.355/35.415%.
+Service raw INITIAL words: [28, 1, 256, 594, 835852621638, 1, 1, 1, 2, 1, 1, 0, 0, 0, 0, 0, 1555214, 1555214, 400198, 1011, 1, 0, 2, 0, 0, 0, 0, 0, 47, 12886070041, 0, 0]
+Service raw FINAL words: [28, 1, 256, 886, 1242104650901, 1, 1, 1, 2, 1, 1, 0, 0, 0, 0, 0, 3140828, 3140828, 777658, 1892, 1, 0, 2, 0, 0, 0, 0, 0, 90, 12886070041, 0, 0]
+
+C3 ZC28_AX210_3X14_conventional_20261020_170008_QsHMcG.zip
+R1 TCP_TX_P1: receiver=481.472092, sender=484.422008 Mbps; retrans=412; full client intervals Mbps=[476.01,487.38,484.64,486.46,477.08,471.12,495.59,497.20]; host/remote CPU=4.652/6.546%.
+R1 TCP_RX_P1: receiver=515.747755, sender=515.529480 Mbps; retrans=256; full client intervals Mbps=[523.14,534.43,514.15,507.28,489.68,497.92,534.98,524.36]; host/remote CPU=12.602/10.501%.
+R1 TCP_TX_P4: receiver=482.588614, sender=491.366939 Mbps; retrans=2534; full client intervals Mbps=[546.59,482.62,503.28,479.43,479.74,483.30,486.62,469.22]; host/remote CPU=3.476/8.329%.
+R1 TCP_RX_P4: receiver=508.554465, sender=508.662681 Mbps; retrans=4136; full client intervals Mbps=[487.95,490.83,499.73,531.44,491.45,538.31,509.85,519.03]; host/remote CPU=16.703/10.764%.
+R1 UDP_TX100: receiver=99.650240, sender=99.999340 Mbps; lost=0/52106, saved_loss=0.000000%; full client intervals Mbps=[100.00,100.00,100.00,100.00,100.00]; host/remote CPU=21.125/7.550%.
+R1 UDP_RX100: receiver=100.332537, sender=100.000538 Mbps; lost=0/52257, saved_loss=0.000000%; full client intervals Mbps=[100.26,100.33,100.32,100.32,100.43]; host/remote CPU=5.128/7.777%.
+R1 UDP_TX250: receiver=249.090917, sender=249.996530 Mbps; lost=0/130204, saved_loss=0.000000%; full client intervals Mbps=[250.00,250.00,249.99,250.00,249.98]; host/remote CPU=41.140/14.068%.
+R1 UDP_RX250: receiver=250.727119, sender=250.000777 Mbps; lost=0/130686, saved_loss=0.000000%; full client intervals Mbps=[250.57,250.93,250.67,250.76,250.70]; host/remote CPU=11.029/15.947%.
+R1 UDP_TX400: receiver=398.367471, sender=399.998160 Mbps; lost=0/208341, saved_loss=0.000000%; full client intervals Mbps=[400.00,399.99,400.00,400.00,399.99]; host/remote CPU=37.148/12.955%.
+R1 UDP_RX400: receiver=401.096199, sender=400.000319 Mbps; lost=0/208912, saved_loss=0.000000%; full client intervals Mbps=[400.44,401.04,401.53,401.04,401.42]; host/remote CPU=16.891/26.819%.
+R1 UDP_TX500: receiver=452.590428, sender=459.529867 Mbps; lost=79/237445, saved_loss=0.032986%; full client intervals Mbps=[500.00,451.79,459.33,450.43,435.98]; host/remote CPU=88.580/6.651%.
+R1 UDP_RX500: receiver=501.430374, sender=499.998087 Mbps; lost=1/261193, saved_loss=0.000383%; full client intervals Mbps=[500.97,501.51,501.61,501.32,501.74]; host/remote CPU=20.331/31.600%.
+R1 UDP_TX600: receiver=450.410512, sender=459.879067 Mbps; lost=96/237501, saved_loss=0.040075%; full client intervals Mbps=[495.22,440.25,440.07,471.37,452.50]; host/remote CPU=97.006/6.828%.
+R1 UDP_RX600: receiver=601.641438, sender=599.999403 Mbps; lost=0/313363, saved_loss=0.000000%; full client intervals Mbps=[600.72,602.66,601.36,601.61,601.86]; host/remote CPU=23.284/36.190%.
+R2 TCP_TX_P1: receiver=478.812070, sender=482.040939 Mbps; retrans=0; full client intervals Mbps=[488.50,483.20,482.59,471.71,488.54,486.70,479.01,476.09]; host/remote CPU=4.886/6.477%.
+R2 TCP_RX_P1: receiver=510.508976, sender=510.065961 Mbps; retrans=2714; full client intervals Mbps=[475.96,496.94,503.52,506.33,536.90,538.93,525.70,499.70]; host/remote CPU=12.303/10.659%.
+R2 TCP_TX_P4: receiver=484.898190, sender=493.306109 Mbps; retrans=4233; full client intervals Mbps=[566.71,486.45,461.58,489.40,465.91,506.44,484.49,485.22]; host/remote CPU=3.289/7.994%.
+R2 TCP_RX_P4: receiver=503.300752, sender=503.873989 Mbps; retrans=2024; full client intervals Mbps=[461.25,519.90,508.84,496.95,490.55,527.73,512.57,508.64]; host/remote CPU=16.962/10.668%.
+R2 UDP_TX100: receiver=99.643506, sender=100.000280 Mbps; lost=0/52082, saved_loss=0.000000%; full client intervals Mbps=[100.00,100.00,100.00,100.01,100.00]; host/remote CPU=22.031/7.507%.
+R2 UDP_RX100: receiver=100.306915, sender=99.999980 Mbps; lost=0/52244, saved_loss=0.000000%; full client intervals Mbps=[100.28,100.32,100.26,100.36,100.32]; host/remote CPU=5.206/7.749%.
+R2 UDP_TX250: receiver=249.095029, sender=249.997522 Mbps; lost=0/130326, saved_loss=0.000000%; full client intervals Mbps=[250.00,250.00,250.00,250.00,249.99]; host/remote CPU=43.469/13.866%.
+R2 UDP_RX250: receiver=249.228574, sender=249.999512 Mbps; lost=803/130617, saved_loss=0.614464%; full client intervals Mbps=[242.99,250.95,250.58,250.55,251.06]; host/remote CPU=10.121/15.889%.
+R2 UDP_TX400: receiver=398.420737, sender=399.998880 Mbps; lost=0/208396, saved_loss=0.000000%; full client intervals Mbps=[399.99,400.00,400.01,400.00,399.99]; host/remote CPU=37.338/14.614%.
+R2 UDP_RX400: receiver=401.042668, sender=399.999283 Mbps; lost=0/209063, saved_loss=0.000000%; full client intervals Mbps=[400.07,401.32,401.58,400.88,401.36]; host/remote CPU=15.657/26.710%.
+R2 UDP_TX500: receiver=452.816521, sender=461.309444 Mbps; lost=82/238250, saved_loss=0.034124%; full client intervals Mbps=[485.32,452.88,451.73,455.98,460.56]; host/remote CPU=89.846/7.028%.
+R2 UDP_RX500: receiver=501.406584, sender=499.999123 Mbps; lost=0/261156, saved_loss=0.000000%; full client intervals Mbps=[500.84,501.52,501.44,501.54,501.69]; host/remote CPU=20.532/31.632%.
+R2 UDP_TX600: receiver=456.153037, sender=466.100337 Mbps; lost=114/240938, saved_loss=0.046916%; full client intervals Mbps=[483.04,481.46,451.15,445.74,469.07]; host/remote CPU=96.847/6.988%.
+R2 UDP_RX600: receiver=600.444933, sender=599.998327 Mbps; lost=679/313430, saved_loss=0.216422%; full client intervals Mbps=[594.61,601.69,601.55,602.32,602.06]; host/remote CPU=21.903/36.414%.
+R3 TCP_TX_P1: receiver=487.718198, sender=490.839791 Mbps; retrans=745; full client intervals Mbps=[503.31,468.80,486.53,497.49,492.79,508.09,484.04,485.77]; host/remote CPU=4.267/6.322%.
+R3 TCP_RX_P1: receiver=536.695630, sender=537.282467 Mbps; retrans=1881; full client intervals Mbps=[509.35,554.86,524.56,513.69,529.65,549.35,551.75,560.48]; host/remote CPU=12.248/11.267%.
+R3 TCP_TX_P4: receiver=485.615397, sender=496.075833 Mbps; retrans=4034; full client intervals Mbps=[560.56,487.42,491.94,482.56,486.34,485.30,491.75,482.68]; host/remote CPU=3.589/8.315%.
+R3 TCP_RX_P4: receiver=517.029017, sender=517.443591 Mbps; retrans=2200; full client intervals Mbps=[502.99,519.21,526.08,499.91,512.20,518.83,526.47,530.47]; host/remote CPU=16.119/11.334%.
+R3 UDP_TX100: receiver=99.649580, sender=100.000879 Mbps; lost=0/52117, saved_loss=0.000000%; full client intervals Mbps=[100.00,99.99,100.00,100.00,100.01]; host/remote CPU=21.505/7.617%.
+R3 UDP_RX100: receiver=100.302926, sender=100.001355 Mbps; lost=0/52247, saved_loss=0.000000%; full client intervals Mbps=[100.28,100.32,100.31,100.31,100.31]; host/remote CPU=4.604/7.812%.
+R3 UDP_TX250: receiver=248.786933, sender=249.997200 Mbps; lost=161/130211, saved_loss=0.123637%; full client intervals Mbps=[250.00,249.99,249.99,250.01,249.98]; host/remote CPU=42.975/12.332%.
+R3 UDP_RX250: receiver=248.806600, sender=250.000617 Mbps; lost=1042/130720, saved_loss=0.796843%; full client intervals Mbps=[250.72,250.41,241.10,250.95,250.84]; host/remote CPU=10.474/15.892%.
+R3 UDP_TX400: receiver=398.419992, sender=399.997922 Mbps; lost=0/208539, saved_loss=0.000000%; full client intervals Mbps=[400.00,400.00,399.99,399.99,399.99]; host/remote CPU=36.846/13.700%.
+R3 UDP_RX400: receiver=401.079663, sender=399.999363 Mbps; lost=0/208899, saved_loss=0.000000%; full client intervals Mbps=[400.53,401.37,401.01,401.49,401.00]; host/remote CPU=16.742/26.792%.
+R3 UDP_TX500: receiver=456.915493, sender=466.348668 Mbps; lost=67/241604, saved_loss=0.027580%; full client intervals Mbps=[500.00,452.10,476.44,432.51,470.33]; host/remote CPU=87.773/6.974%.
+R3 UDP_RX500: receiver=501.437578, sender=499.998188 Mbps; lost=10/261332, saved_loss=0.003824%; full client intervals Mbps=[500.83,501.76,501.16,501.83,501.58]; host/remote CPU=20.218/31.670%.
+R3 UDP_TX600: receiver=456.749820, sender=463.677943 Mbps; lost=120/239458, saved_loss=0.049689%; full client intervals Mbps=[502.12,464.50,435.57,464.99,451.18]; host/remote CPU=96.972/6.826%.
+R3 UDP_RX600: receiver=601.731760, sender=599.997491 Mbps; lost=10/313535, saved_loss=0.003186%; full client intervals Mbps=[601.05,601.90,601.71,601.62,602.38]; host/remote CPU=22.358/36.333%.
+Service raw INITIAL words: [28, 1, 256, 946, 1302149658154, 1, 1, 1, 2, 1, 1, 0, 0, 0, 0, 0, 3141645, 3141645, 777658, 1892, 1, 0, 2, 0, 0, 0, 0, 0, 90, 12886070041, 0, 0]
+Service raw FINAL words: [28, 1, 256, 1236, 1708397697431, 1, 1, 1, 2, 1, 1, 0, 0, 0, 0, 0, 4741162, 4741162, 1162380, 2891, 1, 0, 2, 0, 0, 0, 0, 0, 235, 12886070041, 0, 0]

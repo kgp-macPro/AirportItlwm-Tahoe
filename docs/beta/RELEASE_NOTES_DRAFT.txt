@@ -1,0 +1,39 @@
+AirportItlwm-Tahoe 1.1.0 Beta
+Tag: v1.1.0-beta.1
+One asset: AirportItlwm-Tahoe-1.1.0-Beta.zip
+
+ONE AX201/AX210/AX211 comparison campaign: ZC28 first; ZC8/19/22/26 optional
+historical KGP controls; unchanged laobamac53 a separately attributed external
+control. All binaries/internal versions/UUIDs/hashes and physically used r7
+remain frozen. No driver rebuild for packaging. Stable 1.1.0 remains future.
+
+Earlier reports from @netiave (TM) / @funcio (IM), the same AX201 tester, and Luiz
+(@LuizMeliga on TM, AX211) motivated the work. These are not ZC28 peer tests.
+The README explains development context, gives 192 historical best whole-test
+rows and links the source-grounded hardware overview. Config names/PCI entries
+are not physical qualification; absent-firmware variants are labelled honestly.
+
+Download/extract one ZIP, run SETUP_AirportItlwm_Beta.command via the ONE Terminal
+command in README_START_HERE.txt. Setup creates Desktop files and opens the
+complete guide; manual existing-driver update/reboot and rollback are separate.
+KGP requires OCLP-CustoMac 3.0.3 + its Skywalk replacement + AMFIPass.kext with
+-amfipassbeta and matching framework/boot environment. External53 native Wi-Fi
+needs none of those for Wi-Fi. A kext swap does not undo root patches; record
+ACTUAL environment and follow separate paths. AX201 KGP conventional-only.
+
+The guide preserves all 12 commands, both external declared configurations,
+exact-source/license enclosures, seven reference ZIPs and 26 additional origins.
+Useful recent conventional behavior does not establish permanent stability;
+mapped dips, UDP losses/sender limits, WAN tails and wake/peer gaps remain.
+
+Results: comment per campaign in ONE central GitHub thread titled
+AirportItlwm-Tahoe 1.1.0 Beta — Test results; one Return-ZIP with untouched runner
+ZIP/Ookla/notes. IM/TM shared threads equally valid; link instead of duplicating.
+Separate issues only for concrete bugs requiring independent investigation.
+Download: https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v1.1.0-beta.1/AirportItlwm-Tahoe-1.1.0-Beta.zip
+README and result tables: https://github.com/kgp-macPro/AirportItlwm-Tahoe#readme
+Installation and all test commands: https://github.com/kgp-macPro/AirportItlwm-Tahoe/blob/main/README_TESTS.txt
+Central results thread: https://github.com/kgp-macPro/AirportItlwm-Tahoe/issues/2
+New IM/TM campaign posts will be added by KGP manually.
+
+Asset SHA256: `e7d5c0efeffe2b378b8695a11f50b7711c1817ba39c5982f98b400e22d26e31d`

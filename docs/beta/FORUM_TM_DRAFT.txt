@@ -1,0 +1,64 @@
+AirportItlwm-Tahoe 1.1.0 Beta — AX201 / AX210 / AX211 testing
+
+Hi [@LuizMeliga](https://www.tonymacx86.com/members/1658846/), [@netiave](https://www.tonymacx86.com/members/1548699/), and everyone interested,
+
+Your encouraging results with the AX211 and AX201 have been an important motivation for our continued development. We wanted to reproduce that combination of good TCP TX and approximately 600 Mbps TCP RX with my AX210, on my own system and in my network environment.
+
+After many long days of development and testing, we have made substantial progress, although we still cannot consistently reproduce that same combination. I think this is a good moment to pause local optimisation and find out how the different versions behave on your systems. 🙂
+
+Along the way, we identified a System Profiler interaction that affected TCP TX measurements. Replacing the wired MacBook Pro M1 peer’s UGREEN USB-C 2.5GbE adapter with Realtek RTL8156 with a UGREEN USB-C 1GbE multiport hub using ASIX AX88179B also substantially improved the measured TCP RX results. The test environment clearly mattered.
+
+In the driver, work on TX command preparation and memory handling brought normal TCP TX to roughly 480–490 Mbps. Further changes addressed TX ordering, RX-buffer ownership, queue handling and lifecycle management. ZC28 builds on ZC26 and groups software-queue capacity wakeups during TX service while preserving hardware-completion wakeups.
+
+These changes mainly concern the IWX driver paths shared by AX201, AX210 and AX211, including packet transmission/reception, DMA memory handling and queue/completion processing. They are intended to work across supported systems. However, whether the later changes preserve your earlier performance is precisely what we now need to test.
+
+For context, these are selected complete three-round receiver averages on my AX210 system, in Mbps. Each line gives TCP TX P1/P4, followed by TCP RX P1/P4:
+
+- ZC8 mapped: TX 265.4/261.3; RX 581.4/558.9.
+- ZC19 mapped: TX 477.3/483.0; RX 473.4/457.5.
+- ZC22 mapped: TX 480.7/481.9; RX 553.1/523.6.
+- ZC26 mapped: TX 481.2/481.5; RX 548.1/512.9.
+- ZC28 mapped: TX 479.9/478.0; RX 501.6/497.1.
+- ZC28 conventional: TX 485.0/484.6; RX 524.2/513.0.
+- laobamac53, declared AppleVTD on: TX 482.0/478.8; RX 461.1/443.3.
+
+UDP RX has retained its approximately 600 Mbps capability, while normal UDP TX has improved substantially compared with ZC8. For the requested 100/250/400/500/600 Mbps UDP tests, receiver averages from the corresponding selected reference campaigns were:
+
+- ZC28 conventional: TX 99.6/248.9/398.4/454.1/454.2; RX 100.3/250.7/398.4/501.2/600.9.
+- laobamac53, declared AppleVTD on: TX 99.6/249.1/398.4/445.1/447.3; RX 100.3/250.6/399.8/501.3/600.8.
+
+These averages do not imply loss-free transfers. UDP loss bursts and intermittent slowdowns remain documented, and the actual UDP TX sender rate falls short of the requested 500/600 Mbps. The README contains the complete historical best-result tables for both configurations, including TCP retransmissions, UDP sender/receiver rates and losses, online networkQuality results, and the source run for each value.
+
+The three latest ZC28 conventional campaigns were encouraging: TCP TX remained around 483–485 Mbps, and all nine complete TCP RX P1 tests exceeded 500 Mbps. Nevertheless, mapped TX dips and long-term/sleep-wake reliability remain open questions.
+
+I would therefore really appreciate another comparison from Luiz and @netiave—and from anyone else interested in this legacy-framework, root-patched approach. My hope is that the many changes made while investigating my AX210 setup have preserved, or improved, the good performance you already achieved. Results from other systems, access points and network environments would be equally valuable.
+
+My nominal 80/30 Mbps Internet connection limits WAN comparisons, so the local wired iperf3 tests are particularly important. Please also run an Ookla test after each campaign.
+
+The single AirportItlwm-Tahoe-1.1.0-Beta.zip contains:
+
+- ZC8, ZC19, ZC22, ZC26 and ZC28.
+- laobamac’s unchanged build53 as a separately attributed external control.
+- The same unchanged r7 test script used for my measurements.
+- Setup instructions, every test command, original reference logs and corresponding source/license material.
+
+No compilation is required. Extract the ZIP in Downloads and run the setup command in README_START_HERE.txt. It prepares the Desktop directories and opens README_TESTS.txt, which explains driver replacement, backup/rollback and every individual test. The laobamac53 bundle is already extracted through both original ZIP layers.
+
+The prerequisites differ: our KGP candidates require OCLP-CustoMac 3.0.3, its Skywalk replacement, and AMFIPass.kext with -amfipassbeta, together with the matching framework/boot configuration. laobamac53’s native Wi-Fi approach does not require those components for Wi-Fi. Simply swapping kexts does not undo existing root patches; please follow the separate instructions.
+
+Please start with ZC28, then compare the historical versions as time permits. Both AppleVTD configurations are welcome where supported by your setup. AX201 can have system AppleVTD active while our driver still uses its conventional DMA route; the guide contains the appropriate commands.
+
+The common routine runs three rounds of 14 iperf3 tests, followed by networkQuality. After your Ookla test, please return one Return-ZIP per campaign containing the untouched runner-result ZIP, your Ookla screenshot or result link, and brief system/setup notes. Slow or failed attempts are useful too.
+
+Results can be posted as comments in the single central GitHub results thread, or directly in the shared IM/TM threads. There is no need to open an issue per tester or upload the same report twice.
+
+Thank you, Luiz and @netiave, for the earlier results that helped drive this work forward—and thank you to everyone willing to contribute another perspective. It is time to let other systems speak. 🙂
+
+Throughout development, I have continuously reviewed and redirected the work with ChatGPT and Codex and performed the physical testing myself. Upstream contributors and laobamac retain credit for their respective work.
+
+KGP
+
+Download: https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/tag/v1.1.0-beta.1
+README and best-result tables: https://github.com/kgp-macPro/AirportItlwm-Tahoe#readme
+Installation and all test commands: https://github.com/kgp-macPro/AirportItlwm-Tahoe/blob/main/README_TESTS.txt
+Central results thread: https://github.com/kgp-macPro/AirportItlwm-Tahoe/issues/2

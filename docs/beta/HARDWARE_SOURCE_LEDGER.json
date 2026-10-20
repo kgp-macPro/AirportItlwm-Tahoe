@@ -1,0 +1,4170 @@
+{
+  "commit": "483940988c502379fb6d3dcde885dca83f00b7aa",
+  "tree": "c92481ec7f00f744e058ef398114cffc4de0955a",
+  "source_root": "/Users/kgp/Developer/OpenIntelWireless/AirportItlwm-Tahoe-1.0.0-Experiments/TRACK-B1-ZC28-SERVICE",
+  "source_files": {
+    "AirportItlwm/Info.plist": "3b3838b93c7025cfd749837fbf2318fff0351e0ed34afa66812595de6be40a5f",
+    "AirportItlwm/AirportItlwm.cpp": "4f751e0b2056fdf7fcbaac8da4623c3a6326d57c858637d886e898b51a2371f4",
+    "itlwm/hal_iwx/ItlIwx.cpp": "e3b61e6df64e4253f35357b31e70ed5260e577aef8c36db69ba5d019b2113bcd",
+    "itlwm/hal_iwx/if_iwxreg.h": "bcfae814d362f24ca3b6d22307b637f8d180056d38849e95d9ee8b52791b85b3",
+    "itlwm/hal_iwm/mac80211.cpp": "9d38313d883a5451328d89822c1ea22fea5478059d1428ef76bf7e3691fec38a",
+    "itlwm/hal_iwn/ItlIwn.cpp": "ae8d8132794788e81fa2e32038afbf43ecc911c982cd2d27b79856e8300f5bf4",
+    "itl80211/openbsd/sys/_ifq.cpp": "67e5f0f6e022449193f7db4620cb7f61948eef5ed8fd3588e363fc79e69b1986",
+    "include/FwBinary.cpp": "ea888268197043f2b987db320c953ac8dbf2bdbd04f19bb34be986d0849d82cc"
+  },
+  "iomatch_tokens": [
+    "0x27238086",
+    "0x43F08086",
+    "0xA0F08086",
+    "0x34F08086",
+    "0x4DF08086",
+    "0x02F08086",
+    "0x3DF08086",
+    "0x06F08086",
+    "0x27208086",
+    "0x08b18086",
+    "0x08b28086",
+    "0x08b38086",
+    "0x08b48086",
+    "0x095a8086",
+    "0x095b8086",
+    "0x31658086",
+    "0x31668086",
+    "0x24f38086",
+    "0x24f48086",
+    "0x24f58086",
+    "0x24f68086",
+    "0x24fb8086",
+    "0x24fd8086",
+    "0x25268086",
+    "0x9df08086",
+    "0xa3708086",
+    "0x31DC8086",
+    "0x30DC8086",
+    "0x271C8086",
+    "0x271B8086",
+    "0x42a48086",
+    "0x00a08086",
+    "0x00a48086",
+    "0x02a08086",
+    "0x40a48086",
+    "0x00608086",
+    "0x00648086",
+    "0x02608086",
+    "0x02648086",
+    "0x42298086",
+    "0x422b8086",
+    "0x422c8086",
+    "0x42308086",
+    "0x42328086",
+    "0x42358086",
+    "0x42368086",
+    "0x42378086",
+    "0x42388086",
+    "0x42398086",
+    "0x423a8086",
+    "0x423b8086",
+    "0x423c8086",
+    "0x423d8086",
+    "0x00828086",
+    "0x00838086",
+    "0x00848086",
+    "0x00858086",
+    "0x00878086",
+    "0x00898086",
+    "0x008a8086",
+    "0x008b8086",
+    "0x00908086",
+    "0x00918086",
+    "0x08928086",
+    "0x08938086",
+    "0x08948086",
+    "0x08958086",
+    "0x08968086",
+    "0x08978086",
+    "0x08ae8086",
+    "0x08af8086",
+    "0x088e8086",
+    "0x088f8086",
+    "0x08908086",
+    "0x08918086",
+    "0x08878086",
+    "0x08888086",
+    "0x27258086",
+    "0x27268086",
+    "0x7A708086",
+    "0x7AF08086",
+    "0x51F08086",
+    "0x54F08086",
+    "0x27298086",
+    "0x7E408086",
+    "0x7F708086",
+    "0x51F18086"
+  ],
+  "iwx_pci_ids": [
+    "0x02F0",
+    "0x06F0",
+    "0x34F0",
+    "0x3DF0",
+    "0x4DF0",
+    "0x43F0",
+    "0xA0F0",
+    "0x2720",
+    "0x2723",
+    "0x2725",
+    "0x2726",
+    "0x7A70",
+    "0x7AF0",
+    "0x51F0",
+    "0x51F1",
+    "0x54F0",
+    "0x7F70",
+    "0x2729",
+    "0x7E40"
+  ],
+  "iwx_device_info_rows": [
+    {
+      "line": 14822,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x2723",
+        "IWL_CFG_ANY",
+        "iwl_ax200_cfg_cc",
+        "iwl_ax200_name"
+      ],
+      "cfg": "iwl_ax200_cfg_cc",
+      "name": "Intel(R) Wi-Fi 6 AX200 160MHz",
+      "name_token": "iwl_ax200_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14823,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x2723",
+        "0x1653",
+        "iwl_ax200_cfg_cc",
+        "iwl_ax200_killer_1650w_name"
+      ],
+      "cfg": "iwl_ax200_cfg_cc",
+      "name": "Killer(R) Wi-Fi 6 AX1650w 160MHz Wireless Network Adapter (200D2W)",
+      "name_token": "iwl_ax200_killer_1650w_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14824,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x2723",
+        "0x1654",
+        "iwl_ax200_cfg_cc",
+        "iwl_ax200_killer_1650x_name"
+      ],
+      "cfg": "iwl_ax200_cfg_cc",
+      "name": "Killer(R) Wi-Fi 6 AX1650x 160MHz Wireless Network Adapter (200NGW)",
+      "name_token": "iwl_ax200_killer_1650x_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14825,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x51F0",
+        "0x1691",
+        "iwlax411_2ax_cfg_so_gf4_a0",
+        "iwl_ax411_killer_1690s_name"
+      ],
+      "cfg": "iwlax411_2ax_cfg_so_gf4_a0",
+      "name": "Killer(R) Wi-Fi 6E AX1690s 160MHz Wireless Network Adapter (411D2W)",
+      "name_token": "iwl_ax411_killer_1690s_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14826,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x51F0",
+        "0x1692",
+        "iwlax411_2ax_cfg_so_gf4_a0",
+        "iwl_ax411_killer_1690i_name"
+      ],
+      "cfg": "iwlax411_2ax_cfg_so_gf4_a0",
+      "name": "Killer(R) Wi-Fi 6E AX1690i 160MHz Wireless Network Adapter (411NGW)",
+      "name_token": "iwl_ax411_killer_1690i_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14827,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x51F1",
+        "0x1692",
+        "iwlax411_2ax_cfg_so_gf4_a0",
+        "iwl_ax411_killer_1690i_name"
+      ],
+      "cfg": "iwlax411_2ax_cfg_so_gf4_a0",
+      "name": "Killer(R) Wi-Fi 6E AX1690i 160MHz Wireless Network Adapter (411NGW)",
+      "name_token": "iwl_ax411_killer_1690i_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14828,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x54F0",
+        "0x1691",
+        "iwlax411_2ax_cfg_so_gf4_a0",
+        "iwl_ax411_killer_1690s_name"
+      ],
+      "cfg": "iwlax411_2ax_cfg_so_gf4_a0",
+      "name": "Killer(R) Wi-Fi 6E AX1690s 160MHz Wireless Network Adapter (411D2W)",
+      "name_token": "iwl_ax411_killer_1690s_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14829,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x54F0",
+        "0x1692",
+        "iwlax411_2ax_cfg_so_gf4_a0",
+        "iwl_ax411_killer_1690i_name"
+      ],
+      "cfg": "iwlax411_2ax_cfg_so_gf4_a0",
+      "name": "Killer(R) Wi-Fi 6E AX1690i 160MHz Wireless Network Adapter (411NGW)",
+      "name_token": "iwl_ax411_killer_1690i_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14830,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x7A70",
+        "0x1691",
+        "iwlax411_2ax_cfg_so_gf4_a0",
+        "iwl_ax411_killer_1690s_name"
+      ],
+      "cfg": "iwlax411_2ax_cfg_so_gf4_a0",
+      "name": "Killer(R) Wi-Fi 6E AX1690s 160MHz Wireless Network Adapter (411D2W)",
+      "name_token": "iwl_ax411_killer_1690s_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14831,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x7A70",
+        "0x1692",
+        "iwlax411_2ax_cfg_so_gf4_a0",
+        "iwl_ax411_killer_1690i_name"
+      ],
+      "cfg": "iwlax411_2ax_cfg_so_gf4_a0",
+      "name": "Killer(R) Wi-Fi 6E AX1690i 160MHz Wireless Network Adapter (411NGW)",
+      "name_token": "iwl_ax411_killer_1690i_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14832,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x7AF0",
+        "0x1691",
+        "iwlax411_2ax_cfg_so_gf4_a0",
+        "iwl_ax411_killer_1690s_name"
+      ],
+      "cfg": "iwlax411_2ax_cfg_so_gf4_a0",
+      "name": "Killer(R) Wi-Fi 6E AX1690s 160MHz Wireless Network Adapter (411D2W)",
+      "name_token": "iwl_ax411_killer_1690s_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14833,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x7AF0",
+        "0x1692",
+        "iwlax411_2ax_cfg_so_gf4_a0",
+        "iwl_ax411_killer_1690i_name"
+      ],
+      "cfg": "iwlax411_2ax_cfg_so_gf4_a0",
+      "name": "Killer(R) Wi-Fi 6E AX1690i 160MHz Wireless Network Adapter (411NGW)",
+      "name_token": "iwl_ax411_killer_1690i_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14836,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x43F0",
+        "0x0070",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14837,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x43F0",
+        "0x0074",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14838,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x43F0",
+        "0x0078",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14839,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x43F0",
+        "0x007C",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14840,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x43F0",
+        "0x1651",
+        "killer1650s_2ax_cfg_qu_b0_hr_b0",
+        "iwl_ax201_killer_1650s_name"
+      ],
+      "cfg": "killer1650s_2ax_cfg_qu_b0_hr_b0",
+      "name": "Killer(R) Wi-Fi 6 AX1650s 160MHz Wireless Network Adapter (201D2W)",
+      "name_token": "iwl_ax201_killer_1650s_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14841,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x43F0",
+        "0x1652",
+        "killer1650i_2ax_cfg_qu_b0_hr_b0",
+        "iwl_ax201_killer_1650i_name"
+      ],
+      "cfg": "killer1650i_2ax_cfg_qu_b0_hr_b0",
+      "name": "Killer(R) Wi-Fi 6 AX1650i 160MHz Wireless Network Adapter (201NGW)",
+      "name_token": "iwl_ax201_killer_1650i_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14842,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x43F0",
+        "0x2074",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14843,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x43F0",
+        "0x4070",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14844,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0xA0F0",
+        "0x0070",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14845,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0xA0F0",
+        "0x0074",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14846,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0xA0F0",
+        "0x0078",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14847,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0xA0F0",
+        "0x007C",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14848,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0xA0F0",
+        "0x0A10",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14849,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0xA0F0",
+        "0x1651",
+        "killer1650s_2ax_cfg_qu_b0_hr_b0",
+        "NULL"
+      ],
+      "cfg": "killer1650s_2ax_cfg_qu_b0_hr_b0",
+      "name": "Killer(R) Wi-Fi 6 AX1650s 160MHz Wireless Network Adapter (201NGW)",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14850,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0xA0F0",
+        "0x1652",
+        "killer1650i_2ax_cfg_qu_b0_hr_b0",
+        "NULL"
+      ],
+      "cfg": "killer1650i_2ax_cfg_qu_b0_hr_b0",
+      "name": "Killer(R) Wi-Fi 6 AX1650i 160MHz Wireless Network Adapter (201D2W)",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14851,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0xA0F0",
+        "0x2074",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14852,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0xA0F0",
+        "0x4070",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14853,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0xA0F0",
+        "0x6074",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14854,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x02F0",
+        "0x0070",
+        "iwl_ax201_cfg_quz_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_quz_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14855,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x02F0",
+        "0x0074",
+        "iwl_ax201_cfg_quz_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_quz_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14856,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x02F0",
+        "0x6074",
+        "iwl_ax201_cfg_quz_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_quz_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14857,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x02F0",
+        "0x0078",
+        "iwl_ax201_cfg_quz_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_quz_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14858,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x02F0",
+        "0x007C",
+        "iwl_ax201_cfg_quz_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_quz_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14859,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x02F0",
+        "0x0310",
+        "iwl_ax201_cfg_quz_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_quz_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14860,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x02F0",
+        "0x1651",
+        "iwl_ax1650s_cfg_quz_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax1650s_cfg_quz_hr",
+      "name": "Killer(R) Wi-Fi 6 AX1650s 160MHz Wireless Network Adapter (201D2W)",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14861,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x02F0",
+        "0x1652",
+        "iwl_ax1650i_cfg_quz_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax1650i_cfg_quz_hr",
+      "name": "Killer(R) Wi-Fi 6 AX1650i 160MHz Wireless Network Adapter (201NGW)",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14862,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x02F0",
+        "0x2074",
+        "iwl_ax201_cfg_quz_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_quz_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14863,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x02F0",
+        "0x4070",
+        "iwl_ax201_cfg_quz_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_quz_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14864,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x06F0",
+        "0x0070",
+        "iwl_ax201_cfg_quz_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_quz_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14865,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x06F0",
+        "0x0074",
+        "iwl_ax201_cfg_quz_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_quz_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14866,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x06F0",
+        "0x0078",
+        "iwl_ax201_cfg_quz_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_quz_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14867,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x06F0",
+        "0x007C",
+        "iwl_ax201_cfg_quz_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_quz_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14868,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x06F0",
+        "0x0310",
+        "iwl_ax201_cfg_quz_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_quz_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14869,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x06F0",
+        "0x1651",
+        "iwl_ax1650s_cfg_quz_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax1650s_cfg_quz_hr",
+      "name": "Killer(R) Wi-Fi 6 AX1650s 160MHz Wireless Network Adapter (201D2W)",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14870,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x06F0",
+        "0x1652",
+        "iwl_ax1650i_cfg_quz_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax1650i_cfg_quz_hr",
+      "name": "Killer(R) Wi-Fi 6 AX1650i 160MHz Wireless Network Adapter (201NGW)",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14871,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x06F0",
+        "0x2074",
+        "iwl_ax201_cfg_quz_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_quz_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14872,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x06F0",
+        "0x4070",
+        "iwl_ax201_cfg_quz_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_quz_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14873,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x34F0",
+        "0x0070",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14874,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x34F0",
+        "0x0074",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14875,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x34F0",
+        "0x0078",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14876,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x34F0",
+        "0x007C",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14877,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x34F0",
+        "0x0310",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14878,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x34F0",
+        "0x1651",
+        "killer1650s_2ax_cfg_qu_b0_hr_b0",
+        "NULL"
+      ],
+      "cfg": "killer1650s_2ax_cfg_qu_b0_hr_b0",
+      "name": "Killer(R) Wi-Fi 6 AX1650s 160MHz Wireless Network Adapter (201NGW)",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14879,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x34F0",
+        "0x1652",
+        "killer1650i_2ax_cfg_qu_b0_hr_b0",
+        "NULL"
+      ],
+      "cfg": "killer1650i_2ax_cfg_qu_b0_hr_b0",
+      "name": "Killer(R) Wi-Fi 6 AX1650i 160MHz Wireless Network Adapter (201D2W)",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14880,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x34F0",
+        "0x2074",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14881,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x34F0",
+        "0x4070",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14883,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x3DF0",
+        "0x0070",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14884,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x3DF0",
+        "0x0074",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14885,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x3DF0",
+        "0x0078",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14886,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x3DF0",
+        "0x007C",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14887,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x3DF0",
+        "0x0310",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14888,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x3DF0",
+        "0x1651",
+        "killer1650s_2ax_cfg_qu_b0_hr_b0",
+        "NULL"
+      ],
+      "cfg": "killer1650s_2ax_cfg_qu_b0_hr_b0",
+      "name": "Killer(R) Wi-Fi 6 AX1650s 160MHz Wireless Network Adapter (201NGW)",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14889,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x3DF0",
+        "0x1652",
+        "killer1650i_2ax_cfg_qu_b0_hr_b0",
+        "NULL"
+      ],
+      "cfg": "killer1650i_2ax_cfg_qu_b0_hr_b0",
+      "name": "Killer(R) Wi-Fi 6 AX1650i 160MHz Wireless Network Adapter (201D2W)",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14890,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x3DF0",
+        "0x2074",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14891,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x3DF0",
+        "0x4070",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14893,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x4DF0",
+        "0x0070",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14894,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x4DF0",
+        "0x0074",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14895,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x4DF0",
+        "0x0078",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14896,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x4DF0",
+        "0x007C",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14897,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x4DF0",
+        "0x0310",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14898,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x4DF0",
+        "0x1651",
+        "killer1650s_2ax_cfg_qu_b0_hr_b0",
+        "NULL"
+      ],
+      "cfg": "killer1650s_2ax_cfg_qu_b0_hr_b0",
+      "name": "Killer(R) Wi-Fi 6 AX1650s 160MHz Wireless Network Adapter (201NGW)",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14899,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x4DF0",
+        "0x1652",
+        "killer1650i_2ax_cfg_qu_b0_hr_b0",
+        "NULL"
+      ],
+      "cfg": "killer1650i_2ax_cfg_qu_b0_hr_b0",
+      "name": "Killer(R) Wi-Fi 6 AX1650i 160MHz Wireless Network Adapter (201D2W)",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14900,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x4DF0",
+        "0x2074",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14901,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x4DF0",
+        "0x4070",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14902,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x4DF0",
+        "0x6074",
+        "iwl_ax201_cfg_qu_hr",
+        "NULL"
+      ],
+      "cfg": "iwl_ax201_cfg_qu_hr",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14905,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x06f0",
+        "0x1551",
+        "iwl9560_quz_a0_jf_b0_cfg",
+        "iwl9560_killer_1550s_160_name"
+      ],
+      "cfg": "iwl9560_quz_a0_jf_b0_cfg",
+      "name": "Killer(R) Wireless-AC 1550s Wireless Network Adapter (9560D2W) 160MHz",
+      "name_token": "iwl9560_killer_1550s_160_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14906,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x06f0",
+        "0x1552",
+        "iwl9560_quz_a0_jf_b0_cfg",
+        "iwl9560_killer_1550i_160_name"
+      ],
+      "cfg": "iwl9560_quz_a0_jf_b0_cfg",
+      "name": "Killer(R) Wireless-AC 1550i Wireless Network Adapter (9560NGW) 160MHz",
+      "name_token": "iwl9560_killer_1550i_160_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14909,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x2725",
+        "0x0090",
+        "iwlax211_2ax_cfg_so_gf_a0",
+        "NULL"
+      ],
+      "cfg": "iwlax211_2ax_cfg_so_gf_a0",
+      "name": "Intel(R) Wi-Fi 6 AX211 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14910,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x2725",
+        "0x0020",
+        "iwlax210_2ax_cfg_ty_gf_a0",
+        "NULL"
+      ],
+      "cfg": "iwlax210_2ax_cfg_ty_gf_a0",
+      "name": "Intel(R) Wi-Fi 6 AX210 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14911,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x2725",
+        "0x2020",
+        "iwlax210_2ax_cfg_ty_gf_a0",
+        "NULL"
+      ],
+      "cfg": "iwlax210_2ax_cfg_ty_gf_a0",
+      "name": "Intel(R) Wi-Fi 6 AX210 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14912,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x2725",
+        "0x0024",
+        "iwlax210_2ax_cfg_ty_gf_a0",
+        "NULL"
+      ],
+      "cfg": "iwlax210_2ax_cfg_ty_gf_a0",
+      "name": "Intel(R) Wi-Fi 6 AX210 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14913,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x2725",
+        "0x0310",
+        "iwlax210_2ax_cfg_ty_gf_a0",
+        "NULL"
+      ],
+      "cfg": "iwlax210_2ax_cfg_ty_gf_a0",
+      "name": "Intel(R) Wi-Fi 6 AX210 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14914,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x2725",
+        "0x0510",
+        "iwlax210_2ax_cfg_ty_gf_a0",
+        "NULL"
+      ],
+      "cfg": "iwlax210_2ax_cfg_ty_gf_a0",
+      "name": "Intel(R) Wi-Fi 6 AX210 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14915,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x2725",
+        "0x0A10",
+        "iwlax210_2ax_cfg_ty_gf_a0",
+        "NULL"
+      ],
+      "cfg": "iwlax210_2ax_cfg_ty_gf_a0",
+      "name": "Intel(R) Wi-Fi 6 AX210 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14916,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x2725",
+        "0xE020",
+        "iwlax210_2ax_cfg_ty_gf_a0",
+        "NULL"
+      ],
+      "cfg": "iwlax210_2ax_cfg_ty_gf_a0",
+      "name": "Intel(R) Wi-Fi 6 AX210 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14917,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x2725",
+        "0xE024",
+        "iwlax210_2ax_cfg_ty_gf_a0",
+        "NULL"
+      ],
+      "cfg": "iwlax210_2ax_cfg_ty_gf_a0",
+      "name": "Intel(R) Wi-Fi 6 AX210 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14918,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x2725",
+        "0x4020",
+        "iwlax210_2ax_cfg_ty_gf_a0",
+        "NULL"
+      ],
+      "cfg": "iwlax210_2ax_cfg_ty_gf_a0",
+      "name": "Intel(R) Wi-Fi 6 AX210 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14919,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x2725",
+        "0x6020",
+        "iwlax210_2ax_cfg_ty_gf_a0",
+        "NULL"
+      ],
+      "cfg": "iwlax210_2ax_cfg_ty_gf_a0",
+      "name": "Intel(R) Wi-Fi 6 AX210 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14920,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x2725",
+        "0x6024",
+        "iwlax210_2ax_cfg_ty_gf_a0",
+        "NULL"
+      ],
+      "cfg": "iwlax210_2ax_cfg_ty_gf_a0",
+      "name": "Intel(R) Wi-Fi 6 AX210 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14921,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x2725",
+        "0x1673",
+        "iwlax210_2ax_cfg_ty_gf_a0",
+        "iwl_ax210_killer_1675w_name"
+      ],
+      "cfg": "iwlax210_2ax_cfg_ty_gf_a0",
+      "name": "Killer(R) Wi-Fi 6E AX1675w 160MHz Wireless Network Adapter (210D2W)",
+      "name_token": "iwl_ax210_killer_1675w_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14922,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x2725",
+        "0x1674",
+        "iwlax210_2ax_cfg_ty_gf_a0",
+        "iwl_ax210_killer_1675x_name"
+      ],
+      "cfg": "iwlax210_2ax_cfg_ty_gf_a0",
+      "name": "Killer(R) Wi-Fi 6E AX1675x 160MHz Wireless Network Adapter (210NGW)",
+      "name_token": "iwl_ax210_killer_1675x_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14923,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x7A70",
+        "0x0090",
+        "iwlax211_2ax_cfg_so_gf_a0_long",
+        "NULL"
+      ],
+      "cfg": "iwlax211_2ax_cfg_so_gf_a0_long",
+      "name": "Intel(R) Wi-Fi 6 AX211 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14924,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x7A70",
+        "0x0098",
+        "iwlax211_2ax_cfg_so_gf_a0_long",
+        "NULL"
+      ],
+      "cfg": "iwlax211_2ax_cfg_so_gf_a0_long",
+      "name": "Intel(R) Wi-Fi 6 AX211 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14925,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x7A70",
+        "0x00B0",
+        "iwlax411_2ax_cfg_so_gf4_a0_long",
+        "NULL"
+      ],
+      "cfg": "iwlax411_2ax_cfg_so_gf4_a0_long",
+      "name": "Intel(R) Wi-Fi 6 AX411 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14926,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x7A70",
+        "0x0310",
+        "iwlax211_2ax_cfg_so_gf_a0_long",
+        "NULL"
+      ],
+      "cfg": "iwlax211_2ax_cfg_so_gf_a0_long",
+      "name": "Intel(R) Wi-Fi 6 AX211 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14927,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x7A70",
+        "0x0510",
+        "iwlax211_2ax_cfg_so_gf_a0_long",
+        "NULL"
+      ],
+      "cfg": "iwlax211_2ax_cfg_so_gf_a0_long",
+      "name": "Intel(R) Wi-Fi 6 AX211 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14928,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x7A70",
+        "0x0A10",
+        "iwlax211_2ax_cfg_so_gf_a0_long",
+        "NULL"
+      ],
+      "cfg": "iwlax211_2ax_cfg_so_gf_a0_long",
+      "name": "Intel(R) Wi-Fi 6 AX211 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14929,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x7AF0",
+        "0x0090",
+        "iwlax211_2ax_cfg_so_gf_a0",
+        "NULL"
+      ],
+      "cfg": "iwlax211_2ax_cfg_so_gf_a0",
+      "name": "Intel(R) Wi-Fi 6 AX211 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14930,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x7AF0",
+        "0x0098",
+        "iwlax211_2ax_cfg_so_gf_a0",
+        "NULL"
+      ],
+      "cfg": "iwlax211_2ax_cfg_so_gf_a0",
+      "name": "Intel(R) Wi-Fi 6 AX211 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14931,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x7AF0",
+        "0x00B0",
+        "iwlax411_2ax_cfg_so_gf4_a0",
+        "NULL"
+      ],
+      "cfg": "iwlax411_2ax_cfg_so_gf4_a0",
+      "name": "Intel(R) Wi-Fi 6 AX411 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14932,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x7AF0",
+        "0x0310",
+        "iwlax211_2ax_cfg_so_gf_a0",
+        "NULL"
+      ],
+      "cfg": "iwlax211_2ax_cfg_so_gf_a0",
+      "name": "Intel(R) Wi-Fi 6 AX211 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14933,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x7AF0",
+        "0x0510",
+        "iwlax211_2ax_cfg_so_gf_a0",
+        "NULL"
+      ],
+      "cfg": "iwlax211_2ax_cfg_so_gf_a0",
+      "name": "Intel(R) Wi-Fi 6 AX211 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14934,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x7AF0",
+        "0x0A10",
+        "iwlax211_2ax_cfg_so_gf_a0",
+        "NULL"
+      ],
+      "cfg": "iwlax211_2ax_cfg_so_gf_a0",
+      "name": "Intel(R) Wi-Fi 6 AX211 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14937,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x2725",
+        "0x00B0",
+        "iwlax411_2ax_cfg_sosnj_gf4_a0",
+        "NULL"
+      ],
+      "cfg": "iwlax411_2ax_cfg_sosnj_gf4_a0",
+      "name": "Intel(R) Wi-Fi 6 AX411 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 14938,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x2726",
+        "0x0090",
+        "iwlax211_cfg_snj_gf_a0",
+        "NULL"
+      ],
+      "cfg": "iwlax211_cfg_snj_gf_a0",
+      "name": "Intel(R) Wi-Fi 6 AX211 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 14939,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x2726",
+        "0x0098",
+        "iwlax211_cfg_snj_gf_a0",
+        "NULL"
+      ],
+      "cfg": "iwlax211_cfg_snj_gf_a0",
+      "name": "Intel(R) Wi-Fi 6 AX211 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 14940,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x2726",
+        "0x00B0",
+        "iwlax411_2ax_cfg_sosnj_gf4_a0",
+        "NULL"
+      ],
+      "cfg": "iwlax411_2ax_cfg_sosnj_gf4_a0",
+      "name": "Intel(R) Wi-Fi 6 AX411 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 14941,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x2726",
+        "0x00B4",
+        "iwlax411_2ax_cfg_sosnj_gf4_a0",
+        "NULL"
+      ],
+      "cfg": "iwlax411_2ax_cfg_sosnj_gf4_a0",
+      "name": "Intel(R) Wi-Fi 6 AX411 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 14942,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x2726",
+        "0x0510",
+        "iwlax211_cfg_snj_gf_a0",
+        "NULL"
+      ],
+      "cfg": "iwlax211_cfg_snj_gf_a0",
+      "name": "Intel(R) Wi-Fi 6 AX211 160MHz",
+      "name_token": "NULL",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 14943,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x2726",
+        "0x1651",
+        "iwl_cfg_snj_hr_b0",
+        "iwl_ax201_killer_1650s_name"
+      ],
+      "cfg": "iwl_cfg_snj_hr_b0",
+      "name": "Killer(R) Wi-Fi 6 AX1650s 160MHz Wireless Network Adapter (201D2W)",
+      "name_token": "iwl_ax201_killer_1650s_name",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 14944,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x2726",
+        "0x1652",
+        "iwl_cfg_snj_hr_b0",
+        "iwl_ax201_killer_1650i_name"
+      ],
+      "cfg": "iwl_cfg_snj_hr_b0",
+      "name": "Killer(R) Wi-Fi 6 AX1650i 160MHz Wireless Network Adapter (201NGW)",
+      "name_token": "iwl_ax201_killer_1650i_name",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 14945,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x2726",
+        "0x1691",
+        "iwlax411_2ax_cfg_sosnj_gf4_a0",
+        "iwl_ax411_killer_1690s_name"
+      ],
+      "cfg": "iwlax411_2ax_cfg_sosnj_gf4_a0",
+      "name": "Killer(R) Wi-Fi 6E AX1690s 160MHz Wireless Network Adapter (411D2W)",
+      "name_token": "iwl_ax411_killer_1690s_name",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 14946,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x2726",
+        "0x1692",
+        "iwlax411_2ax_cfg_sosnj_gf4_a0",
+        "iwl_ax411_killer_1690i_name"
+      ],
+      "cfg": "iwlax411_2ax_cfg_sosnj_gf4_a0",
+      "name": "Killer(R) Wi-Fi 6E AX1690i 160MHz Wireless Network Adapter (411NGW)",
+      "name_token": "iwl_ax411_killer_1690i_name",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 14947,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x7F70",
+        "0x1691",
+        "iwlax411_2ax_cfg_so_gf4_a0",
+        "iwl_ax411_killer_1690s_name"
+      ],
+      "cfg": "iwlax411_2ax_cfg_so_gf4_a0",
+      "name": "Killer(R) Wi-Fi 6E AX1690s 160MHz Wireless Network Adapter (411D2W)",
+      "name_token": "iwl_ax411_killer_1690s_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14948,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x7F70",
+        "0x1692",
+        "iwlax411_2ax_cfg_so_gf4_a0",
+        "iwl_ax411_killer_1690i_name"
+      ],
+      "cfg": "iwlax411_2ax_cfg_so_gf4_a0",
+      "name": "Killer(R) Wi-Fi 6E AX1690i 160MHz Wireless Network Adapter (411NGW)",
+      "name_token": "iwl_ax411_killer_1690i_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14949,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x7AF0",
+        "0x1691",
+        "iwlax411_2ax_cfg_so_gf4_a0",
+        "iwl_ax411_killer_1690s_name"
+      ],
+      "cfg": "iwlax411_2ax_cfg_so_gf4_a0",
+      "name": "Killer(R) Wi-Fi 6E AX1690s 160MHz Wireless Network Adapter (411D2W)",
+      "name_token": "iwl_ax411_killer_1690s_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14950,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x7AF0",
+        "0x1692",
+        "iwlax411_2ax_cfg_so_gf4_a0",
+        "iwl_ax411_killer_1690i_name"
+      ],
+      "cfg": "iwlax411_2ax_cfg_so_gf4_a0",
+      "name": "Killer(R) Wi-Fi 6E AX1690i 160MHz Wireless Network Adapter (411NGW)",
+      "name_token": "iwl_ax411_killer_1690i_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14952,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x2726",
+        "0x1671",
+        "iwlax211_2ax_cfg_so_gf_a0",
+        "iwl_ax211_killer_1675s_name"
+      ],
+      "cfg": "iwlax211_2ax_cfg_so_gf_a0",
+      "name": "Killer(R) Wi-Fi 6E AX1675s 160MHz Wireless Network Adapter (211NGW)",
+      "name_token": "iwl_ax211_killer_1675s_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14953,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x2726",
+        "0x1672",
+        "iwlax211_2ax_cfg_so_gf_a0",
+        "iwl_ax211_killer_1675i_name"
+      ],
+      "cfg": "iwlax211_2ax_cfg_so_gf_a0",
+      "name": "Killer(R) Wi-Fi 6E AX1675i 160MHz Wireless Network Adapter (211NGW)",
+      "name_token": "iwl_ax211_killer_1675i_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14954,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x51F0",
+        "0x1671",
+        "iwlax211_2ax_cfg_so_gf_a0",
+        "iwl_ax211_killer_1675s_name"
+      ],
+      "cfg": "iwlax211_2ax_cfg_so_gf_a0",
+      "name": "Killer(R) Wi-Fi 6E AX1675s 160MHz Wireless Network Adapter (211NGW)",
+      "name_token": "iwl_ax211_killer_1675s_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14955,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x51F0",
+        "0x1672",
+        "iwlax211_2ax_cfg_so_gf_a0",
+        "iwl_ax211_killer_1675i_name"
+      ],
+      "cfg": "iwlax211_2ax_cfg_so_gf_a0",
+      "name": "Killer(R) Wi-Fi 6E AX1675i 160MHz Wireless Network Adapter (211NGW)",
+      "name_token": "iwl_ax211_killer_1675i_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14956,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x54F0",
+        "0x1671",
+        "iwlax211_2ax_cfg_so_gf_a0",
+        "iwl_ax211_killer_1675s_name"
+      ],
+      "cfg": "iwlax211_2ax_cfg_so_gf_a0",
+      "name": "Killer(R) Wi-Fi 6E AX1675s 160MHz Wireless Network Adapter (211NGW)",
+      "name_token": "iwl_ax211_killer_1675s_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14957,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x54F0",
+        "0x1672",
+        "iwlax211_2ax_cfg_so_gf_a0",
+        "iwl_ax211_killer_1675i_name"
+      ],
+      "cfg": "iwlax211_2ax_cfg_so_gf_a0",
+      "name": "Killer(R) Wi-Fi 6E AX1675i 160MHz Wireless Network Adapter (211NGW)",
+      "name_token": "iwl_ax211_killer_1675i_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14958,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x7A70",
+        "0x1671",
+        "iwlax211_2ax_cfg_so_gf_a0",
+        "iwl_ax211_killer_1675s_name"
+      ],
+      "cfg": "iwlax211_2ax_cfg_so_gf_a0",
+      "name": "Killer(R) Wi-Fi 6E AX1675s 160MHz Wireless Network Adapter (211NGW)",
+      "name_token": "iwl_ax211_killer_1675s_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14959,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x7A70",
+        "0x1672",
+        "iwlax211_2ax_cfg_so_gf_a0",
+        "iwl_ax211_killer_1675i_name"
+      ],
+      "cfg": "iwlax211_2ax_cfg_so_gf_a0",
+      "name": "Killer(R) Wi-Fi 6E AX1675i 160MHz Wireless Network Adapter (211NGW)",
+      "name_token": "iwl_ax211_killer_1675i_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14960,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x7AF0",
+        "0x1671",
+        "iwlax211_2ax_cfg_so_gf_a0",
+        "iwl_ax211_killer_1675s_name"
+      ],
+      "cfg": "iwlax211_2ax_cfg_so_gf_a0",
+      "name": "Killer(R) Wi-Fi 6E AX1675s 160MHz Wireless Network Adapter (211NGW)",
+      "name_token": "iwl_ax211_killer_1675s_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14961,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x7AF0",
+        "0x1672",
+        "iwlax211_2ax_cfg_so_gf_a0",
+        "iwl_ax211_killer_1675i_name"
+      ],
+      "cfg": "iwlax211_2ax_cfg_so_gf_a0",
+      "name": "Killer(R) Wi-Fi 6E AX1675i 160MHz Wireless Network Adapter (211NGW)",
+      "name_token": "iwl_ax211_killer_1675i_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14962,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x7F70",
+        "0x1671",
+        "iwlax211_2ax_cfg_so_gf_a0",
+        "iwl_ax211_killer_1675s_name"
+      ],
+      "cfg": "iwlax211_2ax_cfg_so_gf_a0",
+      "name": "Killer(R) Wi-Fi 6E AX1675s 160MHz Wireless Network Adapter (211NGW)",
+      "name_token": "iwl_ax211_killer_1675s_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14963,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x7F70",
+        "0x1672",
+        "iwlax211_2ax_cfg_so_gf_a0",
+        "iwl_ax211_killer_1675i_name"
+      ],
+      "cfg": "iwlax211_2ax_cfg_so_gf_a0",
+      "name": "Killer(R) Wi-Fi 6E AX1675i 160MHz Wireless Network Adapter (211NGW)",
+      "name_token": "iwl_ax211_killer_1675i_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14966,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x7E40",
+        "0x1671",
+        "iwl_cfg_ma_a0_gf_a0",
+        "iwl_ax211_killer_1675s_name"
+      ],
+      "cfg": "iwl_cfg_ma_a0_gf_a0",
+      "name": "Killer(R) Wi-Fi 6E AX1675s 160MHz Wireless Network Adapter (211NGW)",
+      "name_token": "iwl_ax211_killer_1675s_name",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 14967,
+      "macro": "IWL_DEV_INFO",
+      "arguments": [
+        "0x7E40",
+        "0x1672",
+        "iwl_cfg_ma_a0_gf_a0",
+        "iwl_ax211_killer_1675i_name"
+      ],
+      "cfg": "iwl_cfg_ma_a0_gf_a0",
+      "name": "Killer(R) Wi-Fi 6E AX1675i 160MHz Wireless Network Adapter (211NGW)",
+      "name_token": "iwl_ax211_killer_1675i_name",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 14971,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_QU",
+        "IWX_SILICON_B_STEP",
+        "IWL_CFG_RF_TYPE_JF1",
+        "IWL_CFG_RF_ID_JF1",
+        "IWL_CFG_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl9560_qu_b0_jf_b0_cfg",
+        "iwl9461_160_name"
+      ],
+      "cfg": "iwl9560_qu_b0_jf_b0_cfg",
+      "name": "Intel(R) Wireless-AC 9461 160MHz",
+      "name_token": "iwl9461_160_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14976,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_QU",
+        "IWX_SILICON_B_STEP",
+        "IWL_CFG_RF_TYPE_JF1",
+        "IWL_CFG_RF_ID_JF1",
+        "IWL_CFG_NO_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl9560_qu_b0_jf_b0_cfg",
+        "iwl9461_name"
+      ],
+      "cfg": "iwl9560_qu_b0_jf_b0_cfg",
+      "name": "Intel(R) Wireless-AC 9461",
+      "name_token": "iwl9461_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14981,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_QU",
+        "IWX_SILICON_B_STEP",
+        "IWL_CFG_RF_TYPE_JF1",
+        "IWL_CFG_RF_ID_JF1_DIV",
+        "IWL_CFG_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl9560_qu_b0_jf_b0_cfg",
+        "iwl9462_160_name"
+      ],
+      "cfg": "iwl9560_qu_b0_jf_b0_cfg",
+      "name": "Intel(R) Wireless-AC 9462 160MHz",
+      "name_token": "iwl9462_160_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14986,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_QU",
+        "IWX_SILICON_B_STEP",
+        "IWL_CFG_RF_TYPE_JF1",
+        "IWL_CFG_RF_ID_JF1_DIV",
+        "IWL_CFG_NO_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl9560_qu_b0_jf_b0_cfg",
+        "iwl9462_name"
+      ],
+      "cfg": "iwl9560_qu_b0_jf_b0_cfg",
+      "name": "Intel(R) Wireless-AC 9462",
+      "name_token": "iwl9462_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14992,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_QU",
+        "IWX_SILICON_B_STEP",
+        "IWL_CFG_RF_TYPE_JF2",
+        "IWL_CFG_RF_ID_JF",
+        "IWL_CFG_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl9560_qu_b0_jf_b0_cfg",
+        "iwl9560_160_name"
+      ],
+      "cfg": "iwl9560_qu_b0_jf_b0_cfg",
+      "name": "Intel(R) Wireless-AC 9560 160MHz",
+      "name_token": "iwl9560_160_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 14997,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_QU",
+        "IWX_SILICON_B_STEP",
+        "IWL_CFG_RF_TYPE_JF2",
+        "IWL_CFG_RF_ID_JF",
+        "IWL_CFG_NO_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl9560_qu_b0_jf_b0_cfg",
+        "iwl9560_name"
+      ],
+      "cfg": "iwl9560_qu_b0_jf_b0_cfg",
+      "name": "Intel(R) Wireless-AC 9560",
+      "name_token": "iwl9560_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15003,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "0x1551",
+        "IWL_CFG_MAC_TYPE_QU",
+        "IWX_SILICON_B_STEP",
+        "IWL_CFG_RF_TYPE_JF2",
+        "IWL_CFG_RF_ID_JF",
+        "IWL_CFG_NO_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl9560_qu_b0_jf_b0_cfg",
+        "iwl9560_killer_1550s_name"
+      ],
+      "cfg": "iwl9560_qu_b0_jf_b0_cfg",
+      "name": "Killer (R) Wireless-AC 1550s Wireless Network Adapter (9560NGW)",
+      "name_token": "iwl9560_killer_1550s_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15008,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "0x1552",
+        "IWL_CFG_MAC_TYPE_QU",
+        "IWX_SILICON_B_STEP",
+        "IWL_CFG_RF_TYPE_JF2",
+        "IWL_CFG_RF_ID_JF",
+        "IWL_CFG_NO_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl9560_qu_b0_jf_b0_cfg",
+        "iwl9560_killer_1550i_name"
+      ],
+      "cfg": "iwl9560_qu_b0_jf_b0_cfg",
+      "name": "Killer (R) Wireless-AC 1550i Wireless Network Adapter (9560NGW)",
+      "name_token": "iwl9560_killer_1550i_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15015,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_QU",
+        "IWX_SILICON_C_STEP",
+        "IWL_CFG_RF_TYPE_JF1",
+        "IWL_CFG_RF_ID_JF1",
+        "IWL_CFG_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl9560_qu_c0_jf_b0_cfg",
+        "iwl9461_160_name"
+      ],
+      "cfg": "iwl9560_qu_c0_jf_b0_cfg",
+      "name": "Intel(R) Wireless-AC 9461 160MHz",
+      "name_token": "iwl9461_160_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15020,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_QU",
+        "IWX_SILICON_C_STEP",
+        "IWL_CFG_RF_TYPE_JF1",
+        "IWL_CFG_RF_ID_JF1",
+        "IWL_CFG_NO_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl9560_qu_c0_jf_b0_cfg",
+        "iwl9461_name"
+      ],
+      "cfg": "iwl9560_qu_c0_jf_b0_cfg",
+      "name": "Intel(R) Wireless-AC 9461",
+      "name_token": "iwl9461_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15025,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_QU",
+        "IWX_SILICON_C_STEP",
+        "IWL_CFG_RF_TYPE_JF1",
+        "IWL_CFG_RF_ID_JF1_DIV",
+        "IWL_CFG_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl9560_qu_c0_jf_b0_cfg",
+        "iwl9462_160_name"
+      ],
+      "cfg": "iwl9560_qu_c0_jf_b0_cfg",
+      "name": "Intel(R) Wireless-AC 9462 160MHz",
+      "name_token": "iwl9462_160_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15030,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_QU",
+        "IWX_SILICON_C_STEP",
+        "IWL_CFG_RF_TYPE_JF1",
+        "IWL_CFG_RF_ID_JF1_DIV",
+        "IWL_CFG_NO_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl9560_qu_c0_jf_b0_cfg",
+        "iwl9462_name"
+      ],
+      "cfg": "iwl9560_qu_c0_jf_b0_cfg",
+      "name": "Intel(R) Wireless-AC 9462",
+      "name_token": "iwl9462_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15036,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_QU",
+        "IWX_SILICON_C_STEP",
+        "IWL_CFG_RF_TYPE_JF2",
+        "IWL_CFG_RF_ID_JF",
+        "IWL_CFG_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl9560_qu_c0_jf_b0_cfg",
+        "iwl9560_160_name"
+      ],
+      "cfg": "iwl9560_qu_c0_jf_b0_cfg",
+      "name": "Intel(R) Wireless-AC 9560 160MHz",
+      "name_token": "iwl9560_160_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15041,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_QU",
+        "IWX_SILICON_C_STEP",
+        "IWL_CFG_RF_TYPE_JF2",
+        "IWL_CFG_RF_ID_JF",
+        "IWL_CFG_NO_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl9560_qu_c0_jf_b0_cfg",
+        "iwl9560_name"
+      ],
+      "cfg": "iwl9560_qu_c0_jf_b0_cfg",
+      "name": "Intel(R) Wireless-AC 9560",
+      "name_token": "iwl9560_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15047,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "0x1551",
+        "IWL_CFG_MAC_TYPE_QU",
+        "IWX_SILICON_C_STEP",
+        "IWL_CFG_RF_TYPE_JF2",
+        "IWL_CFG_RF_ID_JF",
+        "IWL_CFG_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl9560_qu_c0_jf_b0_cfg",
+        "iwl9560_killer_1550s_name"
+      ],
+      "cfg": "iwl9560_qu_c0_jf_b0_cfg",
+      "name": "Killer (R) Wireless-AC 1550s Wireless Network Adapter (9560NGW)",
+      "name_token": "iwl9560_killer_1550s_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15052,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "0x1552",
+        "IWL_CFG_MAC_TYPE_QU",
+        "IWX_SILICON_C_STEP",
+        "IWL_CFG_RF_TYPE_JF2",
+        "IWL_CFG_RF_ID_JF",
+        "IWL_CFG_NO_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl9560_qu_c0_jf_b0_cfg",
+        "iwl9560_killer_1550i_name"
+      ],
+      "cfg": "iwl9560_qu_c0_jf_b0_cfg",
+      "name": "Killer (R) Wireless-AC 1550i Wireless Network Adapter (9560NGW)",
+      "name_token": "iwl9560_killer_1550i_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15059,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_QUZ",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF1",
+        "IWL_CFG_RF_ID_JF1",
+        "IWL_CFG_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl9560_quz_a0_jf_b0_cfg",
+        "iwl9461_160_name"
+      ],
+      "cfg": "iwl9560_quz_a0_jf_b0_cfg",
+      "name": "Intel(R) Wireless-AC 9461 160MHz",
+      "name_token": "iwl9461_160_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15064,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_QUZ",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF1",
+        "IWL_CFG_RF_ID_JF1",
+        "IWL_CFG_NO_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl9560_quz_a0_jf_b0_cfg",
+        "iwl9461_name"
+      ],
+      "cfg": "iwl9560_quz_a0_jf_b0_cfg",
+      "name": "Intel(R) Wireless-AC 9461",
+      "name_token": "iwl9461_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15069,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_QUZ",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF1",
+        "IWL_CFG_RF_ID_JF1_DIV",
+        "IWL_CFG_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl9560_quz_a0_jf_b0_cfg",
+        "iwl9462_160_name"
+      ],
+      "cfg": "iwl9560_quz_a0_jf_b0_cfg",
+      "name": "Intel(R) Wireless-AC 9462 160MHz",
+      "name_token": "iwl9462_160_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15074,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_QUZ",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF1",
+        "IWL_CFG_RF_ID_JF1_DIV",
+        "IWL_CFG_NO_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl9560_quz_a0_jf_b0_cfg",
+        "iwl9462_name"
+      ],
+      "cfg": "iwl9560_quz_a0_jf_b0_cfg",
+      "name": "Intel(R) Wireless-AC 9462",
+      "name_token": "iwl9462_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15080,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_QUZ",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF2",
+        "IWL_CFG_RF_ID_JF",
+        "IWL_CFG_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl9560_quz_a0_jf_b0_cfg",
+        "iwl9560_160_name"
+      ],
+      "cfg": "iwl9560_quz_a0_jf_b0_cfg",
+      "name": "Intel(R) Wireless-AC 9560 160MHz",
+      "name_token": "iwl9560_160_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15085,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_QUZ",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF2",
+        "IWL_CFG_RF_ID_JF",
+        "IWL_CFG_NO_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl9560_quz_a0_jf_b0_cfg",
+        "iwl9560_name"
+      ],
+      "cfg": "iwl9560_quz_a0_jf_b0_cfg",
+      "name": "Intel(R) Wireless-AC 9560",
+      "name_token": "iwl9560_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15091,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "0x1551",
+        "IWL_CFG_MAC_TYPE_QUZ",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF2",
+        "IWL_CFG_RF_ID_JF",
+        "IWL_CFG_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl9560_quz_a0_jf_b0_cfg",
+        "iwl9560_killer_1550s_name"
+      ],
+      "cfg": "iwl9560_quz_a0_jf_b0_cfg",
+      "name": "Killer (R) Wireless-AC 1550s Wireless Network Adapter (9560NGW)",
+      "name_token": "iwl9560_killer_1550s_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15096,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "0x1552",
+        "IWL_CFG_MAC_TYPE_QUZ",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF2",
+        "IWL_CFG_RF_ID_JF",
+        "IWL_CFG_NO_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl9560_quz_a0_jf_b0_cfg",
+        "iwl9560_killer_1550i_name"
+      ],
+      "cfg": "iwl9560_quz_a0_jf_b0_cfg",
+      "name": "Killer (R) Wireless-AC 1550i Wireless Network Adapter (9560NGW)",
+      "name_token": "iwl9560_killer_1550i_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15103,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_QNJ",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF1",
+        "IWL_CFG_RF_ID_JF1",
+        "IWL_CFG_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl9560_qnj_b0_jf_b0_cfg",
+        "iwl9461_160_name"
+      ],
+      "cfg": "iwl9560_qnj_b0_jf_b0_cfg",
+      "name": "Intel(R) Wireless-AC 9461 160MHz",
+      "name_token": "iwl9461_160_name",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 15108,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_QNJ",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF1",
+        "IWL_CFG_RF_ID_JF1",
+        "IWL_CFG_NO_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl9560_qnj_b0_jf_b0_cfg",
+        "iwl9461_name"
+      ],
+      "cfg": "iwl9560_qnj_b0_jf_b0_cfg",
+      "name": "Intel(R) Wireless-AC 9461",
+      "name_token": "iwl9461_name",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 15113,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_QNJ",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF1",
+        "IWL_CFG_RF_ID_JF1_DIV",
+        "IWL_CFG_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl9560_qnj_b0_jf_b0_cfg",
+        "iwl9462_160_name"
+      ],
+      "cfg": "iwl9560_qnj_b0_jf_b0_cfg",
+      "name": "Intel(R) Wireless-AC 9462 160MHz",
+      "name_token": "iwl9462_160_name",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 15118,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_QNJ",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF1",
+        "IWL_CFG_RF_ID_JF1_DIV",
+        "IWL_CFG_NO_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl9560_qnj_b0_jf_b0_cfg",
+        "iwl9462_name"
+      ],
+      "cfg": "iwl9560_qnj_b0_jf_b0_cfg",
+      "name": "Intel(R) Wireless-AC 9462",
+      "name_token": "iwl9462_name",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 15124,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_QNJ",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF2",
+        "IWL_CFG_RF_ID_JF",
+        "IWL_CFG_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl9560_qnj_b0_jf_b0_cfg",
+        "iwl9560_160_name"
+      ],
+      "cfg": "iwl9560_qnj_b0_jf_b0_cfg",
+      "name": "Intel(R) Wireless-AC 9560 160MHz",
+      "name_token": "iwl9560_160_name",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 15129,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_QNJ",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF2",
+        "IWL_CFG_RF_ID_JF",
+        "IWL_CFG_NO_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl9560_qnj_b0_jf_b0_cfg",
+        "iwl9560_name"
+      ],
+      "cfg": "iwl9560_qnj_b0_jf_b0_cfg",
+      "name": "Intel(R) Wireless-AC 9560",
+      "name_token": "iwl9560_name",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 15135,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "0x1551",
+        "IWL_CFG_MAC_TYPE_QNJ",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF2",
+        "IWL_CFG_RF_ID_JF",
+        "IWL_CFG_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl9560_qnj_b0_jf_b0_cfg",
+        "iwl9560_killer_1550s_name"
+      ],
+      "cfg": "iwl9560_qnj_b0_jf_b0_cfg",
+      "name": "Killer (R) Wireless-AC 1550s Wireless Network Adapter (9560NGW)",
+      "name_token": "iwl9560_killer_1550s_name",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 15140,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "0x1552",
+        "IWL_CFG_MAC_TYPE_QNJ",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF2",
+        "IWL_CFG_RF_ID_JF",
+        "IWL_CFG_NO_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl9560_qnj_b0_jf_b0_cfg",
+        "iwl9560_killer_1550i_name"
+      ],
+      "cfg": "iwl9560_qnj_b0_jf_b0_cfg",
+      "name": "Killer (R) Wireless-AC 1550i Wireless Network Adapter (9560NGW)",
+      "name_token": "iwl9560_killer_1550i_name",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 15148,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_QU",
+        "IWX_SILICON_B_STEP",
+        "IWL_CFG_RF_TYPE_HR1",
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_NO_CDB",
+        "iwl_qu_b0_hr1_b0",
+        "iwl_ax101_name"
+      ],
+      "cfg": "iwl_qu_b0_hr1_b0",
+      "name": "Intel(R) Wi-Fi 6 AX101",
+      "name_token": "iwl_ax101_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15153,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_QU",
+        "IWX_SILICON_B_STEP",
+        "IWL_CFG_RF_TYPE_HR2",
+        "IWL_CFG_ANY",
+        "IWL_CFG_NO_160",
+        "IWL_CFG_ANY",
+        "IWL_CFG_NO_CDB",
+        "iwl_qu_b0_hr_b0",
+        "iwl_ax203_name"
+      ],
+      "cfg": "iwl_qu_b0_hr_b0",
+      "name": "Intel(R) Wi-Fi 6 AX203",
+      "name_token": "iwl_ax203_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15160,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_QU",
+        "IWX_SILICON_C_STEP",
+        "IWL_CFG_RF_TYPE_HR1",
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_NO_CDB",
+        "iwl_qu_c0_hr1_b0",
+        "iwl_ax101_name"
+      ],
+      "cfg": "iwl_qu_c0_hr1_b0",
+      "name": "Intel(R) Wi-Fi 6 AX101",
+      "name_token": "iwl_ax101_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15165,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_QU",
+        "IWX_SILICON_C_STEP",
+        "IWL_CFG_RF_TYPE_HR2",
+        "IWL_CFG_ANY",
+        "IWL_CFG_NO_160",
+        "IWL_CFG_ANY",
+        "IWL_CFG_NO_CDB",
+        "iwl_qu_c0_hr_b0",
+        "iwl_ax203_name"
+      ],
+      "cfg": "iwl_qu_c0_hr_b0",
+      "name": "Intel(R) Wi-Fi 6 AX203",
+      "name_token": "iwl_ax203_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15172,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_QUZ",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_HR1",
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_NO_CDB",
+        "iwl_quz_a0_hr1_b0",
+        "iwl_ax101_name"
+      ],
+      "cfg": "iwl_quz_a0_hr1_b0",
+      "name": "Intel(R) Wi-Fi 6 AX101",
+      "name_token": "iwl_ax101_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15177,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_QUZ",
+        "IWX_SILICON_B_STEP",
+        "IWL_CFG_RF_TYPE_HR2",
+        "IWL_CFG_ANY",
+        "IWL_CFG_NO_160",
+        "IWL_CFG_ANY",
+        "IWL_CFG_NO_CDB",
+        "iwl_cfg_quz_a0_hr_b0",
+        "iwl_ax203_name"
+      ],
+      "cfg": "iwl_cfg_quz_a0_hr_b0",
+      "name": "Intel(R) Wi-Fi 6 AX203",
+      "name_token": "iwl_ax203_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15184,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_QNJ",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_HR2",
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_NO_CDB",
+        "iwl_qnj_b0_hr_b0_cfg",
+        "iwl_ax201_name"
+      ],
+      "cfg": "iwl_qnj_b0_hr_b0_cfg",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "iwl_ax201_name",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 15191,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_SNJ",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF1",
+        "IWL_CFG_RF_ID_JF1",
+        "IWL_CFG_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl_cfg_snj_a0_jf_b0",
+        "iwl9461_160_name"
+      ],
+      "cfg": "iwl_cfg_snj_a0_jf_b0",
+      "name": "Intel(R) Wireless-AC 9461 160MHz",
+      "name_token": "iwl9461_160_name",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 15196,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_SNJ",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF1",
+        "IWL_CFG_RF_ID_JF1",
+        "IWL_CFG_NO_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl_cfg_snj_a0_jf_b0",
+        "iwl9461_name"
+      ],
+      "cfg": "iwl_cfg_snj_a0_jf_b0",
+      "name": "Intel(R) Wireless-AC 9461",
+      "name_token": "iwl9461_name",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 15201,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_SNJ",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF1",
+        "IWL_CFG_RF_ID_JF1_DIV",
+        "IWL_CFG_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl_cfg_snj_a0_jf_b0",
+        "iwl9462_160_name"
+      ],
+      "cfg": "iwl_cfg_snj_a0_jf_b0",
+      "name": "Intel(R) Wireless-AC 9462 160MHz",
+      "name_token": "iwl9462_160_name",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 15206,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_SNJ",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF1",
+        "IWL_CFG_RF_ID_JF1_DIV",
+        "IWL_CFG_NO_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl_cfg_snj_a0_jf_b0",
+        "iwl9462_name"
+      ],
+      "cfg": "iwl_cfg_snj_a0_jf_b0",
+      "name": "Intel(R) Wireless-AC 9462",
+      "name_token": "iwl9462_name",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 15212,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_SNJ",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF2",
+        "IWL_CFG_RF_ID_JF",
+        "IWL_CFG_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl_cfg_snj_a0_jf_b0",
+        "iwl9560_160_name"
+      ],
+      "cfg": "iwl_cfg_snj_a0_jf_b0",
+      "name": "Intel(R) Wireless-AC 9560 160MHz",
+      "name_token": "iwl9560_160_name",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 15217,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_SNJ",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF2",
+        "IWL_CFG_RF_ID_JF",
+        "IWL_CFG_NO_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwl_cfg_snj_a0_jf_b0",
+        "iwl9560_name"
+      ],
+      "cfg": "iwl_cfg_snj_a0_jf_b0",
+      "name": "Intel(R) Wireless-AC 9560",
+      "name_token": "iwl9560_name",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 15224,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_SNJ",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_HR1",
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_NO_CDB",
+        "iwl_cfg_snj_hr_b0",
+        "iwl_ax101_name"
+      ],
+      "cfg": "iwl_cfg_snj_hr_b0",
+      "name": "Intel(R) Wi-Fi 6 AX101",
+      "name_token": "iwl_ax101_name",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 15230,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_SNJ",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_HR2",
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_NO_CDB",
+        "iwl_cfg_snj_hr_b0",
+        "iwl_ax201_name"
+      ],
+      "cfg": "iwl_cfg_snj_hr_b0",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "iwl_ax201_name",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 15237,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_MA",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_HR2",
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_NO_CDB",
+        "iwl_cfg_ma_a0_hr_b0",
+        "iwl_ax201_name"
+      ],
+      "cfg": "iwl_cfg_ma_a0_hr_b0",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "iwl_ax201_name",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 15242,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_MA",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_GF",
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_NO_CDB",
+        "iwl_cfg_ma_a0_gf_a0",
+        "iwl_ax211_name"
+      ],
+      "cfg": "iwl_cfg_ma_a0_gf_a0",
+      "name": "Intel(R) Wi-Fi 6E AX211 160MHz",
+      "name_token": "iwl_ax211_name",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 15247,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_MA",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_GF",
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_CDB",
+        "iwl_cfg_ma_a0_gf4_a0",
+        "iwl_ax211_name"
+      ],
+      "cfg": "iwl_cfg_ma_a0_gf4_a0",
+      "name": "Intel(R) Wi-Fi 6E AX211 160MHz",
+      "name_token": "iwl_ax211_name",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 15252,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_MA",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_MR",
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_NO_CDB",
+        "iwl_cfg_ma_a0_mr_a0",
+        "iwl_ax221_name"
+      ],
+      "cfg": "iwl_cfg_ma_a0_mr_a0",
+      "name": "Intel(R) Wi-Fi 6E AX221 160MHz",
+      "name_token": "iwl_ax221_name",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 15257,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_MA",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_FM",
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_NO_CDB",
+        "iwl_cfg_ma_a0_fm_a0",
+        "iwl_ax231_name"
+      ],
+      "cfg": "iwl_cfg_ma_a0_fm_a0",
+      "name": "Intel(R) Wi-Fi 6E AX231 160MHz",
+      "name_token": "iwl_ax231_name",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 15262,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_SNJ",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_MR",
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_NO_CDB",
+        "iwl_cfg_snj_a0_mr_a0",
+        "iwl_ax221_name"
+      ],
+      "cfg": "iwl_cfg_snj_a0_mr_a0",
+      "name": "Intel(R) Wi-Fi 6E AX221 160MHz",
+      "name_token": "iwl_ax221_name",
+      "firmware_enclosed": false
+    },
+    {
+      "line": 15269,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_SO",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_HR2",
+        "IWL_CFG_ANY",
+        "IWL_CFG_NO_160",
+        "IWL_CFG_ANY",
+        "IWL_CFG_NO_CDB",
+        "iwl_cfg_so_a0_hr_a0",
+        "iwl_ax203_name"
+      ],
+      "cfg": "iwl_cfg_so_a0_hr_a0",
+      "name": "Intel(R) Wi-Fi 6 AX203",
+      "name_token": "iwl_ax203_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15274,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_SO",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_HR1",
+        "IWL_CFG_ANY",
+        "IWL_CFG_NO_160",
+        "IWL_CFG_ANY",
+        "IWL_CFG_NO_CDB",
+        "iwl_cfg_so_a0_hr_a0",
+        "iwl_ax101_name"
+      ],
+      "cfg": "iwl_cfg_so_a0_hr_a0",
+      "name": "Intel(R) Wi-Fi 6 AX101",
+      "name_token": "iwl_ax101_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15279,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_SO",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_HR2",
+        "IWL_CFG_ANY",
+        "IWL_CFG_160",
+        "IWL_CFG_ANY",
+        "IWL_CFG_NO_CDB",
+        "iwl_cfg_so_a0_hr_a0",
+        "iwl_ax201_name"
+      ],
+      "cfg": "iwl_cfg_so_a0_hr_a0",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "iwl_ax201_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15286,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_SOF",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_HR2",
+        "IWL_CFG_ANY",
+        "IWL_CFG_NO_160",
+        "IWL_CFG_ANY",
+        "IWL_CFG_NO_CDB",
+        "iwl_cfg_so_a0_hr_a0",
+        "iwl_ax203_name"
+      ],
+      "cfg": "iwl_cfg_so_a0_hr_a0",
+      "name": "Intel(R) Wi-Fi 6 AX203",
+      "name_token": "iwl_ax203_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15291,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_SOF",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_HR1",
+        "IWL_CFG_ANY",
+        "IWL_CFG_NO_160",
+        "IWL_CFG_ANY",
+        "IWL_CFG_NO_CDB",
+        "iwl_cfg_so_a0_hr_a0",
+        "iwl_ax101_name"
+      ],
+      "cfg": "iwl_cfg_so_a0_hr_a0",
+      "name": "Intel(R) Wi-Fi 6 AX101",
+      "name_token": "iwl_ax101_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15296,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_SOF",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_HR2",
+        "IWL_CFG_ANY",
+        "IWL_CFG_160",
+        "IWL_CFG_ANY",
+        "IWL_CFG_NO_CDB",
+        "iwl_cfg_so_a0_hr_a0",
+        "iwl_ax201_name"
+      ],
+      "cfg": "iwl_cfg_so_a0_hr_a0",
+      "name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "name_token": "iwl_ax201_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15303,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_SOF",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_GF",
+        "IWL_CFG_ANY",
+        "IWL_CFG_160",
+        "IWL_CFG_ANY",
+        "IWL_CFG_NO_CDB",
+        "iwlax211_2ax_cfg_so_gf_a0",
+        "iwl_ax211_name"
+      ],
+      "cfg": "iwlax211_2ax_cfg_so_gf_a0",
+      "name": "Intel(R) Wi-Fi 6E AX211 160MHz",
+      "name_token": "iwl_ax211_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15308,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_SOF",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_GF",
+        "IWL_CFG_ANY",
+        "IWL_CFG_160",
+        "IWL_CFG_ANY",
+        "IWL_CFG_CDB",
+        "iwlax411_2ax_cfg_so_gf4_a0",
+        "iwl_ax411_name"
+      ],
+      "cfg": "iwlax411_2ax_cfg_so_gf4_a0",
+      "name": "Intel(R) Wi-Fi 6E AX411 160MHz",
+      "name_token": "iwl_ax411_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15315,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_SOF",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF2",
+        "IWL_CFG_RF_ID_JF",
+        "IWL_CFG_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwlax210_2ax_cfg_so_jf_b0",
+        "iwl9560_160_name"
+      ],
+      "cfg": "iwlax210_2ax_cfg_so_jf_b0",
+      "name": "Intel(R) Wireless-AC 9560 160MHz",
+      "name_token": "iwl9560_160_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15320,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_SOF",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF2",
+        "IWL_CFG_RF_ID_JF",
+        "IWL_CFG_NO_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwlax210_2ax_cfg_so_jf_b0",
+        "iwl9560_name"
+      ],
+      "cfg": "iwlax210_2ax_cfg_so_jf_b0",
+      "name": "Intel(R) Wireless-AC 9560",
+      "name_token": "iwl9560_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15327,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_SOF",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF1",
+        "IWL_CFG_RF_ID_JF1",
+        "IWL_CFG_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwlax210_2ax_cfg_so_jf_b0",
+        "iwl9461_160_name"
+      ],
+      "cfg": "iwlax210_2ax_cfg_so_jf_b0",
+      "name": "Intel(R) Wireless-AC 9461 160MHz",
+      "name_token": "iwl9461_160_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15332,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_SOF",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF1",
+        "IWL_CFG_RF_ID_JF1_DIV",
+        "IWL_CFG_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwlax210_2ax_cfg_so_jf_b0",
+        "iwl9462_160_name"
+      ],
+      "cfg": "iwlax210_2ax_cfg_so_jf_b0",
+      "name": "Intel(R) Wireless-AC 9462 160MHz",
+      "name_token": "iwl9462_160_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15337,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_SOF",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF1",
+        "IWL_CFG_RF_ID_JF1",
+        "IWL_CFG_NO_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwlax210_2ax_cfg_so_jf_b0",
+        "iwl9461_name"
+      ],
+      "cfg": "iwlax210_2ax_cfg_so_jf_b0",
+      "name": "Intel(R) Wireless-AC 9461",
+      "name_token": "iwl9461_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15342,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_SOF",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF1",
+        "IWL_CFG_RF_ID_JF1_DIV",
+        "IWL_CFG_NO_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwlax210_2ax_cfg_so_jf_b0",
+        "iwl9462_name"
+      ],
+      "cfg": "iwlax210_2ax_cfg_so_jf_b0",
+      "name": "Intel(R) Wireless-AC 9462",
+      "name_token": "iwl9462_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15349,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_SO",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_GF",
+        "IWL_CFG_ANY",
+        "IWL_CFG_160",
+        "IWL_CFG_ANY",
+        "IWL_CFG_NO_CDB",
+        "iwlax211_2ax_cfg_so_gf_a0",
+        "iwl_ax211_name"
+      ],
+      "cfg": "iwlax211_2ax_cfg_so_gf_a0",
+      "name": "Intel(R) Wi-Fi 6E AX211 160MHz",
+      "name_token": "iwl_ax211_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15354,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_SO",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_GF",
+        "IWL_CFG_ANY",
+        "IWL_CFG_160",
+        "IWL_CFG_ANY",
+        "IWL_CFG_CDB",
+        "iwlax411_2ax_cfg_so_gf4_a0",
+        "iwl_ax411_name"
+      ],
+      "cfg": "iwlax411_2ax_cfg_so_gf4_a0",
+      "name": "Intel(R) Wi-Fi 6E AX411 160MHz",
+      "name_token": "iwl_ax411_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15361,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_SO",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF2",
+        "IWL_CFG_RF_ID_JF",
+        "IWL_CFG_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwlax210_2ax_cfg_so_jf_b0",
+        "iwl9560_160_name"
+      ],
+      "cfg": "iwlax210_2ax_cfg_so_jf_b0",
+      "name": "Intel(R) Wireless-AC 9560 160MHz",
+      "name_token": "iwl9560_160_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15366,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_SO",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF2",
+        "IWL_CFG_RF_ID_JF",
+        "IWL_CFG_NO_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwlax210_2ax_cfg_so_jf_b0",
+        "iwl9560_name"
+      ],
+      "cfg": "iwlax210_2ax_cfg_so_jf_b0",
+      "name": "Intel(R) Wireless-AC 9560",
+      "name_token": "iwl9560_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15373,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_SO",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF1",
+        "IWL_CFG_RF_ID_JF1",
+        "IWL_CFG_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwlax210_2ax_cfg_so_jf_b0",
+        "iwl9461_160_name"
+      ],
+      "cfg": "iwlax210_2ax_cfg_so_jf_b0",
+      "name": "Intel(R) Wireless-AC 9461 160MHz",
+      "name_token": "iwl9461_160_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15378,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_SO",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF1",
+        "IWL_CFG_RF_ID_JF1_DIV",
+        "IWL_CFG_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwlax210_2ax_cfg_so_jf_b0",
+        "iwl9462_160_name"
+      ],
+      "cfg": "iwlax210_2ax_cfg_so_jf_b0",
+      "name": "Intel(R) Wireless-AC 9462 160MHz",
+      "name_token": "iwl9462_160_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15383,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_SO",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF1",
+        "IWL_CFG_RF_ID_JF1",
+        "IWL_CFG_NO_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwlax210_2ax_cfg_so_jf_b0",
+        "iwl9461_name"
+      ],
+      "cfg": "iwlax210_2ax_cfg_so_jf_b0",
+      "name": "Intel(R) Wireless-AC 9461",
+      "name_token": "iwl9461_name",
+      "firmware_enclosed": true
+    },
+    {
+      "line": 15388,
+      "macro": "_IWL_DEV_INFO",
+      "arguments": [
+        "IWL_CFG_ANY",
+        "IWL_CFG_ANY",
+        "IWL_CFG_MAC_TYPE_SO",
+        "IWL_CFG_ANY",
+        "IWL_CFG_RF_TYPE_JF1",
+        "IWL_CFG_RF_ID_JF1_DIV",
+        "IWL_CFG_NO_160",
+        "IWL_CFG_CORES_BT",
+        "IWL_CFG_NO_CDB",
+        "iwlax210_2ax_cfg_so_jf_b0",
+        "iwl9462_name"
+      ],
+      "cfg": "iwlax210_2ax_cfg_so_jf_b0",
+      "name": "Intel(R) Wireless-AC 9462",
+      "name_token": "iwl9462_name",
+      "firmware_enclosed": true
+    }
+  ],
+  "referenced_iwx_configs": {
+    "iwl9560_qnj_b0_jf_b0_cfg": {
+      "line": 14723,
+      "declared_name": null,
+      "firmware": "iwlwifi-QuQnj-b0-jf-b0-48.ucode",
+      "family": "IWX_DEVICE_FAMILY_22000",
+      "firmware_enclosed": false
+    },
+    "iwl9560_qu_b0_jf_b0_cfg": {
+      "line": 14693,
+      "declared_name": null,
+      "firmware": "iwlwifi-Qu-b0-jf-b0-68.ucode",
+      "family": "IWX_DEVICE_FAMILY_22000",
+      "firmware_enclosed": true
+    },
+    "iwl9560_qu_c0_jf_b0_cfg": {
+      "line": 14701,
+      "declared_name": null,
+      "firmware": "iwlwifi-Qu-c0-jf-b0-68.ucode",
+      "family": "IWX_DEVICE_FAMILY_22000",
+      "firmware_enclosed": true
+    },
+    "iwl9560_quz_a0_jf_b0_cfg": {
+      "line": 14709,
+      "declared_name": null,
+      "firmware": "iwlwifi-QuZ-a0-jf-b0-68.ucode",
+      "family": "IWX_DEVICE_FAMILY_22000",
+      "firmware_enclosed": true
+    },
+    "iwl_ax1650i_cfg_quz_hr": {
+      "line": 14675,
+      "declared_name": "Killer(R) Wi-Fi 6 AX1650i 160MHz Wireless Network Adapter (201NGW)",
+      "firmware": "iwlwifi-QuZ-a0-hr-b0-68.ucode",
+      "family": "IWX_DEVICE_FAMILY_22000",
+      "firmware_enclosed": true
+    },
+    "iwl_ax1650s_cfg_quz_hr": {
+      "line": 14662,
+      "declared_name": "Killer(R) Wi-Fi 6 AX1650s 160MHz Wireless Network Adapter (201D2W)",
+      "firmware": "iwlwifi-QuZ-a0-hr-b0-68.ucode",
+      "family": "IWX_DEVICE_FAMILY_22000",
+      "firmware_enclosed": true
+    },
+    "iwl_ax200_cfg_cc": {
+      "line": 14545,
+      "declared_name": null,
+      "firmware": "iwlwifi-cc-a0-68.ucode",
+      "family": "IWX_DEVICE_FAMILY_22000",
+      "firmware_enclosed": true
+    },
+    "iwl_ax201_cfg_qu_hr": {
+      "line": 14580,
+      "declared_name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "firmware": "iwlwifi-Qu-b0-hr-b0-68.ucode",
+      "family": "IWX_DEVICE_FAMILY_22000",
+      "firmware_enclosed": true
+    },
+    "iwl_ax201_cfg_quz_hr": {
+      "line": 14647,
+      "declared_name": "Intel(R) Wi-Fi 6 AX201 160MHz",
+      "firmware": "iwlwifi-QuZ-a0-hr-b0-68.ucode",
+      "family": "IWX_DEVICE_FAMILY_22000",
+      "firmware_enclosed": true
+    },
+    "iwl_cfg_ma_a0_fm_a0": {
+      "line": 14400,
+      "declared_name": null,
+      "firmware": "iwlwifi-ma-a0-fm-a0-63.ucode",
+      "family": "IWX_DEVICE_FAMILY_AX210",
+      "firmware_enclosed": false
+    },
+    "iwl_cfg_ma_a0_gf4_a0": {
+      "line": 14386,
+      "declared_name": null,
+      "firmware": "iwlwifi-ma-a0-gf4-a0-63.ucode",
+      "family": "IWX_DEVICE_FAMILY_AX210",
+      "firmware_enclosed": false
+    },
+    "iwl_cfg_ma_a0_gf_a0": {
+      "line": 14379,
+      "declared_name": null,
+      "firmware": "iwlwifi-ma-a0-gf-a0-63.ucode",
+      "family": "IWX_DEVICE_FAMILY_AX210",
+      "firmware_enclosed": false
+    },
+    "iwl_cfg_ma_a0_hr_b0": {
+      "line": 14372,
+      "declared_name": null,
+      "firmware": "iwlwifi-ma-a0-hr-b0-63.ucode",
+      "family": "IWX_DEVICE_FAMILY_AX210",
+      "firmware_enclosed": false
+    },
+    "iwl_cfg_ma_a0_mr_a0": {
+      "line": 14393,
+      "declared_name": null,
+      "firmware": "iwlwifi-ma-a0-mr-a0-63.ucode",
+      "family": "IWX_DEVICE_FAMILY_AX210",
+      "firmware_enclosed": false
+    },
+    "iwl_cfg_quz_a0_hr_b0": {
+      "line": 14420,
+      "declared_name": null,
+      "firmware": "iwlwifi-QuZ-a0-hr-b0-68.ucode",
+      "family": "IWX_DEVICE_FAMILY_22000",
+      "firmware_enclosed": true
+    },
+    "iwl_cfg_snj_a0_jf_b0": {
+      "line": 14365,
+      "declared_name": null,
+      "firmware": "iwlwifi-SoSnj-a0-jf-b0-63.ucode",
+      "family": "IWX_DEVICE_FAMILY_AX210",
+      "firmware_enclosed": false
+    },
+    "iwl_cfg_snj_a0_mr_a0": {
+      "line": 14407,
+      "declared_name": null,
+      "firmware": "iwlwifi-SoSnj-a0-mr-a0-63.ucode",
+      "family": "IWX_DEVICE_FAMILY_AX210",
+      "firmware_enclosed": false
+    },
+    "iwl_cfg_snj_hr_b0": {
+      "line": 14358,
+      "declared_name": null,
+      "firmware": "iwlwifi-SoSnj-a0-hr-b0-63.ucode",
+      "family": "IWX_DEVICE_FAMILY_AX210",
+      "firmware_enclosed": false
+    },
+    "iwl_cfg_so_a0_hr_a0": {
+      "line": 14414,
+      "declared_name": null,
+      "firmware": "iwlwifi-so-a0-hr-b0-68.ucode",
+      "family": "IWX_DEVICE_FAMILY_AX210",
+      "firmware_enclosed": true
+    },
+    "iwl_qnj_b0_hr_b0_cfg": {
+      "line": 14559,
+      "declared_name": null,
+      "firmware": "iwlwifi-QuQnj-b0-hr-b0-48.ucode",
+      "family": "IWX_DEVICE_FAMILY_22000",
+      "firmware_enclosed": false
+    },
+    "iwl_qu_b0_hr1_b0": {
+      "line": 14737,
+      "declared_name": null,
+      "firmware": "iwlwifi-Qu-b0-hr-b0-68.ucode",
+      "family": "IWX_DEVICE_FAMILY_22000",
+      "firmware_enclosed": true
+    },
+    "iwl_qu_b0_hr_b0": {
+      "line": 14751,
+      "declared_name": null,
+      "firmware": "iwlwifi-Qu-b0-hr-b0-68.ucode",
+      "family": "IWX_DEVICE_FAMILY_22000",
+      "firmware_enclosed": true
+    },
+    "iwl_qu_c0_hr1_b0": {
+      "line": 14777,
+      "declared_name": null,
+      "firmware": "iwlwifi-Qu-c0-hr-b0-68.ucode",
+      "family": "IWX_DEVICE_FAMILY_22000",
+      "firmware_enclosed": true
+    },
+    "iwl_qu_c0_hr_b0": {
+      "line": 14764,
+      "declared_name": null,
+      "firmware": "iwlwifi-Qu-c0-hr-b0-68.ucode",
+      "family": "IWX_DEVICE_FAMILY_22000",
+      "firmware_enclosed": true
+    },
+    "iwl_quz_a0_hr1_b0": {
+      "line": 14791,
+      "declared_name": null,
+      "firmware": "iwlwifi-QuZ-a0-hr-b0-68.ucode",
+      "family": "IWX_DEVICE_FAMILY_22000",
+      "firmware_enclosed": true
+    },
+    "iwlax210_2ax_cfg_so_jf_b0": {
+      "line": 14573,
+      "declared_name": "Intel(R) Wireless-AC 9560 160MHz",
+      "firmware": "iwlwifi-so-a0-jf-b0-68.ucode",
+      "family": "IWX_DEVICE_FAMILY_AX210",
+      "firmware_enclosed": true
+    },
+    "iwlax210_2ax_cfg_ty_gf_a0": {
+      "line": 14316,
+      "declared_name": "Intel(R) Wi-Fi 6 AX210 160MHz",
+      "firmware": "iwlwifi-ty-a0-gf-a0-68.ucode",
+      "family": "IWX_DEVICE_FAMILY_AX210",
+      "firmware_enclosed": true
+    },
+    "iwlax211_2ax_cfg_so_gf_a0": {
+      "line": 14298,
+      "declared_name": "Intel(R) Wi-Fi 6 AX211 160MHz",
+      "firmware": "iwlwifi-so-a0-gf-a0-68.ucode",
+      "family": "IWX_DEVICE_FAMILY_AX210",
+      "firmware_enclosed": true
+    },
+    "iwlax211_2ax_cfg_so_gf_a0_long": {
+      "line": 14306,
+      "declared_name": "Intel(R) Wi-Fi 6 AX211 160MHz",
+      "firmware": "iwlwifi-so-a0-gf-a0-68.ucode",
+      "family": "IWX_DEVICE_FAMILY_AX210",
+      "firmware_enclosed": true
+    },
+    "iwlax211_cfg_snj_gf_a0": {
+      "line": 14350,
+      "declared_name": "Intel(R) Wi-Fi 6 AX211 160MHz",
+      "firmware": "iwlwifi-SoSnj-a0-gf-a0-63.ucode",
+      "family": "IWX_DEVICE_FAMILY_AX210",
+      "firmware_enclosed": false
+    },
+    "iwlax411_2ax_cfg_so_gf4_a0": {
+      "line": 14324,
+      "declared_name": "Intel(R) Wi-Fi 6 AX411 160MHz",
+      "firmware": "iwlwifi-so-a0-gf4-a0-68.ucode",
+      "family": "IWX_DEVICE_FAMILY_AX210",
+      "firmware_enclosed": true
+    },
+    "iwlax411_2ax_cfg_so_gf4_a0_long": {
+      "line": 14332,
+      "declared_name": "Intel(R) Wi-Fi 6 AX411 160MHz",
+      "firmware": "iwlwifi-so-a0-gf4-a0-68.ucode",
+      "family": "IWX_DEVICE_FAMILY_AX210",
+      "firmware_enclosed": true
+    },
+    "iwlax411_2ax_cfg_sosnj_gf4_a0": {
+      "line": 14342,
+      "declared_name": "Intel(R) Wi-Fi 6 AX411 160MHz",
+      "firmware": "iwlwifi-SoSnj-a0-gf4-a0-63.ucode",
+      "family": "IWX_DEVICE_FAMILY_AX210",
+      "firmware_enclosed": false
+    },
+    "killer1650i_2ax_cfg_qu_b0_hr_b0": {
+      "line": 14608,
+      "declared_name": "Killer(R) Wi-Fi 6 AX1650i 160MHz Wireless Network Adapter (201D2W)",
+      "firmware": "iwlwifi-Qu-b0-hr-b0-68.ucode",
+      "family": "IWX_DEVICE_FAMILY_22000",
+      "firmware_enclosed": true
+    },
+    "killer1650s_2ax_cfg_qu_b0_hr_b0": {
+      "line": 14595,
+      "declared_name": "Killer(R) Wi-Fi 6 AX1650s 160MHz Wireless Network Adapter (201NGW)",
+      "firmware": "iwlwifi-Qu-b0-hr-b0-68.ucode",
+      "family": "IWX_DEVICE_FAMILY_22000",
+      "firmware_enclosed": true
+    }
+  },
+  "embedded_firmware_names_and_lines": {
+    "iwlwifi-QuZ-a0-hr-b0-68.ucode": 918639,
+    "iwn-5150": 918640,
+    "iwm-3160-17": 918641,
+    "iwn-6005": 918642,
+    "iwlwifi-ty-a0-gf-a0-68.ucode": 918643,
+    "iwn-4965": 918644,
+    "iwlwifi-cc-a0-68.ucode": 918645,
+    "iwn-6050": 918646,
+    "iwlwifi-QuZ-a0-jf-b0-68.ucode": 918647,
+    "iwn-1000": 918648,
+    "iwn-5000": 918649,
+    "iwlwifi-so-a0-gf4-a0-68.ucode": 918650,
+    "iwlwifi-so-a0-gf-a0-68.ucode": 918651,
+    "iwm-8000C-36": 918652,
+    "iwm-9000-46": 918653,
+    "iwm-8265-36": 918654,
+    "iwlwifi-so-a0-gf4-a0.pnvm": 918655,
+    "iwlwifi-ty-a0-gf-a0.pnvm": 918656,
+    "iwm-9260-46": 918657,
+    "iwlwifi-Qu-b0-jf-b0-68.ucode": 918658,
+    "iwm-3168-29": 918659,
+    "iwlwifi-Qu-b0-hr-b0-68.ucode": 918660,
+    "iwn-6030": 918661,
+    "iwn-2000": 918662,
+    "iwlwifi-so-a0-gf-a0.pnvm": 918663,
+    "iwn-6000": 918664,
+    "iwn-2030": 918665,
+    "iwlwifi-Qu-c0-hr-b0-68.ucode": 918666,
+    "iwn-105": 918667,
+    "iwm-7265-17": 918668,
+    "iwn-135": 918669,
+    "iwlwifi-so-a0-jf-b0-68.ucode": 918670,
+    "iwlwifi-so-a0-hr-b0-68.ucode": 918671,
+    "iwm-7260-17": 918672,
+    "iwlwifi-Qu-c0-jf-b0-68.ucode": 918673
+  },
+  "preserved_backends": {
+    "iwm": {
+      "file": "itlwm/hal_iwm/mac80211.cpp",
+      "table_line": 4323,
+      "entries": [
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_3160_1",
+          "pci_device_id": "0x08b3"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_3160_2",
+          "pci_device_id": "0x08b4"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_3165_1",
+          "pci_device_id": "0x3165"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_3165_2",
+          "pci_device_id": "0x3166"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_3168_1",
+          "pci_device_id": "0x24fb"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_7260_1",
+          "pci_device_id": "0x08b1"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_7260_2",
+          "pci_device_id": "0x08b2"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_7265_1",
+          "pci_device_id": "0x095a"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_7265_2",
+          "pci_device_id": "0x095b"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_8260_1",
+          "pci_device_id": "0x24f3"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_8260_2",
+          "pci_device_id": "0x24f4"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_8265_1",
+          "pci_device_id": "0x24fd"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_9260_1",
+          "pci_device_id": "0x2526"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_9560_1",
+          "pci_device_id": "0x9df0"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_9560_2",
+          "pci_device_id": "0xa370"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_9560_3",
+          "pci_device_id": "0x31DC"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_9560_4",
+          "pci_device_id": "0x30DC"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_9560_5",
+          "pci_device_id": "0x271C"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_9560_6",
+          "pci_device_id": "0x271B"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_9462_1",
+          "pci_device_id": "0x42a4"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_9462_2",
+          "pci_device_id": "0x00a0"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_9462_3",
+          "pci_device_id": "0x00a4"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_9462_4",
+          "pci_device_id": "0x02a0"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_9462_6",
+          "pci_device_id": "0x40a4"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_9461_1",
+          "pci_device_id": "0x0060"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_9461_2",
+          "pci_device_id": "0x0064"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_9461_3",
+          "pci_device_id": "0x0260"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_9461_4",
+          "pci_device_id": "0x0264"
+        }
+      ],
+      "source_model_tokens": [
+        "3160",
+        "3165",
+        "3168",
+        "7260",
+        "7265",
+        "8260",
+        "8265",
+        "9260",
+        "9461",
+        "9462",
+        "9560"
+      ]
+    },
+    "iwn": {
+      "file": "itlwm/hal_iwn/ItlIwn.cpp",
+      "table_line": 286,
+      "entries": [
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_4965_1",
+          "pci_device_id": "0x4229"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_4965_2",
+          "pci_device_id": "0x4230"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_5100_1",
+          "pci_device_id": "0x4232"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_5100_2",
+          "pci_device_id": "0x4237"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_5150_1",
+          "pci_device_id": "0x423c"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_5150_2",
+          "pci_device_id": "0x423d"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_5300_1",
+          "pci_device_id": "0x4235"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_5300_2",
+          "pci_device_id": "0x4236"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_5350_1",
+          "pci_device_id": "0x423a"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_5350_2",
+          "pci_device_id": "0x423b"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_1000_1",
+          "pci_device_id": "0x0083"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_1000_2",
+          "pci_device_id": "0x0084"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_6300_1",
+          "pci_device_id": "0x422b"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_6300_2",
+          "pci_device_id": "0x4238"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_6200_1",
+          "pci_device_id": "0x422c"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_6200_2",
+          "pci_device_id": "0x4239"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_6050_1",
+          "pci_device_id": "0x0087"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_6050_2",
+          "pci_device_id": "0x0089"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_6005_1",
+          "pci_device_id": "0x0082"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_6005_2",
+          "pci_device_id": "0x0085"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_6030_1",
+          "pci_device_id": "0x0090"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_6030_2",
+          "pci_device_id": "0x0091"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_1030_1",
+          "pci_device_id": "0x008a"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_1030_2",
+          "pci_device_id": "0x008b"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_100_1",
+          "pci_device_id": "0x08ae"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_100_2",
+          "pci_device_id": "0x08af"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_130_1",
+          "pci_device_id": "0x0896"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_130_2",
+          "pci_device_id": "0x0897"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_6235_1",
+          "pci_device_id": "0x088e"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_6235_2",
+          "pci_device_id": "0x088f"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_2230_1",
+          "pci_device_id": "0x0887"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_2230_2",
+          "pci_device_id": "0x0888"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_2200_1",
+          "pci_device_id": "0x0890"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_2200_2",
+          "pci_device_id": "0x0891"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_135_1",
+          "pci_device_id": "0x0892"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_135_2",
+          "pci_device_id": "0x0893"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_105_1",
+          "pci_device_id": "0x0894"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_105_2",
+          "pci_device_id": "0x0895"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_6150_1",
+          "pci_device_id": "0x0885"
+        },
+        {
+          "symbol": "PCI_PRODUCT_INTEL_WL_6150_2",
+          "pci_device_id": "0x0886"
+        }
+      ],
+      "source_model_tokens": [
+        "100",
+        "1000",
+        "1030",
+        "105",
+        "130",
+        "135",
+        "2200",
+        "2230",
+        "4965",
+        "5100",
+        "5150",
+        "5300",
+        "5350",
+        "6005",
+        "6030",
+        "6050",
+        "6150",
+        "6200",
+        "6235",
+        "6300"
+      ]
+    }
+  },
+  "scope": "SOURCE-DERIVED eligibility, not hardware qualification. Later matching config rows can override earlier rows; actual MAC/RF/subdevice and selected firmware matter. Family >=AX210 gate is not a per-retail-card qualification allowlist."
+}

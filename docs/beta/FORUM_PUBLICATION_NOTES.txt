@@ -1,0 +1,85 @@
+FORUM PUBLICATION NOTES — REVIEW ONLY, NOT PART OF THE POSTS
+2026-10-21T01:02:57.102032+02:00
+
+The posting bodies are in FORUM_IM_TM_DRAFT.txt (TM wording), FORUM_TM_DRAFT.txt
+and FORUM_IM_DRAFT.txt. Internal LOCAL REVIEW labels and the trailing review/
+source appendix were removed from those posting bodies and retained below.
+All substantive user-supplied narrative, figures, credits, safeguards and links
+remain unchanged. Missing release/central-thread URLs remain placeholders; they
+cannot be supplied before the relevant publication exists. No post was made.
+
+Post1 introduction files retain OUTSIDE-BODY editing boundaries to protect the
+untouched forensic/debugging text and attachments. Do not copy those wrappers.
+No forensic/attachment edits or reattachment are authorised by this cleanup.
+
+FORUM_IM_TM_DRAFT.txt
+Removed review-only prefix: LOCAL REVIEW DRAFT — NOT POSTED. Forum-specific TM text below.
+Retained source/review appendix:
+Review/source context (retain when finalising the post): the seven TCP lines
+are coherent complete three-round campaigns, not README per-variable maxima.
+Their exact origins, hashes and all28 TCP/20 UDP mean checks are in
+FORUM_CAMPAIGN_MEANS_VALIDATION.json; the ZC28 conventional UDP line is from
+20261020_164527_EJOvrp and the external line from20261020_122534_n2sdvy.
+Earlier AX201/AX211 tests motivated the campaign; neither tester is yet reported
+to have tested ZC28. @netiave(TM) and @funcio(IM) are the same AX201 tester.
+
+Source-derived additional hardware is conditional, not newly qualified: see the
+hardware overview. Some IWX table variants select firmware not enclosed here.
+Do not infer the actual historical framework/root-patch state from build53's
+native capability. KGP still requires its restored-legacy environment; external
+numeric DMA labels remain declared. Separate issues are for concrete bugs;
+one campaign/comment and one Return-ZIP in the central results or shared forum
+thread remain the submission plan. No duplicate uploads required.
+
+
+FORUM_TM_DRAFT.txt
+Removed review-only prefix: LOCAL REVIEW DRAFT — NOT POSTED. Forum-specific TM text below.
+Retained source/review appendix:
+Review/source context (retain when finalising the post): the seven TCP lines
+are coherent complete three-round campaigns, not README per-variable maxima.
+Their exact origins, hashes and all28 TCP/20 UDP mean checks are in
+FORUM_CAMPAIGN_MEANS_VALIDATION.json; the ZC28 conventional UDP line is from
+20261020_164527_EJOvrp and the external line from20261020_122534_n2sdvy.
+Earlier AX201/AX211 tests motivated the campaign; neither tester is yet reported
+to have tested ZC28. @netiave(TM) and @funcio(IM) are the same AX201 tester.
+
+Source-derived additional hardware is conditional, not newly qualified: see the
+hardware overview. Some IWX table variants select firmware not enclosed here.
+Do not infer the actual historical framework/root-patch state from build53's
+native capability. KGP still requires its restored-legacy environment; external
+numeric DMA labels remain declared. Separate issues are for concrete bugs;
+one campaign/comment and one Return-ZIP in the central results or shared forum
+thread remain the submission plan. No duplicate uploads required.
+
+
+FORUM_IM_DRAFT.txt
+Removed review-only prefix: LOCAL REVIEW DRAFT — NOT POSTED. Forum-specific IM text below.
+Retained source/review appendix:
+Review/source context (retain when finalising the post): the seven TCP lines
+are coherent complete three-round campaigns, not README per-variable maxima.
+Their exact origins, hashes and all28 TCP/20 UDP mean checks are in
+FORUM_CAMPAIGN_MEANS_VALIDATION.json; the ZC28 conventional UDP line is from
+20261020_164527_EJOvrp and the external line from20261020_122534_n2sdvy.
+Earlier AX201/AX211 tests motivated the campaign; neither tester is yet reported
+to have tested ZC28. @netiave(TM) and @funcio(IM) are the same AX201 tester.
+
+Source-derived additional hardware is conditional, not newly qualified: see the
+hardware overview. Some IWX table variants select firmware not enclosed here.
+Do not infer the actual historical framework/root-patch state from build53's
+native capability. KGP still requires its restored-legacy environment; external
+numeric DMA labels remain declared. Separate issues are for concrete bugs;
+one campaign/comment and one Return-ZIP in the central results or shared forum
+thread remain the submission plan. No duplicate uploads required.
+
+
+POST1_IM_INTRO_DRAFT.txt
+Inside the editable introduction only: removed the review-time phrase
+“after approval” from the package line and moved the no-invented-URL review
+remark here. BEGIN/END boundaries and all existing forensic content remain
+outside the posting body and unchanged. Actual missing links stay explicit.
+
+POST1_TM_INTRO_DRAFT.txt
+Inside the editable introduction only: removed the review-time phrase
+“after approval” from the package line and moved the no-invented-URL review
+remark here. BEGIN/END boundaries and all existing forensic content remain
+outside the posting body and unchanged. Actual missing links stay explicit.
