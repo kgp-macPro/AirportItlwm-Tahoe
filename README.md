@@ -114,6 +114,68 @@ OpenIntelWireless / itlwm → pinned Dexter source → mapper-backed RX/TX/comma
 
 This is **one public comparison campaign** for AX201, AX210 and AX211 owners on Intel-based macOS Tahoe 26.x. **ZC28 is the starting candidate.** Frozen ZC8, ZC19, ZC22 and ZC26 are optional historical comparisons within the same campaign; unchanged **laobamac53 is a separately attributed external control**, not KGP code.
 
+### Documentation correction — AX201 testing (22 October 2026)
+
+The bundled `README_TESTS.txt` instructs AX201 users to select `conventional` in both AppleVTD-on and AppleVTD-off configurations. This blanket instruction is withdrawn pending verification of the reported hardware identity and actual driver DMA mode.
+
+The runner validates the selected mode: `mapped` requires DMA Mode 2 and active AppleVTD; `conventional` requires DMA Mode 1. These arguments do not change the driver’s mode or OpenCore settings. The Wi-Fi IORegistry node must also match the system; some systems require `IOREG_WIFI_SERVICE=CNVW` instead of the default `ARPT`.
+
+This notice supersedes the corresponding blanket AX201 DMA-mode guidance in the bundled and linked documentation. The beta ZIP and all included binaries remain unchanged. This correction does not establish general AX201 mapped-mode support.
+
+[Use the corrected AX201 validation commands below](#ax201-validation-commands).
+
+### AX201 validation commands
+
+These examples target **Fulvio’s observed `CNVW@14,3` parent node and `en0` Wi-Fi interface**, with his **reported `AX201` device label**. They are not universal settings for all AX201 or AX211 systems. `DEVICE_LABEL` is user-supplied metadata and does not verify hardware identity. His refusal with `EXPECTED_MODE=conventional` establishes a mismatch against Mode 1; it does **not** establish Mode 2. Verified hardware identity and successful mapped validation have not yet been supplied in the evidence for this correction.
+
+Run these identification commands once before testing:
+
+```bash
+ioreg -p IOService -w0 | /usr/bin/grep -i -B 6 -A 6 AirportItlwm
+```
+
+```bash
+networksetup -listallhardwareports
+```
+
+Use `CNVW` when the captured tree shows AirportItlwm directly beneath `CNVW@14,3`. On other systems use the actual parent-node name and Wi-Fi interface. Do not infer the registry name or DMA mode solely from the adapter’s retail designation.
+
+Run each benchmark **separately**, after installing the matching candidate and rebooting as described below and in the existing [installation/rollback guide](README_TESTS.txt). Keep the matching supported framework/boot environment. The runner prompts for the wired server’s current IPv4 address. Keep the original test protocol, candidate order (**ZC28 first, then ZC8 for comparison**) and result handling unchanged. Report any failed validation with its original ZIP; do not remove or bypass checks.
+
+#### Mapped validation — ZC28
+
+Requires active AppleVTD and driver-reported DMA Mode 2. Install and reboot with ZC28 before running. This is a validation request, **not an already established AX201 qualification**.
+
+```bash
+IOREG_WIFI_SERVICE=CNVW EXPECTED_MODE=mapped WIFI_IFACE=en0 DEVICE_LABEL=AX201 /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC28
+```
+
+#### Mapped validation — ZC8
+
+Install and reboot with ZC8 before running. Its mode is checked independently.
+
+```bash
+IOREG_WIFI_SERVICE=CNVW EXPECTED_MODE=mapped WIFI_IFACE=en0 DEVICE_LABEL=AX201 /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC8
+```
+
+#### Conventional validation — ZC28
+
+For the intended AppleVTD-off comparison, set **Kernel → Quirks → DisableIoMapper=true in the actual boot EFI**, then reboot with ZC28 before running.
+
+```bash
+IOREG_WIFI_SERVICE=CNVW EXPECTED_MODE=conventional WIFI_IFACE=en0 DEVICE_LABEL=AX201 /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC28
+```
+
+#### Conventional validation — ZC8
+
+Install and reboot with ZC8 while retaining the same conventional boot configuration.
+
+```bash
+IOREG_WIFI_SERVICE=CNVW EXPECTED_MODE=conventional WIFI_IFACE=en0 DEVICE_LABEL=AX201 /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC8
+```
+
+`EXPECTED_MODE` checks the reported DMA mode; it does not change it. Conventional validation requires Mode 1 but does not independently require AppleVTD to be absent. Record configured `DisableIoMapper` and captured AppleVTD runtime state separately. **This correction and command section supersede the corresponding blanket AX201 guidance in the unchanged bundled and linked documentation.** These are instructions for user-controlled testing; no EFI change or physical test is performed by this documentation update.
+
 The prerelease tag is **[`v1.1.0-beta.1`](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/tag/v1.1.0-beta.1)**. Its one complete download is **`AirportItlwm-Tahoe-1.1.0-Beta.zip`**: ready bundles, exact corresponding source/dependency/license enclosures, Desktop setup, the unchanged physically used r7 runner and seven original reference ZIPs. **[Download the complete beta ZIP](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v1.1.0-beta.1/AirportItlwm-Tahoe-1.1.0-Beta.zip).**
 
 ## Why this comparison beta
@@ -129,7 +191,7 @@ This is a deliberate pause in local optimisation to gather independent system/AP
 | Group | Current evidence and scope |
 | --- | --- |
 | AX210 / 8086:2725 | ZC28 physically tested in actual mapped Mode2 and conventional Mode1; frozen 1.0.0 has its separate AX210 qualification. Repeat/long-run/sleep-wake limits remain |
-| AX201; AX211 | Earlier @netiave/@funcio AX201 and Luiz AX211 results motivated this beta. AX201 remains conventional-only. Luiz's historical AppleVTD-active result is not positive proof of numerical Mode2. Neither is yet ZC28-qualified |
+| AX201; AX211 | Earlier @netiave/@funcio AX201 and Luiz AX211 results motivated this beta. Do not assign a DMA route from the AX201 label; verify the hardware identity and actual reported mode. Luiz's historical AppleVTD-active result is not positive proof of numerical Mode2. Neither is yet ZC28-qualified |
 | Additional IWX source candidates | AX200, selected AX101/AX203/AX411 and named Killer 1650/1675/1690 variants; selected AC 9461/9462/9560/Killer 1550 variants. Actual PCI/MAC/RF/subdevice selection and enclosed firmware are required; these are **awaiting physical confirmation**, not blanket mapped support |
 | Separate upstream backend paths | IWM: 3160/3165/3168, 7260/7265, 8260/8265, 9260 and selected 9461/9462/9560. IWN: 4965,5100/5150/5300/5350,100/105/130/135/1000/1030,2200/2230,6005/6030/6050/6150/6200/6235/6300. They do not enter the IWX-specific service/DMA paths; no same-fix or new qualification claim |
 | Table-only / excluded or future | AX221/AX231 and other MA/SnJ/QnJ entries can select firmware absent from this frozen package; table presence is not usable support. BE200 remains future work |
@@ -153,7 +215,7 @@ The [source-grounded hardware overview](docs/beta/HARDWARE_COVERAGE.md) and [exa
 
 Recent ZC28 conventional campaigns retained roughly 483–485Mbps TCP TX with useful TCP RX, but mapped TX dips, UDP loss bursts, upload-loaded latency tails and long-run/sleep-wake questions remain open. This is not a universal 600-Mbps RX or permanent-fix claim. See [reference results and limitations](docs/beta/REFERENCE_NOTES.txt) and the [complete three-conventional-campaign analysis](docs/beta/ZC28_CONVENTIONAL_ANALYSIS.txt), including all adverse observations.
 
-**AX201 remains conventional-only even with system AppleVTD active.** Qualified AX210/AX211 mapped tests must report actual Mode2; conventional tests use Mode1. The runner's UUID/marker/mode/fault/epoch checks remain strict. External53 mapped/conventional labels describe the tester's declared boot configuration, not verified KGP numerical DMA/fault telemetry; unavailable is not zero. Its framework environment differs from the KGP legacy target.
+**Choose the expected DMA route from verified runtime evidence, not the AX201/AX211 retail label.** Mapped validation requires actual Mode2 and active AppleVTD; conventional validation requires Mode1 without independently requiring AppleVTD to be absent. See the [corrected AX201 validation commands](#ax201-validation-commands). The runner's UUID/marker/mode/fault/epoch checks remain strict. External53 mapped/conventional labels describe the tester's declared boot configuration, not verified KGP numerical DMA/fault telemetry; unavailable is not zero. Its framework environment differs from the KGP legacy target.
 
 **1.1.0 Beta names the public package, not a changed binary version.** KGP bundles retain their frozen internal 1.0.0 fields and individual UUID/hashes; the external bundle retains its own development fields. [Source/license mapping](docs/beta/SOURCE_LICENSE_MAP.txt) documents every snapshot and build. Root source still represents the frozen 1.0.0 implementation; beta source snapshots are supplied separately in the ZIP, not merged or rebuilt for packaging.
 
@@ -473,7 +535,7 @@ The unchanged upstream build53 is a separately authored native-framework compari
 
 ### Earlier physical tester reports
 
-- **[@netiave on tonymacx86](https://www.tonymacx86.com/members/1548699/) / @funcio on InsanelyMac** — the same AX201 tester; earlier conventional-route results helped motivate the comparison beta.
+- **[@netiave on tonymacx86](https://www.tonymacx86.com/members/1548699/) / @funcio on InsanelyMac** — the same AX201 tester; earlier reports helped motivate the comparison beta. Their actual DMA route is not established here.
 - **Luiz ([@LuizMeliga on tonymacx86](https://www.tonymacx86.com/members/1658846/))** — earlier AX211 campaigns demonstrated strong RX on his own system/network.
 
 These acknowledgements concern historical reports, not testing or qualification of ZC28. No IM or GitHub account for Luiz, or additional tester identity, is implied.
