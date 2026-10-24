@@ -10,13 +10,13 @@ This overview changes documentation only, not PCI matching, DMA policy or r7.
 | Hardware | Actual evidence | DMA/configuration boundary | ZC28 status |
 | --- | --- | --- | --- |
 | KGP AX210, PCI 8086:2725 | Frozen qualified 1.0.0 and later identified original campaigns; ZC28 has three complete mapped and three complete conventional campaigns | ZC28 saved actual Mode2 / Mode1 respectively, separate boots; same frozen ZC28 binary | Physically tested on this system; three repeats per mode share that mode's boot. Not universal stability or repeated-wake qualification |
-| AX201, tester **@netiave (TM) / @funcio (IM)**, one person | Earlier ZC5-BOOTFIX1 reports: TCP TX 324/327, RX 601/569Mbps; UUID 1A496783-086D-37D1-85B3-EA6110F301C9 | KGP conventional route only, including when system AppleVTD was active. Historical reported values, not newly executed validation | No supplied ZC28 peer qualification |
-| AX211, **Luiz (@LuizMeliga on TM)** | Earlier ZC8 originals: TCP RX P1 rounds 600/617/601, P4 615/649/648Mbps | System AppleVTD was active; those originals did not positively establish KGP numerical mapped Mode2. Different AP/network/server cohort | No supplied ZC28 peer qualification |
+| AX201 tester **Fulvio ([@netiave on tonymacx86](https://www.tonymacx86.com/members/netiave.1548699/) / [@Funzio on InsanelyMac](https://www.insanelymac.com/forum/profile/2547924-funzio/) / [@netiave on GitHub](https://github.com/netiave))**, one person | Earlier ZC5-BOOTFIX1 reports: TCP TX 324/327, RX 601/569Mbps; UUID 1A496783-086D-37D1-85B3-EA6110F301C9 | KGP conventional route only, including when system AppleVTD was active. Historical reported values, not newly executed validation | No supplied ZC28 peer qualification |
+| AX211 tester **Luiz ([@LuizMeliga on tonymacx86](https://www.tonymacx86.com/members/luizmeliga.1658846/) / [@luizmeliga on GitHub](https://github.com/luizmeliga))** | Earlier ZC8 originals: TCP RX P1 rounds 600/617/601, P4 615/649/648Mbps | System AppleVTD was active; those originals did not positively establish KGP numerical mapped Mode2. Different AP/network/server cohort | No supplied ZC28 peer qualification |
 
 The AX201 and AX211 reports motivated this comparison; they do not qualify
 all intervening changes. Their provided TM profiles are
-https://www.tonymacx86.com/members/1548699/ and
-https://www.tonymacx86.com/members/1658846/. No additional account is inferred.
+https://www.tonymacx86.com/members/netiave.1548699/ and
+https://www.tonymacx86.com/members/luizmeliga.1658846/. Klaus confirmed Fulvio’s three profiles and Luiz’s TM/GitHub profiles above. No InsanelyMac account has been confirmed for Luiz.
 Current KGP prerequisites remain OCLP-CustoMac 3.0.3, its Skywalk replacement,
 AMFIPass.kext/-amfipassbeta and matching supported frameworks/boot configuration.
 

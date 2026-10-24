@@ -77,8 +77,8 @@ but self-upload-loaded responses reached 12.88/11.67/22.09 seconds. KGP's nomina
 proof of that sustained wire rate. Do not silently normalize raw output.
 No new ZC28 Ookla result was supplied with those three archives.
 
-Historical goals: Luiz (@LuizMeliga on TM) reported AX211 ZC8 RX around
-606/637 Mbps; @netiave (TM) / @funcio (IM), one AX201 tester, reported
+Historical goals: AX211 tester Luiz ([@LuizMeliga on tonymacx86](https://www.tonymacx86.com/members/luizmeliga.1658846/) / [@luizmeliga on GitHub](https://github.com/luizmeliga)) reported AX211 ZC8 RX around
+606/637 Mbps; AX201 tester Fulvio ([@netiave on tonymacx86](https://www.tonymacx86.com/members/netiave.1548699/) / [@Funzio on InsanelyMac](https://www.insanelymac.com/forum/profile/2547924-funzio/) / [@netiave on GitHub](https://github.com/netiave)), reported
 ZC5/BOOTFIX1 RX around 601/569 Mbps. Reproducibility on later builds is untested.
 Normal KGP TX often matches laobamac53 and better KGP RX exceeds it on this
 setup. The whole host/AP/wired-peer path may contribute to the remaining RX

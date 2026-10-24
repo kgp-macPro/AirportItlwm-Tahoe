@@ -18,10 +18,10 @@
 
 ## Earlier physical tester reports
 
-- **[@netiave on tonymacx86](https://www.tonymacx86.com/members/1548699/) / @funcio on InsanelyMac** — the same AX201 tester; earlier conventional-route results helped motivate the comparison beta.
-- **Luiz ([@LuizMeliga on tonymacx86](https://www.tonymacx86.com/members/1658846/))** — earlier AX211 campaigns demonstrated strong RX on his own system/network.
+- **AX201 tester Fulvio ([@netiave on tonymacx86](https://www.tonymacx86.com/members/netiave.1548699/) / [@Funzio on InsanelyMac](https://www.insanelymac.com/forum/profile/2547924-funzio/) / [@netiave on GitHub](https://github.com/netiave))** — the same tester; earlier conventional-route results helped motivate the comparison beta.
+- **AX211 tester Luiz ([@LuizMeliga on tonymacx86](https://www.tonymacx86.com/members/luizmeliga.1658846/) / [@luizmeliga on GitHub](https://github.com/luizmeliga))** — earlier AX211 campaigns demonstrated strong RX on his own system/network.
 
-These acknowledgements concern historical reports, not testing or qualification of ZC28. No IM or GitHub account for Luiz, or additional tester identity, is implied.
+These acknowledgements concern historical reports, not testing or qualification of ZC28. Klaus confirmed the listed TM/GitHub profiles for both testers and Fulvio’s IM profile. No InsanelyMac account has been confirmed for Luiz.
 
 ## AI assistance
 

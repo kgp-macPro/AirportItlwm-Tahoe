@@ -1,6 +1,6 @@
 AirportItlwm-Tahoe 1.1.0 Beta — AX201 / AX210 / AX211 testing
 
-Hi Luiz (@LuizMeliga on tonymacx86: https://www.tonymacx86.com/members/1658846/), @funcio, and everyone interested,
+Hi Luiz ([@LuizMeliga on tonymacx86](https://www.tonymacx86.com/members/luizmeliga.1658846/)), Fulvio ([@Funzio](https://www.insanelymac.com/forum/profile/2547924-funzio/)), and everyone interested,
 
 Your encouraging results with the AX211 and AX201 have been an important motivation for our continued development. We wanted to reproduce that combination of good TCP TX and approximately 600 Mbps TCP RX with my AX210, on my own system and in my network environment.
 
@@ -31,7 +31,7 @@ These averages do not imply loss-free transfers. UDP loss bursts and intermitten
 
 The three latest ZC28 conventional campaigns were encouraging: TCP TX remained around 483–485 Mbps, and all nine complete TCP RX P1 tests exceeded 500 Mbps. Nevertheless, mapped TX dips and long-term/sleep-wake reliability remain open questions.
 
-I would therefore really appreciate another comparison from Luiz and @funcio—and from anyone else interested in this legacy-framework, root-patched approach. My hope is that the many changes made while investigating my AX210 setup have preserved, or improved, the good performance you already achieved. Results from other systems, access points and network environments would be equally valuable.
+I would therefore really appreciate another comparison from Luiz and Fulvio ([@Funzio](https://www.insanelymac.com/forum/profile/2547924-funzio/))—and from anyone else interested in this legacy-framework, root-patched approach. My hope is that the many changes made while investigating my AX210 setup have preserved, or improved, the good performance you already achieved. Results from other systems, access points and network environments would be equally valuable.
 
 My nominal 80/30 Mbps Internet connection limits WAN comparisons, so the local wired iperf3 tests are particularly important. Please also run an Ookla test after each campaign.
 
@@ -52,7 +52,7 @@ The common routine runs three rounds of 14 iperf3 tests, followed by networkQual
 
 Results can be posted as comments in the single central GitHub results thread, or directly in the shared IM/TM threads. There is no need to open an issue per tester or upload the same report twice.
 
-Thank you, Luiz and @funcio, for the earlier results that helped drive this work forward—and thank you to everyone willing to contribute another perspective. It is time to let other systems speak. 🙂
+Thank you, AX211 tester Luiz ([@LuizMeliga on tonymacx86](https://www.tonymacx86.com/members/luizmeliga.1658846/) / [@luizmeliga on GitHub](https://github.com/luizmeliga)) and AX201 tester Fulvio ([@netiave on tonymacx86](https://www.tonymacx86.com/members/netiave.1548699/) / [@Funzio on InsanelyMac](https://www.insanelymac.com/forum/profile/2547924-funzio/) / [@netiave on GitHub](https://github.com/netiave)), for the earlier results that helped drive this work forward—and thank you to everyone willing to contribute another perspective. It is time to let other systems speak. 🙂
 
 Throughout development, I have continuously reviewed and redirected the work with ChatGPT and Codex and performed the physical testing myself. Upstream contributors and laobamac retain credit for their respective work.
 

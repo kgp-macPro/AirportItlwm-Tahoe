@@ -21,7 +21,7 @@ Their exact origins, hashes and all28 TCP/20 UDP mean checks are in
 FORUM_CAMPAIGN_MEANS_VALIDATION.json; the ZC28 conventional UDP line is from
 20261020_164527_EJOvrp and the external line from20261020_122534_n2sdvy.
 Earlier AX201/AX211 tests motivated the campaign; neither tester is yet reported
-to have tested ZC28. @netiave(TM) and @funcio(IM) are the same AX201 tester.
+to have tested ZC28. [@netiave on tonymacx86](https://www.tonymacx86.com/members/netiave.1548699/) / [@Funzio on InsanelyMac](https://www.insanelymac.com/forum/profile/2547924-funzio/) / [@netiave on GitHub](https://github.com/netiave) belong to AX201 tester Fulvio.
 
 Source-derived additional hardware is conditional, not newly qualified: see the
 hardware overview. Some IWX table variants select firmware not enclosed here.
@@ -41,7 +41,7 @@ Their exact origins, hashes and all28 TCP/20 UDP mean checks are in
 FORUM_CAMPAIGN_MEANS_VALIDATION.json; the ZC28 conventional UDP line is from
 20261020_164527_EJOvrp and the external line from20261020_122534_n2sdvy.
 Earlier AX201/AX211 tests motivated the campaign; neither tester is yet reported
-to have tested ZC28. @netiave(TM) and @funcio(IM) are the same AX201 tester.
+to have tested ZC28. [@netiave on tonymacx86](https://www.tonymacx86.com/members/netiave.1548699/) / [@Funzio on InsanelyMac](https://www.insanelymac.com/forum/profile/2547924-funzio/) / [@netiave on GitHub](https://github.com/netiave) belong to AX201 tester Fulvio.
 
 Source-derived additional hardware is conditional, not newly qualified: see the
 hardware overview. Some IWX table variants select firmware not enclosed here.
@@ -61,7 +61,7 @@ Their exact origins, hashes and all28 TCP/20 UDP mean checks are in
 FORUM_CAMPAIGN_MEANS_VALIDATION.json; the ZC28 conventional UDP line is from
 20261020_164527_EJOvrp and the external line from20261020_122534_n2sdvy.
 Earlier AX201/AX211 tests motivated the campaign; neither tester is yet reported
-to have tested ZC28. @netiave(TM) and @funcio(IM) are the same AX201 tester.
+to have tested ZC28. [@netiave on tonymacx86](https://www.tonymacx86.com/members/netiave.1548699/) / [@Funzio on InsanelyMac](https://www.insanelymac.com/forum/profile/2547924-funzio/) / [@netiave on GitHub](https://github.com/netiave) belong to AX201 tester Fulvio.
 
 Source-derived additional hardware is conditional, not newly qualified: see the
 hardware overview. Some IWX table variants select firmware not enclosed here.

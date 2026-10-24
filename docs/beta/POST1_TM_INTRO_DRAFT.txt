@@ -60,7 +60,7 @@ the untouched runner ZIP, Ookla screenshot/result link and short notes. Include
 failures/slow runs; link existing reports instead of duplicating uploads.
 Separate issues are reserved for concrete bugs needing independent investigation.
 
-Thanks to Luiz (@LuizMeliga: https://www.tonymacx86.com/members/1658846/) and @netiave (https://www.tonymacx86.com/members/1548699/) for earlier hardware reports, and to every upstream,
+Thanks to AX211 tester Luiz ([@LuizMeliga on tonymacx86](https://www.tonymacx86.com/members/luizmeliga.1658846/) / [@luizmeliga on GitHub](https://github.com/luizmeliga)) and AX201 tester Fulvio ([@netiave on tonymacx86](https://www.tonymacx86.com/members/netiave.1548699/) / [@Funzio on InsanelyMac](https://www.insanelymac.com/forum/profile/2547924-funzio/) / [@netiave on GitHub](https://github.com/netiave)) for earlier hardware reports, and to every upstream,
 firmware/SDK and research contributor. KGP directs development and performs the
 local physical tests, with ChatGPT/Codex assistance under human review. Full
 attribution remains in CREDITS.md and the detailed campaign post.

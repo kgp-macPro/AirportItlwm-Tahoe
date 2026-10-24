@@ -359,7 +359,7 @@ HARDWARE AND EARLIER TESTERS
 This runner remains focused on AX201/AX210/AX211; the new source-derived hardware
 overview does not add a required matrix or mapped qualification. See
 SOURCES/BETA_DOCUMENTATION/HARDWARE_COVERAGE.md for exact ZC28 source boundaries.
-Earlier AX201 tests were by @netiave (TM) / @funcio (IM), one tester. Earlier AX211
-tests were by Luiz (@LuizMeliga on TM); neither is claimed to have tested ZC28.
+Earlier AX201 tests were by AX201 tester Fulvio ([@netiave on tonymacx86](https://www.tonymacx86.com/members/netiave.1548699/) / [@Funzio on InsanelyMac](https://www.insanelymac.com/forum/profile/2547924-funzio/) / [@netiave on GitHub](https://github.com/netiave)). Earlier AX211
+tests were by AX211 tester Luiz ([@LuizMeliga on tonymacx86](https://www.tonymacx86.com/members/luizmeliga.1658846/) / [@luizmeliga on GitHub](https://github.com/luizmeliga)); neither is claimed to have tested ZC28.
 Use the r7 campaign separately from any support forensic capture/profiler; the
 existing 1.0.0 forensic attachment is not a beta identity/health validator.

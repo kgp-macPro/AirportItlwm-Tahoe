@@ -7,8 +7,7 @@ historical KGP controls; unchanged laobamac53 a separately attributed external
 control. All binaries/internal versions/UUIDs/hashes and physically used r7
 remain frozen. No driver rebuild for packaging. Stable 1.1.0 remains future.
 
-Earlier reports from @netiave (TM) / @funcio (IM), the same AX201 tester, and Luiz
-(@LuizMeliga on TM, AX211) motivated the work. These are not ZC28 peer tests.
+Earlier reports from AX201 tester Fulvio ([@netiave on tonymacx86](https://www.tonymacx86.com/members/netiave.1548699/) / [@Funzio on InsanelyMac](https://www.insanelymac.com/forum/profile/2547924-funzio/) / [@netiave on GitHub](https://github.com/netiave)) and AX211 tester Luiz ([@LuizMeliga on tonymacx86](https://www.tonymacx86.com/members/luizmeliga.1658846/) / [@luizmeliga on GitHub](https://github.com/luizmeliga)) motivated this work. GitHub contributors: @netiave and @luizmeliga. These are not ZC28 peer tests.
 The README explains development context, gives 192 historical best whole-test
 rows and links the source-grounded hardware overview. Config names/PCI entries
 are not physical qualification; absent-firmware variants are labelled honestly.
