@@ -196,3 +196,48 @@ int ItlIwx::bzInterrupt(struct iwx_softc *sc)
         IWX_WRITE(sc,IWX_CSR_MSIX_AUTOMASK_ST_AD,1U); // OS-selected single vector0.
     return 1;
 }
+
+// P2: execute once per firmware boot, before hardware ownership/ROM start.
+// Requested memory direction is not a valid synchronize() copy direction.
+// Apple xnu f6217f891ac0 IODMACommand::synchronize rejects Out|In before
+// checking preparation. Retain exact failing region/status even if attach
+// cleanup removes the HAL. No live DMA memory or hot-path registry polling.
+int ItlIwx::bzSyncBootMemory(struct iwx_softc *sc)
+{
+    struct Region { const char *name; iwx_dma_info *dma; };
+    const Region regions[] = {
+        {"context", &sc->ctxt_info_dma},
+        {"scratch", &sc->prph_scratch_dma},
+        {"peripheral-info", &sc->prph_info_dma},
+        {"iml", &sc->iml_dma},
+        {"rx-free", &sc->rxq.free_desc_dma},
+        {"rx-completion", &sc->rxq.used_desc_dma},
+        {"rx-status", &sc->rxq.stat_dma},
+        {"command-descriptors", &sc->txq[IWX_DQA_CMD_QUEUE].desc_dma}
+    };
+    for (unsigned i = 0; i < sizeof(regions)/sizeof(regions[0]); ++i) {
+        const auto &r = regions[i];
+        IOReturn status = kIOReturnBadArgument;
+        const char *reason = "missing-backing";
+        if (r.dma->cmd && r.dma->buffer && r.dma->vaddr && r.dma->size) {
+            reason = "backing-identity";
+            if (r.dma->cmd->getIOMemoryDescriptor() == r.dma->buffer) {
+                reason = "synchronize-out";
+                status = r.dma->cmd->synchronize(kIODirectionOut);
+            }
+        }
+        if (status != kIOReturnSuccess) {
+            sc->sc_pcitag->setProperty("KGP_BE200_BOOT_SYNC_INDEX", i, 32);
+            sc->sc_pcitag->setProperty("KGP_BE200_BOOT_SYNC_REGION", r.name);
+            sc->sc_pcitag->setProperty("KGP_BE200_BOOT_SYNC_REASON", reason);
+            sc->sc_pcitag->setProperty("KGP_BE200_BOOT_SYNC_RESULT", uint32_t(status), 32);
+            bzFail(32, EIO);
+            return EIO;
+        }
+    }
+    sc->sc_pcitag->setProperty("KGP_BE200_BOOT_SYNC_INDEX", 8U, 32);
+    sc->sc_pcitag->setProperty("KGP_BE200_BOOT_SYNC_REGION", "complete");
+    sc->sc_pcitag->setProperty("KGP_BE200_BOOT_SYNC_REASON", "synchronize-out");
+    sc->sc_pcitag->setProperty("KGP_BE200_BOOT_SYNC_RESULT", 0U, 32);
+    return 0;
+}

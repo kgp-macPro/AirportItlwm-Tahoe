@@ -30,7 +30,7 @@ Installation:
 Rollback:
 - Restore the entire backed-up previous bundle at its original path and restore
   any configuration changed manually by KGP, then reboot using the known-good
-  boot path. A BE200 module is not supported by the frozen AX210-only baseline;
+  boot path. A BE200 module is not supported by the frozen pre-BE200 baseline;
   restoring that driver may also require KGP's previous supported card/boot path.
 - Root patches/frameworks are not undone by changing a kext. Leave their recorded
   state intact unless KGP independently performs the matching supported procedure.

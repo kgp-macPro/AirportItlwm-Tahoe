@@ -1,6 +1,9 @@
-PRIVATE BE200 GL92 — FIRST HARDWARE TEST (not a performance qualification)
+PRIVATE BE200 GL92 P2 — FIRST HARDWARE TEST (not a performance qualification)
 
-STATUS: Experimental, never installed/loaded or physically tested by Codex.
+STATUS: P2 experimental; not installed/loaded or physically tested by Codex.
+P1 physically failed firmware-context before a usable Wi-Fi interface. Its
+original candidate and captured evidence are retained separately. P2 corrects
+an invalid pre-ROM IODMACommand synchronization option, not a proved Wi-Fi fix.
 Initial target: discrete Intel 8086:272B, GL-C0/FM-C0. BE201 is not admitted.
 Single-link 2.4/5GHz infrastructure, legacy Ventura frontend on the established
 Tahoe framework environment. No claim of 802.11be, EHT/HE, MLO, 6GHz, AWDL,
@@ -9,10 +12,19 @@ Start with an existing WPA2/CCMP network. Do not begin with a 3x14 campaign.
 
 1. Follow INSTALL_AND_ROLLBACK.txt. KGP alone installs and reboots. Retain a
    known-good boot path. Read BUILD_IDENTITY.txt and verify Desktop executable.
-2. After reboot, run COLLECT_BE200.sh boot. It only reads local state and
+2. After reboot, run:
+   /bin/bash "$HOME/Desktop/AirportItlwm/BE200-EXPERIMENTAL/COLLECT_BE200.sh" boot
+   This invokes the boundary collector. It only reads local state and
    writes a small private evidence ZIP; it never starts traffic or changes EFI.
    Check loaded UUID in kmutil output against BUILD_IDENTITY.txt. A Desktop
    hash alone is not proof of the loaded executable. Stop on identity mismatch.
+   In DECODED.json, inspect providers as well as snapshots: boot failures can
+   retain stage/error/sync-region/raw-IOReturn on ARPT without a watchdog record.
+   Do not delete/recreate the network service to work around attach failure.
+   If no usable interface, stop here and return the boot ZIP; do not run traffic.
+   If an actual Wi-Fi hardware port/interface exists but the network service is
+   absent after its earlier deletion, KGP may add that service manually in System
+   Settings. Service recreation cannot repair an attach failure.
 3. Inspect the normal Wi-Fi UI: note whether networks appear, then manually
    join the chosen WPA2 network. Record any prior traffic, failure or delay.
    Do not include passwords or key material in notes. Capture scan/join result:
@@ -50,6 +62,9 @@ Start with an existing WPA2/CCMP network. Do not begin with a 3x14 campaign.
 How the evidence distinguishes failures:
 - Missing PCI match/stage: identity or framework/provider attach.
 - Nonzero MSI-X setup / absent enabled capability: provider/SDK/interrupt setup.
+- BOOT_SYNC_INDEX=8/REGION=complete/RESULT=0: boot regions synchronized; this
+  alone proves neither firmware boot nor an interrupt. Failure index0..7 gives
+  the region and raw IOReturn. LAST_FAILURE32 identifies sync/backing failure.
 - ROM/IML/ALIVE stage/error: firmware loading, hardware identity or boot transport.
 - Parsed ALIVE with poll hits but no filter/action: do not claim working IRQs.
 - PNVM/NVM timeout/status: exact SKU/payload/API or command/notification delivery.

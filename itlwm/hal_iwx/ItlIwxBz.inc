@@ -391,12 +391,11 @@ iwx_bz_port_ctxt_info_gen3_init(struct iwx_softc *sc, const struct iwx_fw_sects 
     iwx_enable_fwload_interrupt(sc);
 
     // Synchronize every CPU-written boot extent before the first ROM doorbell.
-    { iwx_dma_info *boot[] = {&sc->ctxt_info_dma,&sc->prph_scratch_dma,&sc->prph_info_dma,
-        &sc->iml_dma,&sc->rxq.free_desc_dma,&sc->rxq.used_desc_dma,&sc->rxq.stat_dma,
-        &sc->txq[IWX_DQA_CMD_QUEUE].desc_dma};
-    for(auto *d:boot) if(!d->cmd || d->cmd->getIOMemoryDescriptor()!=d->buffer ||
-        d->cmd->synchronize(kIODirectionInOut)!=kIOReturnSuccess) return EIO;
-    }
+    // The buffers are bidirectional allocations, but this operation publishes
+    // CPU-initialized bytes BEFORE device ownership. synchronize(Out|In) is
+    // rejected by IODMACommand; receive-side In belongs after completion.
+    err = bzSyncBootMemory(sc);
+    if (err) return err; // No context address or ROM doorbell on failure.
     iwx_dma_queue_publish_barrier();
     fDma5Published=true;fBzHardwareOwned=true;
     /* kick FW self load */
@@ -905,7 +904,8 @@ iwx_bz_port_read_firmware(struct iwx_softc *sc)
      */
     sc->sc_pcitag->setProperty("ItlwmFirmwareMldApi",
         !!isset(sc->sc_enabled_capa, IWX_UCODE_TLV_CAPA_MLD_API_SUPPORT));
-    sc->sc_pcitag->setProperty("ItlwmFirmwareMldAssociationImplemented", false);
+    sc->sc_pcitag->setProperty("ItlwmFirmwareMldAssociationImplemented", true); // Source implementation only.
+    sc->sc_pcitag->setProperty("KGP_BE200_MLD_HARDWARE_QUALIFIED", false);
 
 parse_out:
     if (err) {

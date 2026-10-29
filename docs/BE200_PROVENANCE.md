@@ -133,3 +133,48 @@ The first physical goal is boot/scan, one WPA2/CCMP join, IPv4/gateway/ARP and
 short source-bound TCP transfers both ways. Full Wi-Fi7/EHT/HE, MLO,6GHz, roaming,
 monitor mode, AWDL and power-cycle reliability are not qualified. Use the supplied
 manual installation/rollback guide and bounded stage collector. KGP alone tests.
+
+
+## P2 boot failure correction (29 October 2026)
+
+P1 commit 070d4b641dfd967d366af35bfcc953a0c759b931 was physically loaded
+(UUID 26148E5B-9D27-3DE2-BF02-3F9E2609BE22) but failed attach before a usable
+Wi-Fi interface. Original IORegistry enumerated 8086:272b, subsystem 8086:00f4,
+ARPT at PCI 163:0:0. The injected AX210 model string is not hardware identity.
+Legacy IO80211/Skywalk/AMFIPass were loaded. Provider retained firmware-context
+error EIO, pre-ROM IRQ capability snapshot and all eight boot-DMA allocations;
+no wait-ALIVE/parsed-ALIVE properties or interface child remained.
+
+The actual P1 pre-ROM loop passes kIODirectionInOut to synchronize(). Apple XNU
+f6217f891ac0bb64f3d375211650a4c1ff8ca1ea iokit/Kernel/IODMACommand.cpp rejects
+Out|In with kIOReturnBadArgument before checking preparation. P1 reduces this
+to EIO. This exact P1 context+Apple method failure is reproduced by the new host
+test. The public source is a pinned reference, not claimed exact source of the
+running xnu-12377.161.15.701.48 kernel. P1 did not retain the raw IOReturn; the
+runtime error plus source and reproduction locate the unsupported call, without
+claiming hardware-independent success of later stages.
+
+P2 publishes CPU-initialized boot bytes with synchronize(kIODirectionOut) for
+context, scratch, peripheral-info, IML, RX free/completion/status and command
+ring. These are bidirectional ALLOCATIONS; before the ROM doorbell the CPU is
+producer, so Out is the required copy. Completion-side In and all mapping,
+backing, preparation, final-reference/stop proofs and the full fence remain.
+The checked helper refuses missing/mismatched backing or failed sync; it records
+the exact boot region/index/reason and raw IOReturn. No address/ROM publication
+on failure. Diagnostics are boot-only, not per-packet registry work. Actual PCI
+configuration/MMIO identity is recorded separately from injected properties.
+The stale reference MLD-source-implemented=false metadata is corrected, alongside
+an explicit false hardware-qualified property; no runtime qualification implied.
+
+New host test executes entire P1 and P2 context startup bodies and the pinned
+Apple synchronize method with mocked allocation/walkAll/MMIO/provider. It checks
+initialization copy direction, fence/ownership-before-doorbell, all eight regions'
+missing/mismatched/unprepared/sync failures, partial allocation and arm/admission
+failures. The full original Apple source and APSL notice are kept as a test-only
+reference (tools/host_tests/reference/Apple-IODMACommand-f6217f891ac0.cpp), not linked
+into the Kext. The previous P1 suite did not execute this pre-ROM loop against
+the Apple option contract; its passing models did not establish this API usage.
+
+Physical P2 boot/ALIVE/IRQ/PNVM/NVM/scan/association/data and both DMA routes remain
+unverified. No firmware/API, allocator, ring geometry, packet path or admission
+policy is changed for this correction. All previously documented limits apply.

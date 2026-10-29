@@ -429,7 +429,7 @@ bool ItlIwx::dma5Select()
     if (selection) selection->release();
     if (!resolved) { boot5Mark(10, "device DMA policy unresolved; attach refused", 2); return false; }
     pci.pa_tag->setProperty("KGP_ZC5_DMA_MODE", mapped ? "mapped RX/TX" : "original Dexter RX/TX");
-    pci.pa_tag->setProperty("KGP_RX_EXPERIMENT", "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P1");
+    pci.pa_tag->setProperty("KGP_RX_EXPERIMENT", "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P2");
     boot5Mark(11, mapped ? "DMA routing completed: mapped" : "DMA routing completed: original Dexter");
     return true;
 }
@@ -2306,7 +2306,7 @@ bool ItlIwx::attach(IOPCIDevice *device)
     fBzDevice = device->configRead16(kIOPCIConfigVendorID)==0x8086 &&
         device->configRead16(kIOPCIConfigDeviceID)==0x272b;
     if(fBzDevice) { com.sc_device_family=IWX_DEVICE_FAMILY_BZ;
-        device->setProperty("KGP_BE200_CANDIDATE","BE200-GL92-PRIVATE-P1"); }
+        device->setProperty("KGP_BE200_CANDIDATE","BE200-GL92-PRIVATE-P2"); }
     pci.pa_tag = device;
     pci.workloop = getMainWorkLoop();
     const bool attached2G = iwx_attach(&com, &pci);
@@ -4494,7 +4494,7 @@ iwx_dma_contig_alloc(bus_dma_tag_t tag, struct iwx_dma_info *dma,
 
 // ZC26/ZC28 use ZC22 private cached CPU construction and three checked
 // inhibition-requested control backings (TFD, shared TB0/TB1 command, bytecount).
-// No separate ZC25 scratch allocation. Conservative InOut sync/qualification
+// No separate ZC25 scratch allocation. Checked backing/mapping qualification
 // unchanged; requested cache policy is not a measured hardware PAT state.
 int ItlIwx::iwx_tx_control_alloc(struct iwx_dma_info *dma, bus_size_t size,
                                bus_size_t alignment)
@@ -4616,7 +4616,7 @@ iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
     }
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 &&
         !pci.pa_tag->setProperty("KGP_RX_EXPERIMENT",
-            "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P1")) {
+            "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P2")) {
         err = ENOMEM; goto fail;
     }
     return 0;
@@ -16094,7 +16094,16 @@ iwx_attach(struct iwx_softc *sc, struct pci_attach_args *pa)
     sc->sc_xtal_latency = sc->sc_cfg_params->xtal_latency;
     sc->sc_tx_with_siso_diversity = sc->sc_cfg->tx_with_siso_diversity;
     sc->sc_uhb_supported = sc->sc_cfg->uhb_supported;
-    
+    if (bzDevice()) {
+        // Boot-only actual config/MMIO identity, not injected model strings.
+        pa->pa_tag->setProperty("KGP_BE200_HW_REV", sc->sc_hw_rev, 32);
+        pa->pa_tag->setProperty("KGP_BE200_HW_RF_ID", sc->sc_hw_rf_id, 32);
+        pa->pa_tag->setProperty("KGP_BE200_PCI_ID",
+            (uint32_t(device) << 16) | pa->pa_tag->configRead16(kIOPCIConfigVendorID), 32);
+        pa->pa_tag->setProperty("KGP_BE200_SUBSYSTEM_ID",
+            (uint32_t(subsystem_device) << 16) | subsystem_vendor, 32);
+    }
+
     if (!dma5Select()) return false;
     boot5Mark(20, "command/ring DMA allocation entered");
 

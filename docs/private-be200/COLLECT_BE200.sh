@@ -12,7 +12,7 @@ OUT="$(mktemp -d "$PARENT/${STAGE}_$(date +%Y%m%d_%H%M%S)_XXXXXX")" || exit 1
 /usr/bin/kmutil showloaded -v > "$OUT/LOADED.txt" 2>&1
 /usr/sbin/networksetup -listallhardwareports > "$OUT/HARDWARE_PORTS.txt" 2>&1
 /sbin/ifconfig -a > "$OUT/IFCONFIG.txt" 2>&1
-/usr/sbin/ioreg -p IOService -w0 > "$OUT/BINDING_TREE.txt" 2>&1
+/usr/sbin/ioreg -p IOService -w0 -l > "$OUT/BINDING_TREE.txt" 2>&1
 if [ -n "${IOREG_WIFI_SERVICE:-}" ]; then
     /usr/sbin/ioreg -a -r -n "$IOREG_WIFI_SERVICE" > "$OUT/IOREG.plist" 2> "$OUT/IOREG.err"
 else

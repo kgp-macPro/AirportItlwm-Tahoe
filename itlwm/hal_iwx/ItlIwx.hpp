@@ -753,6 +753,7 @@ public:
     kgp_bz::RxLedger fBzRx;
     uint64_t fBzStats[32] = {}, fBzWire[48] = {};
     int bzValidateFirmware();
+    int bzSyncBootMemory(struct iwx_softc *);
     void bzStoppedCleanup(struct iwx_softc *);
     int bzInterrupt(struct iwx_softc *);
     bool bzDevice() const { return fBzDevice; }
