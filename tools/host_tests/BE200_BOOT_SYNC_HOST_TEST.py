@@ -77,6 +77,7 @@ struct iwx_prph_scratch {iwx_prph_scratch_ctrl_cfg ctrl_cfg;iwx_context_info_dra
 struct iwx_context_info_gen3 {uint64_t prph_info_base_addr,prph_scratch_base_addr;uint32_t prph_scratch_size;uint64_t cr_head_idx_arr_base_addr,tr_tail_idx_arr_base_addr,cr_tail_idx_arr_base_addr,mtr_base_addr,mcr_base_addr;uint16_t mtr_size,mcr_size;};
 struct iwx_fw_sects{};
 struct Provider {std::map<std::string,uint64_t>numbers;std::map<std::string,std::string>strings;
+ void setProperty(const char*,const void*,unsigned){assert(false && "wrong property overload");}
  void setProperty(const char*k,const char*v){strings[k]=v;}void setProperty(const char*k,uint64_t v,unsigned){numbers[k]=v;}};
 struct iwx_softc {iwx_dma_info ctxt_info_dma,prph_scratch_dma,prph_info_dma,iml_dma;
  struct{iwx_dma_info free_desc_dma,used_desc_dma,stat_dma;unsigned count=512;}rxq;

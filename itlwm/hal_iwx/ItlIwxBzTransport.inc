@@ -238,6 +238,6 @@ int ItlIwx::bzSyncBootMemory(struct iwx_softc *sc)
     sc->sc_pcitag->setProperty("KGP_BE200_BOOT_SYNC_INDEX", 8U, 32);
     sc->sc_pcitag->setProperty("KGP_BE200_BOOT_SYNC_REGION", "complete");
     sc->sc_pcitag->setProperty("KGP_BE200_BOOT_SYNC_REASON", "synchronize-out");
-    sc->sc_pcitag->setProperty("KGP_BE200_BOOT_SYNC_RESULT", 0U, 32);
+    sc->sc_pcitag->setProperty("KGP_BE200_BOOT_SYNC_RESULT", static_cast<unsigned long long>(0), 32);
     return 0;
 }
