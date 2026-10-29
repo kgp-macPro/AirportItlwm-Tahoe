@@ -429,7 +429,7 @@ bool ItlIwx::dma5Select()
     if (selection) selection->release();
     if (!resolved) { boot5Mark(10, "device DMA policy unresolved; attach refused", 2); return false; }
     pci.pa_tag->setProperty("KGP_ZC5_DMA_MODE", mapped ? "mapped RX/TX" : "original Dexter RX/TX");
-    pci.pa_tag->setProperty("KGP_RX_EXPERIMENT", "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P5");
+    pci.pa_tag->setProperty("KGP_RX_EXPERIMENT", "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P6");
     boot5Mark(11, mapped ? "DMA routing completed: mapped" : "DMA routing completed: original Dexter");
     return true;
 }
@@ -2306,7 +2306,7 @@ bool ItlIwx::attach(IOPCIDevice *device)
     fBzDevice = device->configRead16(kIOPCIConfigVendorID)==0x8086 &&
         device->configRead16(kIOPCIConfigDeviceID)==0x272b;
     if(fBzDevice) { com.sc_device_family=IWX_DEVICE_FAMILY_BZ;
-        device->setProperty("KGP_BE200_CANDIDATE","BE200-GL92-PRIVATE-P5"); }
+        device->setProperty("KGP_BE200_CANDIDATE","BE200-GL92-PRIVATE-P6"); }
     pci.pa_tag = device;
     pci.workloop = getMainWorkLoop();
     const bool attached2G = iwx_attach(&com, &pci);
@@ -4616,7 +4616,7 @@ iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
     }
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 &&
         !pci.pa_tag->setProperty("KGP_RX_EXPERIMENT",
-            "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P5")) {
+            "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P6")) {
         err = ENOMEM; goto fail;
     }
     return 0;

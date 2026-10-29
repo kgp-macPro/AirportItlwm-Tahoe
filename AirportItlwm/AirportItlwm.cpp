@@ -30,6 +30,10 @@ IOCommandGate *_fCommandGate;
 bool AirportItlwm::init(OSDictionary *properties)
 {
     bool ret = super::init(properties);
+    currentStatus = 0;
+    fLinkStateHandoff = false;
+    fLinkStateCallbackSeen = false;
+    fLinkStateCallbackOK = false;
     awdlSyncEnable = true;
     power_state = 0;
     memset(geo_location_cc, 0, sizeof(geo_location_cc));
@@ -534,49 +538,103 @@ void AirportItlwm::stop(IOService *provider)
     releaseAll();
 }
 
+// P6: IO80211Interface arms its one-shot BSD LinkUp/Down event inside
+// setLinkState, then calls the controller's setLinkStatus. Publishing before
+// that transition drops the event; caching the status then suppresses its
+// callback. Keep the interface and controller halves on the same workloop gate.
 bool AirportItlwm::
-setLinkStatus(UInt32 status, const IONetworkMedium * activeMedium, UInt64 speed, OSData * data)
+setLinkStatus(UInt32 status, const IONetworkMedium *activeMedium, UInt64 speed, OSData *data)
 {
-    struct _ifnet *ifq = &fHalService->get80211Controller()->ic_ac.ac_if;
-    if (status == currentStatus) {
-        return true;
+    auto *loop = getWorkLoop();
+    if (!loop) return false;
+    if (!loop->inGate()) {
+        auto *gate = getCommandGate();
+        if (!gate) return false;
+        // Synchronous runAction: borrowed medium/data and this stack request
+        // remain valid until return. No asynchronous work or retained pointers.
+        LinkStatusRequest request = {status, activeMedium, speed, data, false};
+        const IOReturn result = gate->runAction(setLinkStatusGated, &request);
+        return result == kIOReturnSuccess && request.result;
     }
-    bool ret = super::setLinkStatus(status, activeMedium, speed, data);
-    currentStatus = status;
-    if (fNetIf) {
-        if (status & kIONetworkLinkActive) {
-#ifdef __PRIVATE_SPI__
-            ifq_start_pull(&ifq->if_snd);
-            fNetIf->startOutputThread();
-#endif
-            getCommandGate()->runAction(setLinkStateGated, (void *)kIO80211NetworkLinkUp, (void *)0);
-            fNetIf->setLinkQualityMetric(100);
-        } else if (!(status & kIONetworkLinkNoNetworkChange)) {
-#ifdef __PRIVATE_SPI__
-            ifq_stop_pull(&ifq->if_snd);
-            fNetIf->stopOutputThread();
-            fNetIf->flushOutputQueue();
-#endif
-            ifq_flush(&ifq->if_snd);
-            mq_purge(&fHalService->get80211Controller()->ic_mgtq);
-            getCommandGate()->runAction(setLinkStateGated, (void *)kIO80211NetworkLinkDown, (void *)fHalService->get80211Controller()->ic_deauth_reason);
-        }
-    }
-    return ret;
+    return setLinkStatusInGate(status, activeMedium, speed, data);
 }
 
 IOReturn AirportItlwm::
-setLinkStateGated(OSObject *target, void *arg0, void *arg1, void *arg2, void *arg3)
+setLinkStatusGated(OSObject *target, void *arg0, void *, void *, void *)
 {
-    AirportItlwm *that = OSDynamicCast(AirportItlwm, target);
-    IOReturn ret = that->getNetworkInterface()->setLinkState((IO80211LinkState)(uint64_t)arg0, (unsigned int)(uint64_t)arg1);
-    if (that->fAWDLInterface) {
-#if __IO80211_TARGET >= __MAC_13_0
-        that->fAWDLInterface->setEnabledBySystem(true);
-#endif
-        that->fAWDLInterface->setLinkState((IO80211LinkState)(uint64_t)arg0, (unsigned int)(uint64_t)arg1);
+    auto *that = OSDynamicCast(AirportItlwm, target);
+    auto *request = static_cast<LinkStatusRequest *>(arg0);
+    if (!that || !request) return kIOReturnBadArgument;
+    request->result = that->setLinkStatusInGate(request->status, request->medium,
+                                               request->speed, request->data);
+    return request->result ? kIOReturnSuccess : kIOReturnError;
+}
+
+bool AirportItlwm::
+setLinkStatusInGate(UInt32 status, const IONetworkMedium *activeMedium, UInt64 speed, OSData *data)
+{
+    if (!getWorkLoop() || !getWorkLoop()->inGate()) return false;
+    if (fLinkStateHandoff) {
+        // The framework has armed inputEvent before this synchronous callback.
+        // Do not recurse into setLinkState or repeat queue start/flush work.
+        fLinkStateCallbackSeen = true;
+        const bool result = super::setLinkStatus(status, activeMedium, speed, data);
+        fLinkStateCallbackOK = fLinkStateCallbackOK && result;
+        if (result) currentStatus = status;
+        return result;
     }
-    return ret;
+    if (status == currentStatus) return true;
+    if (!fNetIf || (!(status & kIONetworkLinkActive) &&
+                    (status & kIONetworkLinkNoNetworkChange))) {
+        // Preserve early/no-interface and wake-without-network-change behavior.
+        const bool result = super::setLinkStatus(status, activeMedium, speed, data);
+        if (result) currentStatus = status;
+        return result;
+    }
+    if (!fHalService) return false;
+    struct _ifnet *ifq = &fHalService->get80211Controller()->ic_ac.ac_if;
+    const bool active = (status & kIONetworkLinkActive) != 0;
+    const IO80211LinkState state = active ? kIO80211NetworkLinkUp : kIO80211NetworkLinkDown;
+    const unsigned reason = active ? 0 : fHalService->get80211Controller()->ic_deauth_reason;
+    if (active) {
+#ifdef __PRIVATE_SPI__
+        ifq_start_pull(&ifq->if_snd);
+        fNetIf->startOutputThread();
+#endif
+    } else {
+#ifdef __PRIVATE_SPI__
+        ifq_stop_pull(&ifq->if_snd);
+        fNetIf->stopOutputThread();
+        fNetIf->flushOutputQueue();
+#endif
+        ifq_flush(&ifq->if_snd);
+        mq_purge(&fHalService->get80211Controller()->ic_mgtq);
+    }
+    fLinkStateHandoff = true;
+    fLinkStateCallbackSeen = false;
+    fLinkStateCallbackOK = true;
+    const bool interfaceOK = fNetIf->setLinkState(state, reason);
+    fLinkStateHandoff = false;
+    // A framework-initiated transition can already be in setLinkState when it
+    // calls us: the nested same-state call returns without another callback.
+    // Only in that successful no-callback case publish here. Never retry a
+    // failed callback blindly, nor turn bool(true) into IOReturn(1).
+    bool published = fLinkStateCallbackSeen ? fLinkStateCallbackOK : false;
+    if (interfaceOK && !fLinkStateCallbackSeen) {
+        published = super::setLinkStatus(status, activeMedium, speed, data);
+        if (published) currentStatus = status;
+    }
+    const bool result = interfaceOK && published;
+    if (result) {
+        if (active) fNetIf->setLinkQualityMetric(100);
+        if (fAWDLInterface) {
+#if __IO80211_TARGET >= __MAC_13_0
+            fAWDLInterface->setEnabledBySystem(true);
+#endif
+            fAWDLInterface->setLinkState(state, reason);
+        }
+    }
+    return result;
 }
 
 void AirportItlwm::releaseAll()

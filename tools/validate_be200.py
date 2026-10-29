@@ -3,7 +3,7 @@
 from pathlib import Path
 import sys,subprocess,concurrent.futures,json,hashlib,os,datetime,importlib.util,plistlib,struct
 R=Path(__file__).resolve().parents[1];O=Path(sys.argv[1]);O.mkdir(parents=True,exist_ok=False)
-checks=[('BE200_CONNECTION_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_PNVM_COMPLETION_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_PNVM_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_BOOT_SYNC_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_TRANSPORT_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_LIFECYCLE_HOST_TEST',s)for s in ['address,undefined','thread']]
+checks=[('BE200_LINK_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_CONNECTION_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_PNVM_COMPLETION_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_PNVM_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_BOOT_SYNC_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_TRANSPORT_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_LIFECYCLE_HOST_TEST',s)for s in ['address,undefined','thread']]
 checks +=[(n,'address,undefined') for n in ['ZC16_COMMAND_HOST_TEST','ZC16_REORDER_HOST_TEST','ZC28_BATCH_HOST_TEST','ZC7_ADMISSION_HOST_TEST','ZC28_SERVICE_OBSERVER_HOST_TEST','ZC28_DRAIN_HOST_TEST','ZC16_LIFECYCLE_HOST_TEST','ZC28_RATE_UPDATE_HOST_TEST']]+[('ZC28_RX_DECODER_TEST',None),('BE200_JOIN_TOOL_TEST',None)]
 def run(v):
  n,san=v;cmd=[sys.executable,'-B',str(R/'tools/host_tests'/(n+'.py'))]+([san]if san else[]);p=O/(n+'-'+(san or 'python').replace(',','-')+'.log');env=dict(os.environ);env['PYTHONDONTWRITEBYTECODE']='1';env['ASAN_OPTIONS']='halt_on_error=1';env['UBSAN_OPTIONS']='halt_on_error=1'
@@ -46,9 +46,17 @@ for which in range(5):
 results.append({'test':'both collector syntax / actual decoder unknown,truncated,wrap,overwrite,missing-event,epoch fixtures','exit':0})
 # Source/data preservation boundaries, not a regex substitute for transport tests.
 G='/Applications/Xcode.app/Contents/Developer/usr/bin/git'
-unchanged=['AirportItlwm/AirportItlwm.cpp','itl80211/openbsd/sys/_ifq.cpp','itl80211/openbsd/sys/_ifq.h','tools/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh']
+unchanged=['itl80211/openbsd/sys/_ifq.cpp','itl80211/openbsd/sys/_ifq.h','tools/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh']
 for name in unchanged:assert (R/name).read_bytes()==subprocess.check_output([G,'show','483940988c502379fb6d3dcde885dca83f00b7aa:'+name],cwd=R)
-results.append({'test':'legacy Apple frontend / shared queue implementation / frozen runner unchanged','exit':0})
+# Only the audited link handoff + explicit initialization may differ in legacy frontend.
+front=(R/'AirportItlwm/AirportItlwm.cpp').read_text()
+old=subprocess.check_output([G,'show','483940988c502379fb6d3dcde885dca83f00b7aa:AirportItlwm/AirportItlwm.cpp'],cwd=R,text=True)
+a=front.index('// P6: IO80211Interface arms');b=front.index('\nvoid AirportItlwm::releaseAll()',a)
+c=old.index('bool AirportItlwm::\nsetLinkStatus(');d=old.index('\nvoid AirportItlwm::releaseAll()',c)
+init='    currentStatus = 0;\n    fLinkStateHandoff = false;\n    fLinkStateCallbackSeen = false;\n    fLinkStateCallbackOK = false;\n'
+assert front.count(init)==1
+assert (front[:a]+front[b:]).replace(init,'')==old[:c]+old[d:]
+results.append({'test':'legacy frontend byte-preserved except audited link handoff/init; shared queues/frozen runner unchanged','exit':0})
 files=subprocess.check_output([G,'ls-files','-z','--cached','--others','--exclude-standard'],cwd=R).split(b'\0');manifest={}
 for f in files:
  if not f:continue

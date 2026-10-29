@@ -1,0 +1,20 @@
+{
+  "provenance": "P5_OFFON_SUCCESS_20261029/runtime_20261029_232733, read-only captured after KGP manual OFF/ON/rejoin",
+  "loaded_uuid": "E52DFFDF-3CB3-3D6A-8C57-004F22FCB75B",
+  "boot_uuid": "0E7F32FA-2B96-444C-9A36-7909E586789A",
+  "mode": 2,
+  "generation": 6,
+  "reset_epoch": 4,
+  "fault": 0,
+  "error": 0,
+  "link_active": true,
+  "ipv4": "192.168.178.192",
+  "netmask": "255.255.255.0",
+  "router": "192.168.178.1",
+  "dhcp_type": "ACK",
+  "DHCP_original_sha256": "439824b07dd7f44c352bed3c014409bc281a6742f69d67e2a02cd667dea8b3a7",
+  "configd_link_active_time": "2026-10-29T23:21:40.754+01:00",
+  "configd_bound_time": "2026-10-29T23:21:43.163+01:00",
+  "primary_interface": "en0",
+  "hardware_limit": "DHCP control exchange established, not general Wi-Fi Internet/bidirectional throughput. Same boot but different driver lifetime. P6 not tested."
+}

@@ -90,7 +90,15 @@ public:
                                UInt64                  speed        = 0,
                                OSData *                data         = 0) override;
     
-    static IOReturn setLinkStateGated(OSObject *target, void *arg0, void *arg1, void *arg2, void *arg3);
+    struct LinkStatusRequest {
+        UInt32 status;
+        const IONetworkMedium *medium;
+        UInt64 speed;
+        OSData *data;
+        bool result;
+    };
+    static IOReturn setLinkStatusGated(OSObject *target, void *arg0, void *arg1, void *arg2, void *arg3);
+    bool setLinkStatusInGate(UInt32 status, const IONetworkMedium *medium, UInt64 speed, OSData *data);
     
 #ifdef __PRIVATE_SPI__
     virtual IOReturn outputStart(IONetworkInterface *interface, IOOptionBits options) override;
@@ -268,6 +276,10 @@ public:
     u_int32_t current_authtype_upper;
     UInt64 currentSpeed;
     UInt32 currentStatus;
+    // Gate-owned, synchronous primary-interface transition only; no DMA lease.
+    bool fLinkStateHandoff;
+    bool fLinkStateCallbackSeen;
+    bool fLinkStateCallbackOK;
     bool disassocIsVoluntary;
     char geo_location_cc[3];
     

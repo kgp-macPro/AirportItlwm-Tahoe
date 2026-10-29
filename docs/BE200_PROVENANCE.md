@@ -322,3 +322,27 @@ publish AUTH_READY. Actual Linux TX_RSPv7 layout and no-reclaim contract supply
 expectations. P4 successful boot,Out/fullfence/PNVM and existing-device checks are
 retained. Passing offline tests cannot establish P5 association/traffic or safety
 on real hardware. P5 is private,unqualified;KGP alone installs/reboots/tests.
+
+
+## P6 frontend link-event handoff (29 October 2026)
+
+Direct baseline complete P5b9f300720eccc1001777c0619d6da8f4753eaeab.
+Production change in AirportItlwm::setLinkStatus/.hpp: interface transition first,
+guarded synchronous framework callback publishes to IONetworkController, cache
+updated only on success. Existing recursive workloop gate, object references,
+bool/IOReturn propagation. No provider/BSD names in new Kext logic. No BE200
+transport/DMA/boot/PNVM/FW/SDK/key layout change; only P6 identity strings in HAL.
+Source/binary rationale and exact ranges: docs/private-be200/P6_LINK_HANDOFF.md,
+UUID-matched IO80211FamilyLegacy disassembly/provenance in phaseP6 evidence.
+No Apple implementation body copied: function ordering inferred from exact binary
+and SDK declarations, then independently implemented with existing class APIs.
+Other attribution/license notices and pinned dependencies remain unchanged.
+
+P5 original attempt configd LinkFALSE/noIPv4; after KGP manual OFF/ON same P5/boot
+has LinkTRUE and DHCP ACK/192.168.178.192 (different generation/reset lifetime).
+Supports, but does not directly trace, the unconsumed one-shot event mechanism.
+Do not call P6 hardware-qualified from P5's successful later DHCP exchange.
+Host tests extract actual old/new frontend functions, use explicitly reconstructed
+framework mocks and saved hardware properties separately. No physical performance
+or sleep/wake claim. Targeted collector only checks chosen parameters, rejects bad
+binding and excludes AWDL/P2P; auto-discovery draft is not a build prerequisite.
