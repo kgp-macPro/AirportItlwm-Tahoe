@@ -15852,11 +15852,15 @@ iwx_attach_hook(struct device *self)
 bool ItlIwx::
 intrFilter(OSObject *object, IOFilterInterruptEventSource *src)
 {
+    // The provider source exists before DMA policy/GL admission. Never let
+    // an early BZ edge enter the legacy filter solely because leases are not ready.
+    auto *bz=static_cast<ItlIwx *>(object);
+    if(bz->bzDevice()) {__atomic_fetch_add(&bz->fBzStats[0],1ULL,__ATOMIC_RELAXED);return true;}
+
     // BOOTFIX1 DEXTER ROUTE intrFilter: original body in its own label scope.
     if (!static_cast<ItlIwx *>(object)->dma5Leased()) return dexterOriginal_intrFilter(object, src);
 
     ItlIwx *that = (ItlIwx*)object;
-    if(that->bzDevice()) { __atomic_fetch_add(&that->fBzStats[0],1ULL,__ATOMIC_RELAXED);return true; }
     IWX_WRITE(&that->com, IWX_CSR_INT_MASK, 0);
     that->alive2FEvent(0);
     return true;
@@ -15966,6 +15970,12 @@ iwx_attach(struct iwx_softc *sc, struct pci_attach_args *pa)
         return false;
     }
     fBoot5InterruptAdded = true;
+    if(bzDevice()) {
+        IWX_WRITE(sc,IWX_CSR_MSIX_FH_INT_MASK_AD,0xffffffffU);
+        IWX_WRITE(sc,IWX_CSR_MSIX_HW_INT_MASK_AD,0xffffffffU);
+        IWX_WRITE(sc,IWX_CSR_MSIX_FH_INT_CAUSES_AD,0xffffffffU);
+        IWX_WRITE(sc,IWX_CSR_MSIX_HW_INT_CAUSES_AD,0xffffffffU);
+    }
     sc->sc_ih->enable();
     if(bzDevice()) {
         int cap=0;if(!pci_get_capability(sc->sc_pct,sc->sc_pcitag,PCI_CAP_MSIX,&cap,nullptr) ||

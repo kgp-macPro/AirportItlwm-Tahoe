@@ -5,10 +5,10 @@ No firmware, actual IOKit mapper, cache attributes or physical Wi-Fi are simulat
 from pathlib import Path
 import re,subprocess,tempfile,sys,json
 R=Path(__file__).resolve().parents[2]
-s=(R/'itlwm/hal_iwx/ItlIwxBzTransport.inc').read_text()
+s=(R/'itlwm/hal_iwx/ItlIwxBzTransport.inc').read_text()+(R/'itlwm/hal_iwx/ItlIwx.cpp').read_text()
 def fn(n):
  m=re.sub(r'//[^\n]*|/\*.*?\*/|"(?:\\.|[^"\\])*"',lambda x:' '*len(x[0]),s,flags=re.S)
- x=re.search(r'(?:void|bool|int)\s+ItlIwx::'+n+r'\(',m);assert x,n
+ x=re.search(r'(?:void|bool|int)\s+ItlIwx::\s*'+n+r'\(',m);assert x,n
  a=m.index('{',x.end());b=a+1;d=1
  while d:d+=(m[b]=='{')-(m[b]=='}');b+=1
  return s[x.start():b]
@@ -22,11 +22,12 @@ pre=r'''
 #include <cerrno>
 #include "itlwm/hal_iwx/ItlIwxBzContracts.hpp"
 using IOReturn=int;constexpr int kIOReturnSuccess=0,kIODirectionOut=2,kIODirectionIn=1,IWX_RBUF_SIZE=4096;
+constexpr unsigned IWX_CSR_INT_MASK=8;
 constexpr unsigned IWX_CSR_GP_CNTRL=0,IWX_CSR_GP_CNTRL_REG_FLAG_BUS_MASTER_DISABLE_REQ=1U<<29;
 constexpr unsigned IWX_HBUS_TARG_WRPTR=0x460;
 #define IWX_HBUS_TARG_WRPTR_RX_Q(q) (0x80000000U | ((q)<<16))
-#define IWX_READ(sc,reg) (this->mmioRead())
-#define IWX_WRITE(sc,reg,v) (this->mmioWrite(reg,v))
+#define IWX_READ(sc,reg) ((sc)->owner->mmioRead())
+#define IWX_WRITE(sc,reg,v) ((sc)->owner->mmioWrite(reg,v))
 #define IWX_SETBITS(sc,reg,v) (this->requested=true)
 #define DELAY(x) ((void)0)
 #define htole16(x) (x)
@@ -39,13 +40,20 @@ struct Data {unsigned slot=0;};
 struct iwx_rx_ring {DMA free_desc_dma,used_desc_dma,stat_dma;unsigned cur=0,write=0;void*stat=nullptr;Data data[512];};
 struct mbuf_list {unsigned count=0;};
 #define MBUF_LIST_INITIALIZER() {}
-struct iwx_softc {uint32_t sc_fh_mask=~0U,sc_hw_mask=~0U,sc_flags=0;unsigned init_task=0;unsigned sc_generation=1;iwx_rx_ring rxq;struct{unsigned deliveries=0;}sc_ic;};
+struct ItlIwx;
+struct iwx_softc {ItlIwx*owner=nullptr;uint32_t sc_fh_mask=~0U,sc_hw_mask=~0U,sc_flags=0;unsigned init_task=0;unsigned sc_generation=1;iwx_rx_ring rxq;struct{unsigned deliveries=0;}sc_ic;};
 struct KgpRxZcPool {enum State {Posted,Complete};struct Entry {State state=Posted;Command*command=nullptr;void*memory=nullptr;uint64_t address=0;}entry[512];};
 void *systq=nullptr;static void task_add(void*,unsigned*p){++*p;}
 static std::function<void()> onInput;
 static void if_input(void *p,mbuf_list*m){if(onInput){auto f=onInput;onInput={};f();}m->count=0;}
 struct Loop {bool held=true;bool inGate(){return held;}};
+struct ItlIwx;using OSObject=ItlIwx;struct IOFilterInterruptEventSource{};
 struct ItlIwx {
+ bool fBzAdmitted=true,fDma5Selected=true,isBz=true;unsigned nativeFilters=0;
+ bool bzDevice(){return isBz;}bool dma5Leased(){return fBzAdmitted&&fDma5Selected;}
+ static bool intrFilter(OSObject*,IOFilterInterruptEventSource*);
+ static bool dexterOriginal_intrFilter(OSObject*p,IOFilterInterruptEventSource*){++p->nativeFilters;return false;}
+ void alive2FEvent(unsigned){}
  iwx_softc com;Loop loop;uint32_t fBzFault=0,fBzError=0,fPc1Fault=0,fPc1ResetEpoch=1;
  bool fBzHardwareOwned=false,fPc1LastMaster=false,fPc1Suspended=false,fRxZcRunning=true;
  unsigned fPc1TerminalEpoch=0,fRxZcGeneration=1,fRxZcEpoch=1;
@@ -66,7 +74,7 @@ struct ItlIwx {
  bool rxZcRepost(unsigned){return replace;}
  bool bzMasterStop(iwx_softc*);void bzResetRx(iwx_softc*);void bzUpdateRxDesc(iwx_softc*,iwx_rx_ring*,unsigned,unsigned);
  void bzPublishRx(iwx_softc*);void bzNotif(iwx_softc*);
- ItlIwx(){auto&r=com.rxq;r.free_desc_dma={descriptors,sizeof(descriptors),&commands[512]};
+ ItlIwx(){com.owner=this;auto&r=com.rxq;r.free_desc_dma={descriptors,sizeof(descriptors),&commands[512]};
   r.used_desc_dma={completions,sizeof(completions),&commands[513]};r.stat_dma={&producer,sizeof(producer),&commands[514]};r.stat=&producer;
   for(unsigned i=0;i<512;++i){r.data[i].slot=i;fRxZcSlot[i]=i;commands[i].backing=&commands[i];pool.entry[i]={KgpRxZcPool::Posted,&commands[i],&commands[i],uint64_t(0x100000+i*4096)};}
  }
@@ -149,12 +157,16 @@ int main(){unsigned tests=0;
  {ItlIwx t;t.reads={0,IWX_MSIX_HW_INT_CAUSES_REG_RF_KILL};t.bzInterrupt(&t.com);assert(t.rfkills==1&&t.com.init_task==1&&t.rearms==1);++tests;}
  {ItlIwx t;t.reads={0xffffffffU,0};t.bzInterrupt(&t.com);assert(t.fBzFault&&!t.rearms&&!t.accesses);++tests;}
  {ItlIwx t;t.fPc1Fault=1;t.bzInterrupt(&t.com);assert(t.readIndex==0&&!t.rearms&&!t.accesses);++tests;}
+
+ {ItlIwx t;t.fBzAdmitted=t.fDma5Selected=false;assert(ItlIwx::intrFilter(&t,nullptr));
+  assert(!t.writes&&!t.nativeFilters&&t.fBzStats[0]==1);t.bzInterrupt(&t.com);assert(!t.readIndex&&!t.writes);++tests;}
+ {ItlIwx t;t.isBz=false;t.fBzAdmitted=t.fDma5Selected=false;assert(!ItlIwx::intrFilter(&t,nullptr));assert(t.nativeFilters==1&&!t.writes);++tests;}
  std::cout<<"PASS "<<tests<<" production-contract/transport scenarios; 8 nonsequential hardware IDs plus 40000 wrapped ledger returns. Mock DMA/MMIO; NOT hardware qualification.\n";
 }
 '''
 san=sys.argv[1] if len(sys.argv)>1 else 'address,undefined'
 with tempfile.TemporaryDirectory(prefix='be200-transport-') as d:
- p=Path(d);source=pre+'\n'.join(fn(n) for n in ['bzMasterStop','bzResetRx','bzUpdateRxDesc','bzPublishRx','bzNotif','bzInterrupt'])+test
+ p=Path(d);source=pre+'\n'.join(fn(n) for n in ['bzMasterStop','bzResetRx','bzUpdateRxDesc','bzPublishRx','bzNotif','bzInterrupt','intrFilter'])+test
  (p/'test.cpp').write_text(source)
  cmd=['/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++','-isysroot','/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk','-std=c++17','-O1','-g','-fsanitize='+san,'-I'+str(R),str(p/'test.cpp'),'-o',str(p/'test')]
  print('COMMAND',repr(cmd),flush=True);subprocess.run(cmd,check=True);subprocess.run([str(p/'test')],check=True,timeout=60)

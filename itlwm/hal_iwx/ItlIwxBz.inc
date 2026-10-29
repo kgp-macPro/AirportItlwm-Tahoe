@@ -1723,6 +1723,7 @@ iwx_bz_port_conf_msix_hw(struct iwx_softc *sc, int stopped)
                 IWX_MSIX_HW_INT_CAUSES_REG_FH_TX |
                 IWX_MSIX_HW_INT_CAUSES_REG_HW_ERR |
                 IWX_MSIX_HW_INT_CAUSES_REG_HAP);
+    IWX_WRITE(sc,IWX_CSR_MSIX_AUTOMASK_ST_AD,1U); // clear any pre-admission masked edge
     return 0;
 }
 

@@ -170,7 +170,8 @@ int ItlIwx::bzValidateFirmware()
 int ItlIwx::bzInterrupt(struct iwx_softc *sc)
 {
     __atomic_fetch_add(&fBzStats[1],1ULL,__ATOMIC_RELAXED);
-    if(!getMainWorkLoop()->inGate() || fBzFault || __atomic_load_n(&fPc1Fault,__ATOMIC_ACQUIRE)) return 0;
+    if(!getMainWorkLoop()->inGate() || !fBzAdmitted || !fDma5Selected ||
+       fBzFault || __atomic_load_n(&fPc1Fault,__ATOMIC_ACQUIRE)) return 0;
     uint32_t fh=IWX_READ(sc,IWX_CSR_MSIX_FH_INT_CAUSES_AD);
     uint32_t hw=IWX_READ(sc,IWX_CSR_MSIX_HW_INT_CAUSES_AD);
     if(!kgp_bz::ioValid(fh)||!kgp_bz::ioValid(hw)) {bzFail(16,ENXIO);return 0;}

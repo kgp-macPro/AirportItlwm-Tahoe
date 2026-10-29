@@ -860,7 +860,7 @@ public:
     void  iwx_bz_port_nic_umac_error(struct iwx_softc *sc);
     void  iwx_nic_lmac_error(struct iwx_softc *sc);
     void  iwx_bz_port_nic_error(struct iwx_softc *sc);
-    int  iwx_bz_port_activate(struct iwx_softc *sc, int act);
+
 };
 
 #endif

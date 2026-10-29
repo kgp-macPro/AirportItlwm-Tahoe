@@ -52,7 +52,10 @@ non-integrated configuration. BE201 and family-number-based automatic admission
 are excluded. Existing-device routing/personalities and firmware stay intact.
 The Tahoe target retains `__IO80211_TARGET=__MAC_13_0` legacy Apple frontend.
 
-Genuine provider MSI-X configuration precedes vector resolution. Setup, discovery
+Genuine provider MSI-X configuration precedes vector resolution.
+Causes are masked/cleared before enabling the provider source. The filter selects
+BZ before lease admission, and pre-admission actions do not touch uninitialized
+rings/MMIO; IVAR configuration clears any resulting single-vector auto-mask. Setup, discovery
 and enabled PCI MSI-X capability are checked. IOKit owns vector allocation;
 the driver removes/disables its filtered source on partial failure/detach and
 never manually frees OS-owned table storage. Cause banks/masks/IVAR and rearm
