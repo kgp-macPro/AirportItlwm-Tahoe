@@ -896,11 +896,10 @@ iwx_bz_port_read_firmware(struct iwx_softc *sc)
     XYLog("firmware parse done\n");
 
     /*
-     * MLD-API firmware uses MAC_CONFIG/LINK_CONFIG/STA_CONFIG for the
-     * authentication stage (iwx_mld_auth). The run stage, keys and block
-     * ack are not implemented yet, so association cannot complete and the
-     * property below stays false. Publish this before hardware boot, on
-     * the normal firmware-load thread rather than in an interrupt handler.
+     * MLD-API firmware uses MAC_CONFIG/LINK_CONFIG/STA_CONFIG. The
+     * authentication/run/key/BA code is present in this private port.
+     * This is source implementation metadata, not physical qualification.
+     * Publish on the firmware-load thread, never in an interrupt handler.
      */
     sc->sc_pcitag->setProperty("ItlwmFirmwareMldApi",
         !!isset(sc->sc_enabled_capa, IWX_UCODE_TLV_CAPA_MLD_API_SUPPORT));
@@ -1183,13 +1182,10 @@ iwx_bz_port_read_pnvm(struct iwx_softc *sc)
     int err = 0;
     OSData *fwData = NULL;
     struct iwx_fw_info *fw = &sc->sc_fw;
-    char fwname_copy[64];
-    char pnvm_name[64];
+    const char *pnvm_name = NULL;
     struct iwx_ucode_tlv *tlv;
     uint8_t *data;
     size_t len;
-    size_t prefix_len;
-    const char *find;
     /* Probe timers; declared up front so the early goto out does not cross
      * an initialization (C++ forbids jumps into a variable's scope). */
     uint64_t probe_start = iwx_boot_time_ns();
@@ -1203,23 +1199,12 @@ iwx_bz_port_read_pnvm(struct iwx_softc *sc)
     sc->sc_pcitag->setProperty("ItlwmPnvmFailStep", static_cast<UInt32>(0), 32);
     if (fw->pnvm_rawdata != NULL)
         iwx_pnvm_free(fw);
-    find = strrchr(sc->sc_fwname, '-');
-    if (!find) {
+    pnvm_name = kgp_bz::pnvmForFirmware(sc->sc_fwname);
+    if (!pnvm_name) {
         err = EINVAL;
         sc->sc_pcitag->setProperty("ItlwmPnvmFailStep", static_cast<UInt32>(1), 32);
         goto out;
     }
-    prefix_len = (size_t)(find - sc->sc_fwname);
-    if (prefix_len == 0 || prefix_len + sizeof(".pnvm") > sizeof(pnvm_name)) {
-        err = EINVAL;
-        sc->sc_pcitag->setProperty("ItlwmPnvmFailStep", static_cast<UInt32>(1), 32);
-        goto out;
-    }
-    memcpy(fwname_copy, sc->sc_fwname, prefix_len);
-    fwname_copy[prefix_len] = '\0';
-
-    snprintf(pnvm_name, sizeof(pnvm_name), "%s.pnvm",
-         fwname_copy);
     sc->sc_pcitag->setProperty("ItlwmPnvmName", pnvm_name);
     sc->sc_pcitag->setProperty("ItlwmPnvmNameTimeNs",
         iwx_boot_time_ns() - probe_start, 64);
@@ -1242,6 +1227,11 @@ iwx_bz_port_read_pnvm(struct iwx_softc *sc)
         static_cast<UInt32>(fwData->getLength()), 32);
 
     /* Probe step 2: zlib inflate. Buffer is compressed length * 20. */
+    if (fwData->getLength() > UINT32_MAX / 20U) {
+        err = EINVAL;
+        sc->sc_pcitag->setProperty("ItlwmPnvmFailStep", static_cast<UInt32>(3), 32);
+        goto out;
+    }
     fw->pnvm_rawsize = fwData->getLength() * 20;
     fw->pnvm_rawdata = malloc(fw->pnvm_rawsize, 1, 1);
     if (fw->pnvm_rawdata == NULL) {
@@ -1274,6 +1264,9 @@ iwx_bz_port_read_pnvm(struct iwx_softc *sc)
     parse_start = iwx_boot_time_ns();
     data = (uint8_t *)fw->pnvm_rawdata;
     len = fw->pnvm_rawsize;
+    // Validate the complete envelope before any typed SKU/section access.
+    if (!kgp_bz::validTlvs(data, len)) { err = EINVAL; goto out; }
+    err = ENOENT; // No matching SKU/section is never successful initialization.
 
     while (len >= sizeof(*tlv)) {
         uint32_t tlv_len, tlv_type;
@@ -1292,6 +1285,7 @@ iwx_bz_port_read_pnvm(struct iwx_softc *sc)
         }
 
         if (tlv_type == IWX_UCODE_TLV_PNVM_SKU) {
+            if (tlv_len != sizeof(struct iwx_sku_id)) { err = EINVAL; goto out; }
             struct iwx_sku_id *sku_id =
                 (struct iwx_sku_id *)(data + sizeof(*tlv));
 
@@ -1331,7 +1325,7 @@ out:
     if (err && fw->pnvm_rawdata != NULL)
         iwx_pnvm_free(fw);
 
-    return err;
+    return err < 0 ? -err : err;
 }
 
 int ItlIwx::
@@ -2683,6 +2677,16 @@ iwx_bz_port_load_firmware(struct iwx_softc *sc)
     sc->sc_pcitag->setProperty("ItlwmFirmwareAliveInterrupt", sc->sc_uc.uc_intr, 32);
     sc->sc_pcitag->setProperty("ItlwmFirmwareAliveValid", sc->sc_uc.uc_ok, 32);
     if (sc->sc_device_family == IWX_DEVICE_FAMILY_BZ) {
+        // Actual private transport counters; legacy reference boot counters
+        // below do not observe bzInterrupt/bzNotif. Boot-thread export only.
+        sc->sc_pcitag->setProperty("KGP_BE200_INIT_FILTER_COUNT",
+            __atomic_load_n(&fBzStats[0], __ATOMIC_RELAXED), 64);
+        sc->sc_pcitag->setProperty("KGP_BE200_INIT_ACTION_COUNT", fBzStats[1], 64);
+        sc->sc_pcitag->setProperty("KGP_BE200_INIT_RX_CLAIMS", fBzStats[7], 64);
+        sc->sc_pcitag->setProperty("KGP_BE200_INIT_ALIVE_COUNT", fBzStats[8], 64);
+        sc->sc_pcitag->setProperty("KGP_BE200_ALIVE_SKU0", sc->sku_id[0], 32);
+        sc->sc_pcitag->setProperty("KGP_BE200_ALIVE_SKU1", sc->sku_id[1], 32);
+        sc->sc_pcitag->setProperty("KGP_BE200_ALIVE_SKU2", sc->sku_id[2], 32);
         /* uc_intr is a parsed firmware message, not the hardware ALIVE IRQ. */
         sc->sc_pcitag->setProperty("ItlwmBootParsedAlive", sc->sc_uc.uc_intr, 32);
         sc->sc_pcitag->setProperty("ItlwmBootMsixMode", sc->sc_msix, 32);

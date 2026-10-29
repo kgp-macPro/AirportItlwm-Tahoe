@@ -6,6 +6,16 @@
 #include <stdint.h>
 #include <stddef.h>
 namespace kgp_bz {
+// The private GL92 baseline is an explicit firmware/PNVM pair. Do not use
+// the compatibility strrchr macro (it returns AFTER the last delimiter).
+constexpr char FirmwareName[] = "iwlwifi-gl-c0-fm-c0-92.ucode";
+constexpr char PnvmName[] = "iwlwifi-gl-c0-fm-c0.pnvm";
+inline const char *pnvmForFirmware(const char *name) {
+    if (!name) return nullptr;
+    for (size_t i=0; i<sizeof(FirmwareName); ++i)
+        if (name[i]!=FirmwareName[i]) return nullptr;
+    return PnvmName;
+}
 constexpr unsigned RxCount = 512; // One coherent 512-entry Gen3 CB, log2=9.
 constexpr unsigned CompletionBytes = 4, TransferBytes = 16, RxBytes = 4096;
 constexpr uint32_t BusMasterDisabled = 1U << 28;

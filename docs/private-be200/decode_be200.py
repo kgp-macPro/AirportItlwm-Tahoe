@@ -14,7 +14,7 @@ def decode(data):
                 for k in ['vendor-id','device-id','subsystem-vendor-id','subsystem-id','revision-id']:
                     value=n.get(k)
                     if isinstance(value,bytes) and len(value)<=8:pci[k]='0x'+format(int.from_bytes(value,'little'),'04x')
-                properties={k:v for k,v in n.items() if (k.startswith('KGP_BE200_') or k.startswith('ItlwmBoot') or k.startswith('ItlwmMld')) and isinstance(v,(str,int,bool))}
+                properties={k:v for k,v in n.items() if (k.startswith('KGP_BE200_') or k.startswith('ItlwmBoot') or k.startswith('ItlwmMld') or k.startswith('ItlwmPnvm') or k.startswith('ItlwmFirmware')) and isinstance(v,(str,int,bool))}
                 providers.append({'node':n.get('IORegistryEntryName'),'location':n.get('IORegistryEntryLocation'),'pci_identity':pci,'properties':properties,'note':'Boot-boundary metadata, not proof of successful attach or working IRQs. Injected model strings are not hardware identity.'})
             raw=n.get('KGP_BE200_TRANSPORT')
             if isinstance(raw,bytes):

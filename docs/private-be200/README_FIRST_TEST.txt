@@ -1,9 +1,10 @@
-PRIVATE BE200 GL92 P2 — FIRST HARDWARE TEST (not a performance qualification)
+PRIVATE BE200 GL92 P3 — FIRST HARDWARE TEST (not a performance qualification)
 
-STATUS: P2 experimental; not installed/loaded or physically tested by Codex.
-P1 physically failed firmware-context before a usable Wi-Fi interface. Its
-original candidate and captured evidence are retained separately. P2 corrects
-an invalid pre-ROM IODMACommand synchronization option, not a proved Wi-Fi fix.
+STATUS: P3 experimental; not installed/loaded or physically tested by Codex.
+P1 failed pre-ROM; P2 passed boot synchronization and parsed valid ALIVE,then
+failed PNVM resource lookup due to a wrong filename. P3 corrects that explicit
+firmware/PNVM pairing. All previous candidates/evidence remain preserved.
+This remains an experimental first-infrastructure build,not a proved Wi-Fi fix.
 Initial target: discrete Intel 8086:272B, GL-C0/FM-C0. BE201 is not admitted.
 Single-link 2.4/5GHz infrastructure, legacy Ventura frontend on the established
 Tahoe framework environment. No claim of 802.11be, EHT/HE, MLO, 6GHz, AWDL,
@@ -67,6 +68,11 @@ How the evidence distinguishes failures:
   the region and raw IOReturn. LAST_FAILURE32 identifies sync/backing failure.
 - ROM/IML/ALIVE stage/error: firmware loading, hardware identity or boot transport.
 - Parsed ALIVE with poll hits but no filter/action: do not claim working IRQs.
+- ItlwmPnvmName must be iwlwifi-gl-c0-fm-c0.pnvm. DescFound/InflateOk/HwMatch,
+  FailStep/ReadError/NotifyStatus distinguish lookup,parse,PNVM completion and NVM.
+- KGP_BE200_INIT_* are actual private lifetime IRQ/RX/ALIVE counters; the inherited
+  ItlwmBootIrq* fields do not observe every private path. ALIVE_SKU0/1/2 is the
+  parsed firmware SKU,not a card label. Neither counter proves peer traffic.
 - PNVM/NVM timeout/status: exact SKU/payload/API or command/notification delivery.
 - Scan version/channels/completion plus RX counters: scan request vs result path.
 - MLD step/error and submitted-key count: auth/link/station/key transaction;

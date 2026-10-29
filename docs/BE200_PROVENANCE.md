@@ -178,3 +178,41 @@ the Apple option contract; its passing models did not establish this API usage.
 Physical P2 boot/ALIVE/IRQ/PNVM/NVM/scan/association/data and both DMA routes remain
 unverified. No firmware/API, allocator, ring geometry, packet path or admission
 policy is changed for this correction. All previously documented limits apply.
+
+
+## P3 PNVM resource correction (29 October 2026)
+
+P2 was physically loaded with UUID69BF7B25-76D5-33B7-B072-F539583CAD8C.
+Its boot synchronized all8 regions (complete/rawIOReturn0),started ROM and parsed
+ALIVE6 with valid status. The P1 API correction therefore passed on this hardware.
+It then failed at PNVM resource lookup:ItlwmPnvmName=iwlwifi-gl-c0-fm-c0-.pnvm,
+DescFound0,FailStep2,ReadError22,stagehal:pnvm-load. PNVM doorbell/completion,NVM
+and a usable network interface were not reached. Original boot data preserved.
+
+The cause is a concrete compatibility interaction:itl80211/linux/kernel.h maps
+strrchr to reverse_strchr,which returns AFTER the delimiter,unlike standard C.
+The imported PNVM loader assumed standard semantics and retained one extra '-'.
+The existing AX210 PNVM function compensates with -1; it is unchanged. P3 uses
+an explicit FirmwareName/PnvmName pair in ItlIwxBzContracts.hpp for our sole
+selected source baseline,GL-C0/FM-C0 API92. Unknown names are refused,not guessed.
+Firmware/PNVM bytes,API versions,allocation/mapping,lifetime/fences,IRQ policy,
+packet and frontend paths are unchanged. The PNVM envelope/SKU bounds are checked
+before typed access; missing SKU returns an error,not apparent parse success.
+All errors normalize to positive driver errno while DMA retention stays intact.
+
+The added test runs the actual P2/P3 resource loader,actual compatibility helper,
+actual getFWDescByName and zlib routine,actual section parser and PNVM publication
+routine against the complete embedded payload and all16 source SKUs. DMA,wait,
+MMIO and OSData KPIs are mocks:descriptor/chunk bytes and failure closure can be
+checked offline,but firmware PNVM acceptance cannot. Original notices remain.
+
+P2's legacy ItlwmBootIrq* zero counters do not count our private bzInterrupt/
+bzNotif path and do not prove no interrupts. P3 exports actual lifetime filter/
+action/RX/ALIVE counters and ALIVE SKU on the boot thread after the wait. No hot-
+path allocation/print/registry export is added. Decoder includes PNVM and firmware
+properties even if attach fails before watchdog/interface publication. Source
+implementation metadata is kept distinct from hardware qualification.
+
+P3 hardware PNVM acceptance,NVM,scan,association,keys,DHCP/data,both DMA routes and
+lifecycle remain untested. P2's partial boot success is not inherited runtime
+qualification for P3 or evidence of functional BE200 infrastructure Wi-Fi.
