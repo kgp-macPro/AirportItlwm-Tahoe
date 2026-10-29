@@ -47,6 +47,7 @@ void ieee80211_begin_scan(_ifnet*p){assert(p->if_flags&IFF_RUNNING);++scans;}
 void ieee80211_new_state(IC*,int,int){++monitorRuns;}
 void net80211_ifstats(IC*){}
 struct ItlIwx:Hal{
+ bool bzDevice(){return false;}int iwx_bz_port_activate(iwx_softc*,int){assert(false);return -1;}
  iwx_softc com;Gate*loop;unsigned fPc1Suspended=0,fPc1Fault=0,epoch=1;bool paused=true,closed=false,hwReady=true;int resumeError=0;unsigned stops=0,resumes=0,arms=0;
  explicit ItlIwx(Gate*g):loop(g){}
  IC*get80211Controller(){return &com.sc_ic;}

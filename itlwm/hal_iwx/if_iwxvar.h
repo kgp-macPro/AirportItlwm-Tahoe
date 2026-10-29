@@ -110,6 +110,7 @@
 
 #include <IOKit/network/IOMbufMemoryCursor.h>
 #include <IOKit/IODMACommand.h>
+#include <HAL/ItlBzTxReference.hpp>
 
 #define IWL_CFG_ANY (~0)
 
@@ -124,6 +125,8 @@
 #define IWL_CFG_MAC_TYPE_SOF        0x43
 #define IWL_CFG_MAC_TYPE_MA        0x44
 #define IWL_CFG_MAC_TYPE_BZ        0x46
+/* BE200; the HW_TYPE records of iwlwifi-gl-c0-fm-c0.pnvm carry mac_type 0x47. */
+#define IWL_CFG_MAC_TYPE_GL        0x47
 
 #define IWL_CFG_RF_TYPE_TH        0x105
 #define IWL_CFG_RF_TYPE_TH1        0x108
@@ -224,7 +227,8 @@ struct iwx_tx_radiotap_header {
 	 (1 << IEEE80211_RADIOTAP_RATE) |				\
 	 (1 << IEEE80211_RADIOTAP_CHANNEL))
 
-#define IWX_UCODE_SECT_MAX 60
+/* BZ/FM API 92 contains 73 regular runtime sections. */
+#define IWX_UCODE_SECT_MAX 128
 
 /*
  * fw_status is used to determine if we've already parsed the firmware file
@@ -335,6 +339,8 @@ struct iwx_tx_data {
 	struct iwx_node *in;
     int flags;
 #define IWX_TXDATA_FLAG_CMD_IS_NARROW  0x01
+#define IWX_TXDATA_FLAG_CMD_PENDING    0x02
+#define IWX_TXDATA_FLAG_CMD_WAITING    0x04
     uint8_t type;
     uint16_t tx2I_token; // 1-based prepared-payload pool token; zero means none.
 };
@@ -371,7 +377,10 @@ struct iwx_rx_ring {
 	void			*desc;
 	void	        *stat;
 	struct iwx_rx_data	data[IWX_RX_MQ_RING_COUNT];
+	int			count;
 	int			cur;
+	int			write;
+	bool			next_rb_is_fragment;
 };
 
 #define IWX_FLAG_USE_ICT	0x01	/* using Interrupt Cause Table */
@@ -385,6 +394,46 @@ struct iwx_rx_ring {
 #define IWX_FLAG_SHUTDOWN	0x100	/* shutting down; new tasks forbidden */
 #define IWX_FLAG_BGSCAN		0x200	/* background scan in progress */
 #define IWX_FLAG_TXFLUSH    0x400   /* Tx queue flushing in progress */
+#define IWX_FLAG_MLD_TXQ_ACTIVE 0x800  /* MLD management queue added to firmware */
+
+/*
+ * Gate sleeps are cut into slices; only expired slices count against a
+ * wait's budget (see iwx_gate_sleep()). The wait that saw the longest
+ * sleep is published as ItlwmGateStallWait.
+ */
+#define IWX_GATE_SLICE_MS		10
+#define IWX_GATE_STALL_REPORT_MS	100	/* shorter sleeps are not recorded */
+#define IWX_GATE_WAIT_ALIVE		1	/* firmware ALIVE */
+#define IWX_GATE_WAIT_CMD		2	/* synchronous host command */
+#define IWX_GATE_WAIT_NOTIF		3	/* init/PNVM complete notification */
+#define IWX_GATE_WAIT_INIT_SCAN		4	/* iwx_init() waiting for SCAN state */
+#define IWX_GATE_WAIT_TXQ_EMPTY		5	/* leave frames draining before teardown */
+/* Linux v6.11 pcie/tx.c HOST_COMPLETE_TIMEOUT */
+#define IWX_HOST_COMPLETE_TIMEOUT_MS	2000
+/* Linux v6.11 pcie/trans.c IWL_FLUSH_WAIT_MS (iwl_trans_pcie_wait_txq_empty) */
+#define IWX_FLUSH_WAIT_MS		2000
+
+/*
+ * MLD association progress, published as ItlwmMldAssocStep. The failing
+ * step's errno is published as ItlwmMldAssocErr.
+ */
+#define IWX_MLD_STEP_MAC_ADD        1
+#define IWX_MLD_STEP_LINK_ADD       2
+#define IWX_MLD_STEP_LINK_ACTIVATE  3
+#define IWX_MLD_STEP_STA_ADD        4
+#define IWX_MLD_STEP_MGMT_QUEUE     5
+#define IWX_MLD_STEP_SESSION_PROT   6
+#define IWX_MLD_STEP_AUTH_READY     7
+#define IWX_MLD_STEP_RUN_UNSUPPORTED 8	/* retired: be201-mld-auth only */
+#define IWX_MLD_STEP_DEAUTH         9
+#define IWX_MLD_STEP_DEAUTH_DONE    10
+#define IWX_MLD_STEP_AUTH_TLC       11	/* between STA_ADD and MGMT_QUEUE */
+#define IWX_MLD_STEP_RUN_LINK       12
+#define IWX_MLD_STEP_RUN_TLC        13
+#define IWX_MLD_STEP_RUN_STA        14
+#define IWX_MLD_STEP_RUN_MAC        15
+#define IWX_MLD_STEP_RUN_READY      16
+#define IWX_MLD_STEP_RUN_STOP       17
 
 struct iwx_ucode_status {
 	uint32_t uc_lmac_error_event_table[2];
@@ -394,6 +443,38 @@ struct iwx_ucode_status {
 
 	int uc_ok;
 	int uc_intr;
+};
+
+/* BZ boot-window counters; event-source actions only, no ISR allocations. */
+struct iwx_boot_diagnostics {
+    bool active;
+    uint32_t callbacks;
+    uint32_t hardware_alive;
+    uint32_t rx_causes;
+    uint32_t legacy_cause_bits;
+    uint32_t legacy_fh_cause_bits;
+    uint32_t msix_fh_cause_bits;
+    uint32_t msix_hw_cause_bits;
+    int error;
+    uint32_t fatal_cause;
+    uint32_t fwload_mask_readback;
+    uint32_t alive_mask_before;
+    uint32_t alive_rx_doorbell;
+    uint32_t alive_rx_doorbell_writes;
+    uint32_t alive_poll_hits;
+    uint32_t restore_expected;
+    uint32_t restore_first;
+    uint32_t restore_last;
+    uint32_t restore_checks;
+    uint32_t restore_mismatches;
+    uint32_t restore_raced;
+    uint32_t action_filter_mark;
+    uint64_t fwload_mask_time_ns;
+    uint64_t rom_start_time_ns;
+    uint64_t alive_time_ns;
+    uint64_t alive_rx_doorbell_time_ns;
+    uint64_t restore_first_time_ns;
+    uint64_t restore_last_time_ns;
 };
 
 #define IWX_ERROR_EVENT_TABLE_LMAC1	(1 << 0)
@@ -653,6 +734,7 @@ struct iwx_softc {
 	int sc_device_family;
 #define IWX_DEVICE_FAMILY_22000	1
 #define IWX_DEVICE_FAMILY_AX210	2
+#define IWX_DEVICE_FAMILY_BZ	3
 
 	struct iwx_dma_info ctxt_info_dma;
 	struct iwx_self_init_dram init_dram;
@@ -661,13 +743,22 @@ struct iwx_softc {
     struct iwx_dma_info prph_info_dma;
     struct iwx_dma_info iml_dma;
     struct iwx_dma_info pnvm_dram;
+    struct iwx_dma_info pnvm_desc_dma;
+    struct iwx_dma_info pnvm_frag_dma[IWX_MAX_DRAM_ENTRY];
 
 	int sc_fw_chunk_done;
 	int sc_init_complete;
+	/* PNVM_INIT_COMPLETE_NTFY status; ISR only stores it, load path publishes. */
+	uint32_t sc_pnvm_status;
 #define IWX_INIT_COMPLETE	0x01
 #define IWX_CALIB_COMPLETE	0x02
+#define IWX_PNVM_COMPLETE    0x04
 
 	struct iwx_ucode_status sc_uc;
+    struct iwx_boot_diagnostics sc_boot_diag;
+    /* Accessed by the hard interrupt filter: use atomic operations only. */
+    uint32_t sc_boot_filter_count;
+    bool sc_boot_filter_active;
 	char sc_fwver[32];
 
 	int sc_capaflags;
@@ -678,6 +769,30 @@ struct iwx_softc {
 	uint8_t sc_enabled_capa[howmany(IWX_NUM_UCODE_TLV_CAPA, NBBY)];
 #define IWX_MAX_FW_CMD_VERSIONS	800
 	struct iwx_fw_cmd_version cmd_versions[IWX_MAX_FW_CMD_VERSIONS];
+	uint32_t sc_tx_calls;
+	uint32_t sc_tx_mgmt;
+	uint32_t sc_tx_resp;		/* ItlwmTxResp: TX_CMD responses before association */
+	uint32_t sc_rx_auth;		/* ItlwmRxAuth: AUTH frames received */
+	uint32_t sc_sess_prot_notif;	/* ItlwmSessProtNotifs */
+	uint32_t sc_mld_keys;		/* ItlwmMldKeys: SEC_KEY_CMD adds sent */
+	uint8_t sc_mld_txq_pending;	/* TIDs waiting for a data queue */
+	uint8_t sc_mld_txq_failed;	/* TIDs whose queue allocation failed */
+	uint32_t sc_mld_rx_ba;		/* ItlwmMldRxBa: RX BA sessions started */
+	uint32_t sc_mld_rx_ba_removed;	/* ItlwmMldRxBaRemoved: removed at disconnect */
+	uint32_t sc_mld_key_flags[8];	/* SEC_KEY flags of installed keys by key ID */
+	uint32_t sc_mld_key_removed;	/* ItlwmMldKeyRemoved: removed before the station */
+	uint32_t sc_preauth_mgmtq;	/* ItlwmTxPreAuthMgmtQ: data before port opened */
+	uint32_t sc_mld_leave_frames;	/* ItlwmMldLeaveFrames: DISASSOC/DEAUTH sent before teardown */
+	uint32_t sc_tx_noqueue_drops;	/* ItlwmTxNoQueueDrop: frames without an MLD queue */
+	uint32_t sc_fw_errors;		/* ItlwmFwErrors: firmware asserts */
+	uint32_t sc_gate_stall_max_ms;	/* ItlwmGateStallMaxMs: longest gate sleep */
+	uint32_t sc_gate_stalls;	/* ItlwmGateStalls: gate sleeps of 1 s or more */
+	uint32_t sc_init_retries;	/* ItlwmInitRetries: timed-out start-ups retried */
+	uint8_t sc_init_retried;	/* this power-on was already retried */
+	uint32_t sc_tx_err;
+	uint32_t sc_last_state;
+	uint64_t sc_scan_start_ns;
+	uint32_t sc_scan_builds;
 	int n_cmd_versions;
     char sc_fw_mcc[3];
     uint16_t sc_fw_mcc_int;

@@ -96,7 +96,8 @@ struct Env {
  void zc28Note(unsigned ev,uint32_t rate,uint32_t ver,uint32_t arg) { ++status;observed_event=ev;observed_rate=rate;observed_version=ver;observed_arg=arg;status_events.fetch_add(1,std::memory_order_relaxed); }
 };
 struct Baseline:Env { void iwx_rs_update(iwx_softc*,iwx_tlc_update_notif*); };
-struct Candidate:Env { void iwx_rs_update(iwx_softc*,iwx_tlc_update_notif*); };
+struct Candidate:Env { bool bzDevice(){return false;}void iwx_bz_port_rs_update(iwx_softc*,iwx_tlc_update_notif*){assert(false);}
+ void iwx_rs_update(iwx_softc*,iwx_tlc_update_notif*); };
 #define XYLog(...) (++logs)
 '''+old.replace('ItlIwx::','Baseline::')+'\n'+new.replace('ItlIwx::','Candidate::')+r'''
 #undef XYLog

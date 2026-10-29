@@ -18,7 +18,7 @@ def span(t,name):
  return x.start(),b
 for name in ['drain2MSetup','drain2MRequest','drain2MPause','drain2MArm','drain2MRemove','drain2MFence','drain2MAction','_iwx_start_task','iwx_start']:
  a,b=span(src,name);c,d=span(model,name);model=model[:c]+src[a:b]+model[d:]
-model=model.replace('struct ItlIwx {','struct ItlIwx {\n uint64_t mockPendingNs=0;static uint64_t time2GNow(){return 1;}\n bool mapped=true;bool dma5Mapped(){return mapped;}\n static IOReturn dexterOriginal__iwx_start_task(OSObject*,void*,void*,void*,void*);\n static void dexterOriginal_iwx_start(_ifnet*);')
+model=model.replace('struct ItlIwx {','struct ItlIwx {\n uint64_t mockPendingNs=0;static uint64_t time2GNow(){return 1;}\n bool mapped=true;bool dma5Mapped(){return mapped;}bool dma5Leased(){return mapped;}\n static IOReturn dexterOriginal__iwx_start_task(OSObject*,void*,void*,void*,void*);\n static void dexterOriginal_iwx_start(_ifnet*);')
 model=model.replace('attemptAction(Action f,void*a,void*b)','attemptAction(Action f,void*a,void*b=nullptr)')
 extra=''
 for name in ['dexterOriginal__iwx_start_task','dexterOriginal_iwx_start']:

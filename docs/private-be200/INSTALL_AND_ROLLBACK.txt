@@ -1,0 +1,39 @@
+PRIVATE EXPERIMENT — MANUAL INSTALLATION AND ROLLBACK
+
+Desktop setup is NOT driver installation. The complete candidate is:
+~/Desktop/AirportItlwm/BE200-EXPERIMENTAL/AirportItlwm.kext
+Its executable, UUID, source and dependency hashes are in BUILD_IDENTITY.txt.
+The private archive/evidence also retains the exact bundle. No public release.
+
+KGP alone performs every EFI, boot, hardware and network action below.
+Use only the already-supported Tahoe restored-legacy Ventura-frontend framework/
+Skywalk/AMFIPass boot environment. This build does not create a native-WCL setup.
+It does not add or remove root patches, AMFIPass or boot arguments.
+
+Before installation:
+- Back up the COMPLETE current AirportItlwm.kext and actual boot EFI/configuration
+  to a distinct location. Retain a working boot path and note the chosen DMA route.
+- Check BE200 PCI identity (8086:272B); integrated BE201 is deliberately excluded.
+- Verify Desktop hash/UUID against BUILD_IDENTITY.txt. Do not rely on bundle 1.0.0.
+
+Installation:
+- In KGP's actual existing OpenCore kext location, replace the ENTIRE old
+  AirportItlwm.kext bundle with this complete bundle. Never merge bundle contents.
+- Keep exactly one active AirportItlwm instance. If its existing enabled path is
+  AirportItlwm.kext, preserve that path. Any required OpenCore changes remain
+  manual KGP decisions. Do not modify system kext folders or load it live.
+- Reboot manually, then verify the loaded UUID and follow README_FIRST_TEST.txt.
+- The recorded Mode1/Mode2 is actual routing, not selected by a test argument.
+  BE200's prepared-buffer path is experimental in BOTH resolved modes. Unresolved
+  mapper policy is refused; no AX201 admission rule was relaxed.
+
+Rollback:
+- Restore the entire backed-up previous bundle at its original path and restore
+  any configuration changed manually by KGP, then reboot using the known-good
+  boot path. A BE200 module is not supported by the frozen AX210-only baseline;
+  restoring that driver may also require KGP's previous supported card/boot path.
+- Root patches/frameworks are not undone by changing a kext. Leave their recorded
+  state intact unless KGP independently performs the matching supported procedure.
+
+Codex has not mounted EFI, installed/loaded a kext, changed boot configuration,
+rebooted, connected/disconnected Wi-Fi or initiated physical tests.

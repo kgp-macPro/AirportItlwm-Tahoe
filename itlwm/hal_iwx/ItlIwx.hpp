@@ -123,6 +123,7 @@
 #include <sys/kpi_mbuf.h>
 
 #include "if_iwxreg.h"
+#include "ItlIwxBzContracts.hpp"
 #include "if_iwxvar.h"
 #include <sys/pcireg.h>
 
@@ -742,6 +743,123 @@ public:
     static IOReturn pc1StopEndAction(OSObject *,void *,void *,void *,void *);
     static IOReturn pc1RecoverAction(OSObject *,void *,void *,void *,void *);
 
+
+    // Private BE200 GL-C0/FM-C0 transport and single-link experiment.
+    bool fBzDevice = false, fBzAdmitted = false;
+    uint32_t fBzFault = 0, fBzError = 0;
+    bool fBzHardwareOwned = false;
+    uint32_t fBzQueueOwned=0;
+    kgp_bz::CommandLedger fBzCommands;
+    kgp_bz::RxLedger fBzRx;
+    uint64_t fBzStats[32] = {}, fBzWire[48] = {};
+    int bzValidateFirmware();
+    void bzStoppedCleanup(struct iwx_softc *);
+    bool bzDevice() const { return fBzDevice; }
+    bool dma5Leased() const { return dma5Mapped() || (fDma5Selected && fBzAdmitted); }
+    void bzFail(uint32_t, int);
+    bool bzAdmit();
+    bool bzMasterStop(struct iwx_softc *);
+    void bzUpdateRxDesc(struct iwx_softc *, struct iwx_rx_ring *, unsigned, unsigned);
+    void bzNotif(struct iwx_softc *);
+    void bzResetRx(struct iwx_softc *);
+    void bzPublishRx(struct iwx_softc *);
+    void bzCapture();
+    bool  iwx_has_new_station_api(struct iwx_softc *sc);
+    bool  iwx_use_mld_api(struct iwx_softc *sc);
+    int  iwx_bz_port_init_fw_sec(struct iwx_softc *sc, const struct iwx_fw_sects *fws,                 struct iwx_context_info_dram *ctxt_dram);
+    void  iwx_record_boot_dma(struct iwx_softc *sc, const struct iwx_fw_sects *fws);
+    int  iwx_bz_port_ctxt_info_gen3_init(struct iwx_softc *sc, const struct iwx_fw_sects *fws);
+    int  iwx_bz_port_read_firmware(struct iwx_softc *sc);
+    int  iwx_bz_port_pnvm_handle_section(struct iwx_softc *sc, const uint8_t *data, size_t len);
+    int  iwx_bz_port_read_pnvm(struct iwx_softc *sc);
+    int  iwx_bz_port_load_pnvm(struct iwx_softc *sc);
+    int  iwx_bz_port_nic_lock(struct iwx_softc *sc);
+    void  iwx_bz_port_nic_unlock(struct iwx_softc *sc);
+    void  iwx_bz_port_enable_fwload_interrupt(struct iwx_softc *sc);
+    void  iwx_bz_restore_boot_interrupts(struct iwx_softc *sc);
+    void  iwx_bz_port_ict_reset(struct iwx_softc *sc);
+    int  iwx_bz_port_apm_init(struct iwx_softc *sc);
+    int  iwx_bz_port_init_msix_hw(struct iwx_softc *sc);
+    int  iwx_bz_config_msi(struct iwx_softc *sc, uint32_t *before, uint32_t *after);
+    int  iwx_bz_port_conf_msix_hw(struct iwx_softc *sc, int stopped);
+    int  iwx_bz_port_start_hw(struct iwx_softc *sc);
+    void  iwx_bz_port_nic_config(struct iwx_softc *sc);
+    int  iwx_bz_port_nic_rx_init(struct iwx_softc *sc);
+    int  iwx_bz_port_nic_init(struct iwx_softc *sc);
+    int  iwx_bz_port_schedule_protect_session(struct iwx_softc *sc, struct iwx_node *in,                     uint32_t duration);
+    int  iwx_bz_port_cancel_session_protection(struct iwx_softc *sc, struct iwx_node *in);
+    void  iwx_bz_port_setup_he_rates(struct iwx_softc *sc);
+    int  iwx_bz_port_sta_rx_agg(struct iwx_softc *sc, struct ieee80211_node *ni, uint8_t tid,                uint16_t ssn, uint16_t winsize, int timeout_val, int start);
+    static void  iwx_bz_port_mac_ctxt_task(void *arg);
+    static void  iwx_bz_port_chan_ctxt_task(void *arg);
+    static void  iwx_bz_port_ba_task(void *arg);
+    int  iwx_bz_port_set_mac_addr_from_csr(struct iwx_softc *sc, struct iwx_nvm_data *data);
+    int  iwx_bz_port_nvm_get(struct iwx_softc *sc);
+    int  iwx_gate_sleep(struct iwx_softc *sc, void *event, uint32_t *budget_ms, int wait);
+    int  iwx_wait_notification(struct iwx_softc *sc, int *value, int bits, uint32_t milliseconds);
+    int  iwx_bz_poll_msix_causes(struct iwx_softc *sc);
+    int  iwx_wait_alive_poll(struct iwx_softc *sc, int *value, int bits, uint32_t milliseconds);
+    int  iwx_bz_port_load_firmware(struct iwx_softc *sc);
+    int  iwx_bz_port_start_fw(struct iwx_softc *sc);
+    int  iwx_bz_port_load_ucode_wait_alive(struct iwx_softc *sc);
+    int  iwx_bz_port_run_init_mvm_ucode(struct iwx_softc *sc, int readnvm);
+    int  iwx_bz_port_oldsn_workaround(struct iwx_softc *sc, struct ieee80211_node *ni, int tid,     struct iwx_reorder_buffer *buffer, uint32_t reorder_data, uint32_t gp2);
+    void  iwx_bz_port_rx_mpdu_mq(struct iwx_softc *sc, mbuf_t m, void *pktdata,                size_t maxlen, struct mbuf_list *ml);
+    void  iwx_bz_port_rx_tx_cmd_single(struct iwx_softc *sc, struct iwx_rx_packet *pkt,                      struct iwx_tx_data *txd);
+    void  iwx_bz_port_clear_oactive(struct iwx_softc *sc, struct iwx_tx_ring *ring);
+    int  iwx_send_rlc_config(struct iwx_softc *sc, struct iwx_phy_ctxt *ctxt,                     uint32_t rx_chain_info);
+    int  iwx_bz_port_phy_ctxt_cmd_v3(struct iwx_softc *sc, struct iwx_phy_ctxt *ctxt,     uint8_t chains_static, uint8_t chains_dynamic, uint32_t action,     uint32_t apply_time);
+    int  iwx_bz_port_phy_ctxt_cmd(struct iwx_softc *sc, struct iwx_phy_ctxt *ctxt,                  uint8_t chains_static, uint8_t chains_dynamic, uint32_t action,                  uint32_t apply_time);
+    const struct iwx_rate * iwx_bz_port_tx_fill_cmd(struct iwx_softc *sc, struct iwx_node *in,                 struct ieee80211_frame *wh, uint32_t *flags, uint32_t *rate_n_flags);
+    void  iwx_bz_port_tx_update_byte_tbl(struct iwx_softc *sc, struct iwx_tx_ring *txq, int idx, uint16_t byte_cnt,                        uint16_t num_tbs);
+    int  iwx_bz_port_flush_sta_tids(struct iwx_softc *sc, int sta_id, uint16_t tids);
+    int  iwx_bz_port_flush_sta(struct iwx_softc *sc, struct iwx_node *in);
+    int  iwx_bz_port_add_sta_cmd(struct iwx_softc *sc, struct iwx_node *in, int update);
+    int  iwx_bz_port_add_aux_sta(struct iwx_softc *sc);
+    int  iwx_bz_port_rm_sta_cmd(struct iwx_softc *sc, struct iwx_node *in);
+    uint8_t  iwx_bz_port_umac_scan_fill_channels(struct iwx_softc *sc,                             struct iwx_scan_channel_cfg_umac *chan, int n_ssids, int bgscan);
+    int  iwx_bz_port_config_umac_scan(struct iwx_softc *sc);
+    int  iwx_bz_port_umac_scan_size(struct iwx_softc *sc);
+    int  iwx_bz_port_umac_scan(struct iwx_softc *sc, int bgscan);
+    int  iwx_bz_port_umac_scan_v12(struct iwx_softc *sc, int bgscan);
+    int  iwx_umac_scan_v14_and_above(struct iwx_softc *sc, int bgscan, uint8_t scan_ver);
+    int  iwx_bz_port_scan(struct iwx_softc *sc);
+    int  iwx_bz_port_scan_abort(struct iwx_softc *sc);
+    int  iwx_bz_port_enable_mgmt_queue(struct iwx_softc *sc);
+    uint16_t  iwx_bz_port_rs_fw_get_config_flags(struct iwx_softc *sc);
+    int  iwx_bz_port_rs_init(struct iwx_softc *sc, struct iwx_node *in, bool update);
+    void  iwx_bz_port_rs_update(struct iwx_softc *sc, struct iwx_tlc_update_notif *notif);
+    int  iwx_bz_port_auth(struct iwx_softc *sc);
+    int  iwx_bz_port_deauth(struct iwx_softc *sc);
+    void  iwx_mld_probe(struct iwx_softc *sc, uint32_t step, int err);
+    int  iwx_mld_mac_config_cmd(struct iwx_softc *sc, struct iwx_node *in,                        uint32_t action, int assoc);
+    int  iwx_mld_link_config_cmd(struct iwx_softc *sc, struct iwx_node *in,                         uint32_t action, uint32_t modify_mask, int active);
+    int  iwx_mld_sta_config_cmd(struct iwx_softc *sc, struct iwx_node *in, int assoc);
+    int  iwx_mld_sta_remove_cmd(struct iwx_softc *sc);
+    int  iwx_mld_disable_txq(struct iwx_softc *sc, int sta_id, int tid);
+    int  iwx_mld_rm_sta(struct iwx_softc *sc, struct iwx_node *in);
+    int  iwx_mld_auth(struct iwx_softc *sc, struct iwx_node *in);
+    int  iwx_mld_deauth(struct iwx_softc *sc, struct iwx_node *in);
+    int  iwx_wait_txq_empty(struct iwx_softc *sc, int qid);
+    void  iwx_mld_send_leave(struct iwx_softc *sc, enum ieee80211_state ostate);
+    int  iwx_mld_run(struct iwx_softc *sc, struct iwx_node *in);
+    int  iwx_mld_run_stop(struct iwx_softc *sc, struct iwx_node *in);
+    int  iwx_mld_sec_key_cmd(struct iwx_softc *sc, struct ieee80211_node *ni,                     struct ieee80211_key *k, uint32_t action);
+    int  iwx_bz_port_run(struct iwx_softc *sc);
+    int  iwx_bz_port_run_stop(struct iwx_softc *sc);
+    static int  iwx_bz_port_set_key(struct ieee80211com *ic, struct ieee80211_node *ni,             struct ieee80211_key *k);
+    static void  iwx_bz_port_delete_key(struct ieee80211com *ic, struct ieee80211_node *ni,                struct ieee80211_key *k);
+    int  iwx_bz_port_media_change(struct _ifnet *ifp);
+    void  iwx_bz_port_endscan(struct iwx_softc *sc);
+    int  iwx_bz_port_send_soc_conf(struct iwx_softc *sc);
+    int  iwx_bz_port_send_update_mcc_cmd(struct iwx_softc *sc, const char *alpha2);
+    int  iwx_bz_port_init_hw(struct iwx_softc *sc);
+    int  iwx_read_error_table(struct iwx_softc *sc, uint32_t base, void *table,                      size_t size, bool supplied_by_tlv);
+    void  iwx_bz_capture_error_tables(struct iwx_softc *sc);
+    void  iwx_bz_port_nic_umac_error(struct iwx_softc *sc);
+    void  iwx_nic_lmac_error(struct iwx_softc *sc);
+    void  iwx_bz_port_nic_error(struct iwx_softc *sc);
+    int  iwx_bz_port_activate(struct iwx_softc *sc, int act);
 };
 
 #endif

@@ -107,6 +107,8 @@
  */
 
 #include "ItlIwx.hpp"
+static void ItlStartupStage(IOService *,const char *);
+static void ItlStartupFailure(IOService *,const char *,int);
 #include <linux/types.h>
 #include <linux/kernel.h>
 #include <FwData.h>
@@ -416,6 +418,7 @@ bool ItlIwx::dma5Select()
     }
     if (__atomic_load_n(&IOMapper::gSystem, __ATOMIC_ACQUIRE) != system) resolved = false;
     if (mapped && com.sc_device_family < IWX_DEVICE_FAMILY_AX210) resolved = false;
+    if (bzDevice() && (!resolved || !bzAdmit())) resolved=false;
     if (resolved) {
         fDma5Mapper = device; if (device) device->retain();
         fDma5UseMapped = mapped;
@@ -426,7 +429,7 @@ bool ItlIwx::dma5Select()
     if (selection) selection->release();
     if (!resolved) { boot5Mark(10, "device DMA policy unresolved; attach refused", 2); return false; }
     pci.pa_tag->setProperty("KGP_ZC5_DMA_MODE", mapped ? "mapped RX/TX" : "original Dexter RX/TX");
-    pci.pa_tag->setProperty("KGP_RX_EXPERIMENT", "AirportItlwm-Tahoe-B1-ZC28-SERVICE");
+    pci.pa_tag->setProperty("KGP_RX_EXPERIMENT", "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P1");
     boot5Mark(11, mapped ? "DMA routing completed: mapped" : "DMA routing completed: original Dexter");
     return true;
 }
@@ -461,7 +464,7 @@ IOReturn ItlIwx::boot5ConventionalRun(OSObject *owner, void *generation, void *,
 
 void ItlIwx::boot5ConventionalFault()
 {
-    if (!dma5Mapped() && com.sc_ih) {
+    if ((!dma5Mapped() || bzDevice()) && com.sc_ih) {
         com.sc_ih->setAction(reinterpret_cast<IOEventSource::Action>(boot5ClosedInterrupt));
         com.sc_ih->disable();
     }
@@ -478,6 +481,7 @@ void ItlIwx::boot5RemoveInterrupt()
 
 bool ItlIwx::dma5Terminal() const
 {
+    if (bzDevice() && fBzHardwareOwned) return false;
     return !fDma5Published || (fPc1Suspended && fPc1LastMaster && fPc1TerminalEpoch &&
         fPc1TerminalEpoch==fPc1ResetEpoch && !__atomic_load_n(&fPc1Fault,__ATOMIC_ACQUIRE));
 }
@@ -496,6 +500,10 @@ void ItlIwx::dma5Report(bool force)
 }
 bool ItlIwx::tx5RingReleasable(const struct iwx_tx_ring *ring) const
 {
+    if(bzDevice() && fBzHardwareOwned && ring->qid>=0 && ring->qid<32 &&
+        (fBzQueueOwned & (1U << ring->qid)))
+        return false;
+
     if (com.sc_device_family<IWX_DEVICE_FAMILY_AX210 || !fDma5Published) return true;
     if (__atomic_load_n(&fPc1Fault,__ATOMIC_ACQUIRE)) return false;
     if (ring==&com.txq[IWX_DQA_CMD_QUEUE]) return true;
@@ -649,7 +657,7 @@ void ItlIwx::tx2IError(unsigned token, unsigned stage, uint32_t result)
 bool ItlIwx::tx2IAllocate()
 {
     fTx2IStats[0] = 1;
-    if (!dma5Mapped()) {
+    if (!dma5Leased()) {
         for (unsigned i=0;i<kTx2ICount;++i) fTx2I[i].state=Tx2IFree;
         __atomic_store_n(&fTx2IReady,1U,__ATOMIC_RELEASE);
         return true; // Keep PC1 admission, but allocate no mapped packet backing.
@@ -672,7 +680,7 @@ bool ItlIwx::tx2IAllocate()
 int ItlIwx::tx2IPrepare(struct iwx_tx_data *data, mbuf_t packet, int qid, int idx,
                        IOPhysicalSegment *segments)
 {
-    if (!dma5Mapped() || !getMainWorkLoop()->inGate()) {
+    if (!dma5Leased() || !getMainWorkLoop()->inGate()) {
         __atomic_fetch_add(&fTx5Telemetry[21],1ULL,__ATOMIC_RELAXED); return 0;
     }
     __atomic_fetch_add(&fTx2IStats[3], 1U, __ATOMIC_RELAXED);
@@ -2116,7 +2124,7 @@ void ItlIwx::rxZcCapturePeriodic()
     // Called only by the existing watchdog's successful main-gate snapshot.
     // These buffers belong to that watchdog, never to packet/lifecycle writers.
     fRxZcPeriodicReady=false;
-    if (!getMainWorkLoop() || !getMainWorkLoop()->inGate() || !dma5Mapped() ||
+    if (!getMainWorkLoop() || !getMainWorkLoop()->inGate() || !dma5Leased() ||
         __atomic_load_n(&fRxZcClosing,__ATOMIC_ACQUIRE) || !fRxZcRunning ||
         !fRxZcPool) return;
     const uint64_t now=time2GNow();
@@ -2295,11 +2303,19 @@ bool ItlIwx::attach(IOPCIDevice *device)
         fAlive2F.word[0] = 1;
     }
     alive2FStep(1);
+    fBzDevice = device->configRead16(kIOPCIConfigVendorID)==0x8086 &&
+        device->configRead16(kIOPCIConfigDeviceID)==0x272b;
+    if(fBzDevice) { com.sc_device_family=IWX_DEVICE_FAMILY_BZ;
+        device->setProperty("KGP_BE200_CANDIDATE","BE200-GL92-PRIVATE-P1"); }
     pci.pa_tag = device;
     pci.workloop = getMainWorkLoop();
     const bool attached2G = iwx_attach(&com, &pci);
     time2GMark(8);
     if (!attached2G) {
+        if(bzDevice()) {
+            device->setProperty("KGP_BE200_LAST_FAILURE",uint32_t(fBzFault?fBzFault:fBzStats[15]),32);
+            device->setProperty("KGP_BE200_LAST_ERROR",uint32_t(fBzError?fBzError:fBzStats[16]),32);
+        }
         boot5Mark(fBoot5Stage, "IWX attach failed", -1);
         alive2FResult(1, -1); // Synthetic outer Boolean failure; first error wins.
         alive2FStep(9);
@@ -2325,6 +2341,8 @@ bool ItlIwx::attach(IOPCIDevice *device)
 void ItlIwx::
 detach(IOPCIDevice *device)
 {
+    if(bzDevice() && fBzHardwareOwned) iwx_stop_device(&com,3);
+
     boot5RemoveInterrupt();
     drain2MRemove(); // fence deferred callbacks before any queue/backing free
     tx2IStop(3);
@@ -2763,6 +2781,7 @@ iwx_ctxt_info_alloc_dma(struct iwx_softc *sc,
     }
     
     memcpy(dram->vaddr, sec->fws_data, sec->fws_len);
+    if(bzDevice() && (!dram->cmd || dram->cmd->synchronize(kIODirectionOut)!=kIOReturnSuccess)) return EIO;
     
     return 0;
 }
@@ -2770,6 +2789,8 @@ iwx_ctxt_info_alloc_dma(struct iwx_softc *sc,
 void ItlIwx::
 iwx_ctxt_info_free_paging(struct iwx_softc *sc)
 {
+    if(bzDevice() && fBzHardwareOwned) return;
+
     struct iwx_self_init_dram *dram = &sc->init_dram;
     int i;
     
@@ -2804,6 +2825,8 @@ int ItlIwx::
 iwx_init_fw_sec(struct iwx_softc *sc, const struct iwx_fw_sects *fws,
                 struct iwx_context_info_dram *ctxt_dram)
 {
+    if (bzDevice()) return iwx_bz_port_init_fw_sec(sc, fws, ctxt_dram);
+
     struct iwx_self_init_dram *dram = &sc->init_dram;
     int i, ret, fw_cnt = 0;
     
@@ -3149,6 +3172,8 @@ iwx_ctxt_info_init(struct iwx_softc *sc, const struct iwx_fw_sects *fws)
 int ItlIwx::
 iwx_ctxt_info_gen3_init(struct iwx_softc *sc, const struct iwx_fw_sects *fws)
 {
+    if (bzDevice()) return iwx_bz_port_ctxt_info_gen3_init(sc, fws);
+
     XYLog("%s\n", __FUNCTION__);
     struct iwx_context_info_gen3 *ctxt_info_gen3;
     struct iwx_prph_scratch *prph_scratch;
@@ -3157,7 +3182,7 @@ iwx_ctxt_info_gen3_init(struct iwx_softc *sc, const struct iwx_fw_sects *fws)
     int err;
     
     if (dma5Terminal()) iwx_free_tx_ring(sc,&sc->sc_tvqm_ring);
-    if (dma5Mapped() && getMainWorkLoop()->runAction(rxZcArmAction, this) != kIOReturnSuccess) return ENXIO;
+    if (dma5Leased() && getMainWorkLoop()->runAction(rxZcArmAction, this) != kIOReturnSuccess) return ENXIO;
     fDma5Published=true;
 
     /* Allocate prph scratch. */
@@ -3315,6 +3340,8 @@ iwx_clear_persistence_bit(struct iwx_softc *sc)
 void ItlIwx::
 iwx_ctxt_info_free_fw_img(struct iwx_softc *sc)
 {
+    if(bzDevice() && fBzHardwareOwned) return;
+
     struct iwx_self_init_dram *dram = &sc->init_dram;
     int i;
     
@@ -3430,6 +3457,8 @@ iwx_pnvm_free(struct iwx_fw_info *fw)
 int ItlIwx::
 iwx_read_firmware(struct iwx_softc *sc)
 {
+    if (bzDevice()) { int e=iwx_bz_port_read_firmware(sc);return e?e:bzValidateFirmware(); }
+
     struct iwx_fw_info *fw = &sc->sc_fw;
     struct iwx_tlv_ucode_header *uhdr;
     struct iwx_ucode_tlv tlv;
@@ -3905,6 +3934,8 @@ struct iwx_pnvm_section {
 int ItlIwx::
 iwx_pnvm_handle_section(struct iwx_softc *sc, const uint8_t *data, size_t len)
 {
+    if (bzDevice()) return iwx_bz_port_pnvm_handle_section(sc, data, len);
+
     struct iwx_ucode_tlv *tlv;
     uint32_t sha1 = 0;
     uint16_t mac_type = 0, rf_id = 0;
@@ -4062,6 +4093,8 @@ out:
 int ItlIwx::
 iwx_read_pnvm(struct iwx_softc *sc)
 {
+    if (bzDevice()) return iwx_bz_port_read_pnvm(sc);
+
     int err = 0;
     OSData *fwData = NULL;
     struct iwx_fw_info *fw = &sc->sc_fw;
@@ -4163,6 +4196,8 @@ out:
 int ItlIwx::
 iwx_load_pnvm(struct iwx_softc *sc)
 {
+    if (bzDevice()) return iwx_bz_port_load_pnvm(sc);
+
     XYLog("%s\n", __FUNCTION__);
     int err;
     
@@ -4316,6 +4351,8 @@ iwx_poll_bit(struct iwx_softc *sc, int reg, uint32_t bits, uint32_t mask,
 int ItlIwx::
 iwx_nic_lock(struct iwx_softc *sc)
 {
+    if (bzDevice()) return iwx_bz_port_nic_lock(sc);
+
     if (sc->sc_nic_locks > 0) {
         iwx_nic_assert_locked(sc);
         sc->sc_nic_locks++;
@@ -4349,6 +4386,8 @@ iwx_nic_assert_locked(struct iwx_softc *sc)
 void ItlIwx::
 iwx_nic_unlock(struct iwx_softc *sc)
 {
+    if (bzDevice()) return iwx_bz_port_nic_unlock(sc);
+
     if (sc->sc_nic_locks > 0) {
         if (--sc->sc_nic_locks == 0)
             IWX_CLRBITS(sc, IWX_CSR_GP_CNTRL,
@@ -4435,10 +4474,21 @@ int ItlIwx::
 iwx_dma_contig_alloc(bus_dma_tag_t tag, struct iwx_dma_info *dma,
                      bus_size_t size, bus_size_t alignment)
 {
-    if (!allocDmaMemory2(dma, size, alignment, fDma5Mapper)) {
+    unsigned stage=0;
+    const bool allocated=bzDevice() ?
+        (fDma5Selected && allocatePacketBacking2H(dma,size,alignment?unsigned(alignment):PAGE_SIZE,
+            &stage,fDma5Mapper,true,true)==kIOReturnSuccess) :
+        allocDmaMemory2(dma,size,alignment,fDma5Mapper);
+    if (!allocated) {
         return 1;
     }
     
+    if (bzDevice() && !kgp_bz::dmaFits(dma->paddr,size,alignment?alignment:1)) {
+        // This allocation has not been published; safe immediate local cleanup.
+        dma->cmd->clearMemoryDescriptor();dma->cmd->release();dma->cmd=nullptr;
+        dma->buffer->complete();dma->buffer->release();dma->buffer=nullptr;dma->vaddr=nullptr;
+        return EINVAL;
+    }
     return 0;
 }
 
@@ -4453,8 +4503,13 @@ int ItlIwx::iwx_tx_control_alloc(struct iwx_dma_info *dma, bus_size_t size,
     if (!fDma5Selected || !size || alignment > UINT_MAX ||
         (alignment && (alignment & (alignment - 1)))) return 1;
     unsigned stage = 0;
-    return allocatePacketBacking2H(dma, size, alignment ? unsigned(alignment) : 1,
-                                   &stage, fDma5Mapper, true, true) == kIOReturnSuccess ? 0 : 1;
+    if(allocatePacketBacking2H(dma,size,alignment?unsigned(alignment):(bzDevice()?PAGE_SIZE:1),
+        &stage,fDma5Mapper,true,true)!=kIOReturnSuccess) return 1;
+    if(bzDevice() && !kgp_bz::dmaFits(dma->paddr,size,alignment?alignment:PAGE_SIZE)) {
+        dma->cmd->clearMemoryDescriptor();dma->cmd->release();dma->cmd=nullptr;
+        dma->buffer->complete();dma->buffer->release();dma->buffer=nullptr;dma->vaddr=nullptr;return 1;
+    }
+    return 0;
 #else
     // No claim of coherent-cache support for an unqualified architecture.
     return 1;
@@ -4464,6 +4519,8 @@ int ItlIwx::iwx_tx_control_alloc(struct iwx_dma_info *dma, bus_size_t size,
 void ItlIwx::
 iwx_dma_contig_free(struct iwx_dma_info *dma)
 {
+    if (bzDevice() && fBzHardwareOwned) return; // quarantine, including uncertain boot.
+
     if (dma == NULL || dma->cmd == NULL)
         return;
     if (dma->vaddr == NULL)
@@ -4494,7 +4551,7 @@ int ItlIwx::
 iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
 {
     // BOOTFIX1 DEXTER ROUTE iwx_alloc_rx_ring: original body in its own label scope.
-    if (!dma5Mapped()) return dexterOriginal_iwx_alloc_rx_ring(sc, ring);
+    if (!dma5Leased()) return dexterOriginal_iwx_alloc_rx_ring(sc, ring);
 
     bus_size_t size;
     int i, err;
@@ -4502,7 +4559,8 @@ iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
     int rb_stts_align = sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 ? 0 : 16;
     
     ring->cur = 0;
-    if (dma5Mapped() && !rxZcSetup())
+    if (bzDevice()) { ring->count=kgp_bz::RxCount; ring->write=0; }
+    if (dma5Leased() && !rxZcSetup())
         return ENOMEM;
     
     /* Allocate RX descriptors (256-byte aligned). */
@@ -4525,7 +4583,8 @@ iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
     }
     ring->stat = ring->stat_dma.vaddr;
     
-    size = IWX_RX_MQ_RING_COUNT * (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 ? sizeof(struct iwx_rx_completion_desc) : sizeof(uint32_t));
+    size = IWX_RX_MQ_RING_COUNT * (bzDevice() ? sizeof(kgp_bz::Completion) :
+        (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 ? sizeof(struct iwx_rx_completion_desc) : sizeof(uint32_t)));
     err = iwx_dma_contig_alloc(sc->sc_dmat, &ring->used_desc_dma,
                                size, 256);
     if (err) {
@@ -4538,7 +4597,7 @@ iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
         struct iwx_rx_data *data = &ring->data[i];
         
         memset(data, 0, sizeof(*data));
-        if (dma5Mapped()) {
+        if (dma5Leased()) {
             if (!rxZcReplace(i)) { err = ENOMEM; goto fail; }
             continue;
         }
@@ -4557,7 +4616,7 @@ iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
     }
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 &&
         !pci.pa_tag->setProperty("KGP_RX_EXPERIMENT",
-            "AirportItlwm-Tahoe-B1-ZC28-SERVICE")) {
+            "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P1")) {
         err = ENOMEM; goto fail;
     }
     return 0;
@@ -4596,11 +4655,12 @@ iwx_disable_rx_dma(struct iwx_softc *sc)
 void ItlIwx::
 iwx_reset_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
 {
-    if (dma5Mapped()) {
+    if (dma5Leased()) {
         if (__atomic_load_n(&fRxZcClosing, __ATOMIC_ACQUIRE)) return;
-        rxZcTerminal();
+        if (!bzDevice() || fDma5Published) rxZcTerminal();
     }
     ring->cur = 0;
+    if(bzDevice()) bzResetRx(sc);
     //    bus_dmamap_sync(sc->sc_dmat, ring->stat_dma.map, 0,
     //        ring->stat_dma.size, BUS_DMASYNC_PREWRITE);
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210)
@@ -4615,7 +4675,7 @@ iwx_reset_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
 void ItlIwx::
 iwx_free_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
 {
-    if (dma5Mapped()) {
+    if (dma5Leased()) {
         rxZcFree(); // RX pool owns clean retirement or fail-closed retention, including ring DMA.
         return;
     }
@@ -4676,7 +4736,7 @@ iwx_alloc_tx_ring(struct iwx_softc *sc, struct iwx_tx_ring *ring, int qid)
     int i, err;
 
     /* 0:CMD 2:MGMT */
-    if (qid > IWX_QID_MGMT) {
+    if (qid > IWX_QID_MGMT || (bzDevice() && qid>IWX_DQA_AUX_QUEUE)) {
         ring->qid = IWX_INVALID_QUEUE;
         return 0;
     }
@@ -4709,8 +4769,8 @@ iwx_alloc_tx_ring(struct iwx_softc *sc, struct iwx_tx_ring *ring, int qid)
 
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210)
         err = qid == IWX_DQA_CMD_QUEUE ?
-            iwx_dma_contig_alloc(sc->sc_dmat, &ring->bc_tbl, sizeof(struct iwx_gen3_bc_tbl), 0) :
-            iwx_tx_control_alloc(&ring->bc_tbl, sizeof(struct iwx_gen3_bc_tbl), 0);
+            iwx_dma_contig_alloc(sc->sc_dmat, &ring->bc_tbl, (bzDevice()?sizeof(struct iwx_bz_bc_tbl):sizeof(struct iwx_gen3_bc_tbl)), 0) :
+            iwx_tx_control_alloc(&ring->bc_tbl, (bzDevice()?sizeof(struct iwx_bz_bc_tbl):sizeof(struct iwx_gen3_bc_tbl)), 0);
     else
         err = qid == IWX_DQA_CMD_QUEUE ?
             iwx_dma_contig_alloc(sc->sc_dmat, &ring->bc_tbl, sizeof(struct iwx_agn_scd_bc_tbl), 0) :
@@ -4933,6 +4993,8 @@ iwx_enable_interrupts(struct iwx_softc *sc)
 void ItlIwx::
 iwx_enable_fwload_interrupt(struct iwx_softc *sc)
 {
+    if (bzDevice()) return iwx_bz_port_enable_fwload_interrupt(sc);
+
     
     XYLog("%s\n", __FUNCTION__);
     if (!sc->sc_msix) {
@@ -4961,6 +5023,11 @@ iwx_restore_interrupts(struct iwx_softc *sc)
 void ItlIwx::
 iwx_disable_interrupts(struct iwx_softc *sc)
 {
+    if(bzDevice()) {
+        IWX_WRITE(sc,IWX_CSR_MSIX_FH_INT_MASK_AD,0xffffffffU);
+        IWX_WRITE(sc,IWX_CSR_MSIX_HW_INT_MASK_AD,0xffffffffU);return;
+    }
+
     int s = splnet();
     
     if (!sc->sc_msix) {
@@ -4982,6 +5049,8 @@ iwx_disable_interrupts(struct iwx_softc *sc)
 void ItlIwx::
 iwx_ict_reset(struct iwx_softc *sc)
 {
+    if (bzDevice()) return iwx_bz_port_ict_reset(sc);
+
     iwx_disable_interrupts(sc);
     
     memset(sc->ict_dma.vaddr, 0, IWX_ICT_SIZE);
@@ -5103,6 +5172,8 @@ iwx_apm_config(struct iwx_softc *sc)
 int ItlIwx::
 iwx_apm_init(struct iwx_softc *sc)
 {
+    if (bzDevice()) return iwx_bz_port_apm_init(sc);
+
     int err = 0;
     
     /*
@@ -5152,6 +5223,8 @@ out:
 bool ItlIwx::
 iwx_apm_stop(struct iwx_softc *sc)
 {
+    if (bzDevice()) return bzMasterStop(sc);
+
     IWX_SETBITS(sc, IWX_CSR_DBG_LINK_PWR_MGMT_REG,
                 IWX_CSR_RESET_LINK_PWR_MGMT_DISABLED);
     IWX_SETBITS(sc, IWX_CSR_HW_IF_CONFIG_REG,
@@ -5183,6 +5256,8 @@ iwx_apm_stop(struct iwx_softc *sc)
 void ItlIwx::
 iwx_init_msix_hw(struct iwx_softc *sc)
 {
+    if (bzDevice()) { int bzError = iwx_bz_port_init_msix_hw(sc); if (bzError) bzFail(1, bzError); return; }
+
     iwx_conf_msix_hw(sc, 0);
     
     if (!sc->sc_msix)
@@ -5197,6 +5272,8 @@ iwx_init_msix_hw(struct iwx_softc *sc)
 void ItlIwx::
 iwx_conf_msix_hw(struct iwx_softc *sc, int stopped)
 {
+    if (bzDevice()) { int bzError = iwx_bz_port_conf_msix_hw(sc, stopped); if (bzError) bzFail(1, bzError); return; }
+
     int vector = 0;
     
     if (!sc->sc_msix) {
@@ -5284,6 +5361,8 @@ iwx_conf_msix_hw(struct iwx_softc *sc, int stopped)
 int ItlIwx::
 iwx_start_hw(struct iwx_softc *sc)
 {
+    if (bzDevice()) return iwx_bz_port_start_hw(sc);
+
     XYLog("%s\n", __FUNCTION__);
     int err;
     
@@ -5374,11 +5453,13 @@ iwx_stop_device(struct iwx_softc *sc, unsigned origin2J)
     const bool masterStoppedPC1=iwx_apm_stop(sc);
     
     /* Reset the on-board processor. */
-    IWX_SETBITS(sc, IWX_CSR_RESET, IWX_CSR_RESET_REG_FLAG_SW_RESET);
+    if(bzDevice()) IWX_SETBITS(sc,IWX_CSR_GP_CNTRL,IWX_CSR_GP_CNTRL_REG_FLAG_SW_RESET);
+    else IWX_SETBITS(sc, IWX_CSR_RESET, IWX_CSR_RESET_REG_FLAG_SW_RESET);
     DELAY(5000);
     
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210) {
         fPc1LastMaster=masterStoppedPC1;
+        if(bzDevice() && masterStoppedPC1) fBzHardwareOwned=false;
         if (masterStoppedPC1) {
             // The workloop gate excludes old RX handlers. Clear producer state
             // only AFTER the existing positive master stop and processor reset.
@@ -5405,6 +5486,7 @@ iwx_stop_device(struct iwx_softc *sc, unsigned origin2J)
      * driver won't be able to handle the interrupt.
      * Configure the IVAR table again after reset.
      */
+    if(bzDevice() && masterStoppedPC1) bzStoppedCleanup(sc);
     iwx_conf_msix_hw(sc, 1);
     
     /*
@@ -5432,6 +5514,8 @@ iwx_stop_device(struct iwx_softc *sc, unsigned origin2J)
 void ItlIwx::
 iwx_nic_config(struct iwx_softc *sc)
 {
+    if (bzDevice()) return iwx_bz_port_nic_config(sc);
+
     uint8_t radio_cfg_type, radio_cfg_step, radio_cfg_dash;
     uint32_t mask, val, reg_val = 0;
     
@@ -5472,6 +5556,8 @@ iwx_nic_config(struct iwx_softc *sc)
 int ItlIwx::
 iwx_nic_rx_init(struct iwx_softc *sc)
 {
+    if (bzDevice()) return iwx_bz_port_nic_rx_init(sc);
+
     IWX_WRITE_1(sc, IWX_CSR_INT_COALESCING, IWX_HOST_INT_TIMEOUT_DEF);
     
     /*
@@ -5484,6 +5570,8 @@ iwx_nic_rx_init(struct iwx_softc *sc)
 int ItlIwx::
 iwx_nic_init(struct iwx_softc *sc)
 {
+    if (bzDevice()) return iwx_bz_port_nic_init(sc);
+
     int err;
     
     iwx_apm_init(sc);
@@ -5512,6 +5600,7 @@ iwx_enable_txq(struct iwx_softc *sc, int sta_id, int qid, int tid,
 {
     
     XYLog("%s\n", __FUNCTION__);
+    struct iwx_scd_queue_cfg_cmd mld_cmd={};
     struct iwx_tx_queue_cfg_cmd cmd;
     struct iwx_rx_packet *pkt;
     struct iwx_tx_queue_cfg_rsp *resp;
@@ -5525,6 +5614,8 @@ iwx_enable_txq(struct iwx_softc *sc, int sta_id, int qid, int tid,
     uint32_t wr_idx;
     size_t resp_len;
     
+    if(bzDevice() && (qid<0 || qid>=nitems(sc->txq) || ring->queued ||
+        (fBzQueueOwned & (1U << qid)))) return EBUSY;
     iwx_reset_tx_ring(sc, ring);
     
     memset(&cmd, 0, sizeof(cmd));
@@ -5537,15 +5628,29 @@ iwx_enable_txq(struct iwx_softc *sc, int sta_id, int qid, int tid,
     
     hcmd.data[0] = &cmd;
     hcmd.len[0] = sizeof(cmd);
+    if(bzDevice()) {
+        mld_cmd.operation=htole32(IWX_SCD_QUEUE_ADD);
+        mld_cmd.u.add.sta_mask=htole32(1U << sta_id);
+        mld_cmd.u.add.tid=uint8_t(tid);
+        mld_cmd.u.add.cb_size=cmd.cb_size;
+        mld_cmd.u.add.bc_dram_addr=cmd.byte_cnt_addr;
+        mld_cmd.u.add.tfdq_dram_addr=cmd.tfdq_addr;
+        hcmd.id=iwx_cmd_id(IWX_SCD_QUEUE_CONFIG_CMD,IWX_DATA_PATH_GROUP,0);
+        hcmd.data[0]=&mld_cmd;hcmd.len[0]=sizeof(mld_cmd);
+        iwx_dma_info *regions[]={&ring->desc_dma,&ring->cmd_dma,&ring->bc_tbl};
+        for(auto *r:regions) if(!r->cmd || r->cmd->synchronize(kIODirectionOut)!=kIOReturnSuccess)
+            return EIO;
+    }
+
     
     // ZC13: order initialized/reset packet-control RAM before the firmware
     // queue-enable command, in both mapped and conventional modes. Ownership
     // and the existing positive stop/reset fences are unchanged.
     // ZC14 TX-1: pinned OSSynchronizeIO is empty; emit the intended publication fence.
     iwx_dma_queue_publish_barrier();
+    if(bzDevice()) fBzQueueOwned|=1U << qid; // Includes ambiguous command outcome.
     err = iwx_send_cmd(sc, &hcmd);
-    if (err)
-        return err;
+    if (err) { if(bzDevice()) {bzFail(20,err);iwx_free_resp(sc,&hcmd);}return err; }
     
     pkt = hcmd.resp_pkt;
     if (!pkt || (pkt->hdr.group_id & IWX_CMD_FAILED_MSK)) {
@@ -5578,6 +5683,7 @@ iwx_enable_txq(struct iwx_softc *sc, int sta_id, int qid, int tid,
         goto out;
     }
 out:
+    if(bzDevice() && err) bzFail(20,err);
     iwx_free_resp(sc, &hcmd);
     return err;
 }
@@ -5625,6 +5731,7 @@ iwx_tvqm_enable_txq(struct iwx_softc *sc, int tid, int ssn, uint32_t size)
     int fwqid;
     uint32_t wr_idx;
     size_t resp_len;
+    struct iwx_scd_queue_cfg_cmd mld_cmd={};
     struct iwx_tx_queue_cfg_cmd cmd = {
         .flags = htole16(IWX_TX_QUEUE_CFG_ENABLE_QUEUE),
         .sta_id = IWX_STATION_ID,
@@ -5654,7 +5761,7 @@ iwx_tvqm_enable_txq(struct iwx_softc *sc, int tid, int ssn, uint32_t size)
     ring->desc = (struct iwx_tfh_tfd*)ring->desc_dma.vaddr;
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210)
         err = iwx_tx_control_alloc(&ring->bc_tbl,
-                                   sizeof(struct iwx_gen3_bc_tbl), 0);
+                                   (bzDevice()?sizeof(struct iwx_bz_bc_tbl):sizeof(struct iwx_gen3_bc_tbl)), 0);
     else
         err = iwx_tx_control_alloc(&ring->bc_tbl,
                                    sizeof(struct iwx_agn_scd_bc_tbl), 0);
@@ -5696,6 +5803,20 @@ iwx_tvqm_enable_txq(struct iwx_softc *sc, int tid, int ssn, uint32_t size)
 
     hcmd.data[0] = &cmd;
     hcmd.len[0] = sizeof(cmd);
+    if(bzDevice()) {
+        mld_cmd.operation=htole32(IWX_SCD_QUEUE_ADD);
+        mld_cmd.u.add.sta_mask=htole32(1U << IWX_STATION_ID);
+        mld_cmd.u.add.tid=uint8_t(tid);
+        mld_cmd.u.add.cb_size=cmd.cb_size;
+        mld_cmd.u.add.bc_dram_addr=cmd.byte_cnt_addr;
+        mld_cmd.u.add.tfdq_dram_addr=cmd.tfdq_addr;
+        hcmd.id=iwx_cmd_id(IWX_SCD_QUEUE_CONFIG_CMD,IWX_DATA_PATH_GROUP,0);
+        hcmd.data[0]=&mld_cmd;hcmd.len[0]=sizeof(mld_cmd);
+        iwx_dma_info *regions[]={&ring->desc_dma,&ring->cmd_dma,&ring->bc_tbl};
+        for(auto *r:regions) if(!r->cmd || r->cmd->synchronize(kIODirectionOut)!=kIOReturnSuccess)
+            {bzFail(26,EIO);return -EIO;}
+    }
+
 
     // ZC13: order initialized/reset packet-control RAM before the firmware
     // queue-enable command, in both mapped and conventional modes. Ownership
@@ -5763,6 +5884,7 @@ iwx_tvqm_enable_txq(struct iwx_softc *sc, int tid, int ssn, uint32_t size)
     }
     iwx_reset_tx_ring(sc, &sc->txq[fwqid]);
     iwx_free_tx_ring(sc, &sc->txq[fwqid]);
+    if(bzDevice()) fBzQueueOwned|=1U << fwqid;
     memcpy(&sc->txq[fwqid], ring, sizeof(*ring));
     memset(ring,0,sizeof(*ring)); // Ownership moved; no stale temporary alias.
     iwx_free_resp(sc, &hcmd); // WANT_RESP ownership transferred to this caller.
@@ -5888,6 +6010,8 @@ int ItlIwx::
 iwx_schedule_protect_session(struct iwx_softc *sc, struct iwx_node *in,
                     uint32_t duration)
 {
+    if (bzDevice()) return iwx_bz_port_schedule_protect_session(sc, in, duration);
+
     struct iwx_session_prot_cmd cmd = {
         .id_and_color =
             htole32(IWX_FW_CMD_ID_AND_COLOR(in->in_id, in->in_color)),
@@ -5910,6 +6034,8 @@ iwx_schedule_protect_session(struct iwx_softc *sc, struct iwx_node *in,
 int ItlIwx::
 iwx_cancel_session_protection(struct iwx_softc *sc, struct iwx_node *in)
 {
+    if (bzDevice()) return iwx_bz_port_cancel_session_protection(sc, in);
+
     struct iwx_session_prot_cmd cmd = {
         .id_and_color =
             htole32(IWX_FW_CMD_ID_AND_COLOR(in->in_id, in->in_color)),
@@ -6397,6 +6523,8 @@ iwx_setup_vht_rates(struct iwx_softc *sc)
 void ItlIwx::
 iwx_setup_he_rates(struct iwx_softc *sc)
 {
+    if (bzDevice()) return iwx_bz_port_setup_he_rates(sc);
+
     struct ieee80211com *ic = &sc->sc_ic;
     
     /* enable 11ax support */
@@ -6490,6 +6618,8 @@ void ItlIwx::
 iwx_sta_rx_agg(struct iwx_softc *sc, struct ieee80211_node *ni, uint8_t tid,
                uint16_t ssn, uint16_t winsize, int timeout_val, int start)
 {
+    if (bzDevice()) { int bzError = iwx_bz_port_sta_rx_agg(sc, ni, tid, ssn, winsize, timeout_val, start); if (bzError) bzFail(1, bzError); return; }
+
     XYLog("%s start=%d tid=%d ssn=%d winsize=%d\n", __FUNCTION__, start, tid, ssn, winsize);
     struct ieee80211com *ic = &sc->sc_ic;
     struct iwx_add_sta_cmd cmd;
@@ -6602,6 +6732,8 @@ iwx_sta_rx_agg(struct iwx_softc *sc, struct ieee80211_node *ni, uint8_t tid,
 void ItlIwx::
 iwx_mac_ctxt_task(void *arg)
 {
+    if (container_of(static_cast<iwx_softc *>(arg), ItlIwx, com)->bzDevice()) return iwx_bz_port_mac_ctxt_task(arg);
+
     struct iwx_softc *sc = (struct iwx_softc *)arg;
     struct ieee80211com *ic = &sc->sc_ic;
     ItlIwx *that = container_of(sc, ItlIwx, com);
@@ -6630,6 +6762,8 @@ iwx_mac_ctxt_task(void *arg)
 void ItlIwx::
 iwx_chan_ctxt_task(void *arg)
 {
+    if (container_of(static_cast<iwx_softc *>(arg), ItlIwx, com)->bzDevice()) return iwx_bz_port_chan_ctxt_task(arg);
+
     struct iwx_softc *sc = (struct iwx_softc *)arg;
     struct ieee80211com *ic = &sc->sc_ic;
     ItlIwx *that = container_of(sc, ItlIwx, com);
@@ -6724,6 +6858,8 @@ iwx_updatedtim(struct ieee80211com *ic)
 void ItlIwx::
 iwx_ba_task(void *arg)
 {
+    if (container_of(static_cast<iwx_softc *>(arg), ItlIwx, com)->bzDevice()) return iwx_bz_port_ba_task(arg);
+
     struct iwx_softc *sc = (struct iwx_softc *)arg;
     struct ieee80211com *ic = &sc->sc_ic;
     ItlIwx *that = container_of(sc, ItlIwx, com);
@@ -6844,6 +6980,8 @@ iwx_ampdu_rx_stop(struct ieee80211com *ic, struct ieee80211_node *ni,
 int ItlIwx::
 iwx_ampdu_tx_start(struct ieee80211com *ic, struct ieee80211_node *ni, uint8_t tid)
 {
+    if(container_of(static_cast<iwx_softc *>(ic->ic_softc),ItlIwx,com)->bzDevice()) return ENOSPC;
+
     struct ieee80211_tx_ba *ba = &ni->ni_tx_ba[tid];
     struct iwx_softc *sc = (struct iwx_softc *)ic->ic_softc;
     ItlIwx *that = container_of(sc, ItlIwx, com);
@@ -6900,6 +7038,8 @@ static void iwx_flip_hw_address(uint32_t mac_addr0, uint32_t mac_addr1, uint8_t 
 int ItlIwx::
 iwx_set_mac_addr_from_csr(struct iwx_softc *sc, struct iwx_nvm_data *data)
 {
+    if (bzDevice()) return iwx_bz_port_set_mac_addr_from_csr(sc, data);
+
     uint32_t mac_addr0, mac_addr1;
     
     if (!iwx_nic_lock(sc))
@@ -6939,6 +7079,8 @@ iwx_is_valid_mac_addr(const uint8_t *addr)
 int ItlIwx::
 iwx_nvm_get(struct iwx_softc *sc)
 {
+    if (bzDevice()) {int e=iwx_bz_port_nvm_get(sc);if(!e) sc->sc_nvm.sku_cap_11ax_enable=false;return e;}
+
     struct iwx_nvm_get_info cmd = {};
     struct iwx_nvm_data *nvm = &sc->sc_nvm;
     struct iwx_host_cmd hcmd = {
@@ -7026,6 +7168,8 @@ out:
 int ItlIwx::
 iwx_load_firmware(struct iwx_softc *sc)
 {
+    if (bzDevice()) return iwx_bz_port_load_firmware(sc);
+
     XYLog("%s\n", __FUNCTION__);
     struct iwx_fw_sects *fws;
     int err/*, w*/;
@@ -7108,6 +7252,8 @@ iwx_load_firmware(struct iwx_softc *sc)
 int ItlIwx::
 iwx_start_fw(struct iwx_softc *sc)
 {
+    if (bzDevice()) return iwx_bz_port_start_fw(sc);
+
     
     XYLog("%s\n", __FUNCTION__);
     int err;
@@ -7189,6 +7335,8 @@ iwx_send_dqa_cmd(struct iwx_softc *sc)
 int ItlIwx::
 iwx_load_ucode_wait_alive(struct iwx_softc *sc)
 {
+    if (bzDevice()) return iwx_bz_port_load_ucode_wait_alive(sc);
+
     XYLog("%s\n", __FUNCTION__);
     int err;
     
@@ -7217,6 +7365,8 @@ iwx_load_ucode_wait_alive(struct iwx_softc *sc)
 int ItlIwx::
 iwx_run_init_mvm_ucode(struct iwx_softc *sc, int readnvm)
 {
+    if (bzDevice()) return iwx_bz_port_run_init_mvm_ucode(sc, readnvm);
+
     XYLog("%s\n", __FUNCTION__);
     const int wait_flags = IWX_INIT_COMPLETE;
     struct iwx_nvm_access_complete_cmd nvm_complete = {};
@@ -7298,8 +7448,10 @@ iwx_config_ltr(struct iwx_softc *sc)
 void ItlIwx::
 iwx_update_rx_desc(struct iwx_softc *sc, struct iwx_rx_ring *ring, int idx)
 {
+    if (bzDevice()) return; // BZ publishes only via explicit refill-slot/ID pairing.
+
     // BOOTFIX1 DEXTER ROUTE iwx_update_rx_desc: original body in its own label scope.
-    if (!dma5Mapped()) return dexterOriginal_iwx_update_rx_desc(sc, ring, idx);
+    if (!dma5Leased()) return dexterOriginal_iwx_update_rx_desc(sc, ring, idx);
 
     struct iwx_rx_data *data = &ring->data[idx];
     
@@ -7307,7 +7459,7 @@ iwx_update_rx_desc(struct iwx_softc *sc, struct iwx_rx_ring *ring, int idx)
         struct iwx_rx_transfer_desc *bd = (struct iwx_rx_transfer_desc *)ring->desc;
         
         // ZC5: mapped IOVA or the Dexter cursor address only in resolved mapper-free mode.
-        bd[idx].addr = htole64(dma5Mapped() ? fRxZcPool->entry[fRxZcSlot[idx]].address : data->map->dm_segs[0].location);
+        bd[idx].addr = htole64(dma5Leased() ? fRxZcPool->entry[fRxZcSlot[idx]].address : data->map->dm_segs[0].location);
         bd[idx].rbid = htole16(idx & 0x0fff);
     } else
         ((uint64_t *)ring->desc)[idx] =
@@ -7321,9 +7473,9 @@ int ItlIwx::
 iwx_rx_addbuf(struct iwx_softc *sc, int size, int idx)
 {
     // BOOTFIX1 DEXTER ROUTE iwx_rx_addbuf: original body in its own label scope.
-    if (!dma5Mapped()) return dexterOriginal_iwx_rx_addbuf(sc, size, idx);
+    if (!dma5Leased()) return dexterOriginal_iwx_rx_addbuf(sc, size, idx);
 
-    if (dma5Mapped())
+    if (dma5Leased())
         return rxZcReplace(idx) ? 0 : ENOBUFS;
     struct iwx_rx_ring *ring = &sc->rxq;
     struct iwx_rx_data *data = &ring->data[idx];
@@ -7757,6 +7909,8 @@ int ItlIwx::
 iwx_oldsn_workaround(struct iwx_softc *sc, struct ieee80211_node *ni, int tid,
     struct iwx_reorder_buffer *buffer, uint32_t reorder_data, uint32_t gp2)
 {
+    if (bzDevice()) return iwx_bz_port_oldsn_workaround(sc, ni, tid, buffer, reorder_data, gp2);
+
     struct ieee80211com *ic = &sc->sc_ic;
 
     // ZC19 adaptation of KGP f92775e65f743e3a84d9cd3634fd8c955125bc78.
@@ -8029,6 +8183,8 @@ void ItlIwx::
 iwx_rx_mpdu_mq(struct iwx_softc *sc, mbuf_t m, void *pktdata,
                size_t maxlen, struct mbuf_list *ml)
 {
+    if (bzDevice()) return iwx_bz_port_rx_mpdu_mq(sc, m, pktdata, maxlen, ml);
+
     struct ieee80211com *ic = &sc->sc_ic;
     struct ieee80211_rxinfo rxi;
     struct iwx_rx_mpdu_desc *desc;
@@ -8191,6 +8347,7 @@ void ItlIwx::
 iwx_rx_tx_cmd_single(struct iwx_softc *sc, struct iwx_rx_packet *pkt,
                      struct iwx_tx_data *txd)
 {
+
     struct ieee80211com *ic = &sc->sc_ic;
     struct _ifnet *ifp = IC2IFP(ic);
     struct iwx_tx_resp *tx_resp = (struct iwx_tx_resp *)pkt->data;
@@ -8255,6 +8412,7 @@ iwx_txd_done(struct iwx_softc *sc, struct iwx_tx_data *txd)
 void ItlIwx::
 iwx_clear_oactive(struct iwx_softc *sc, struct iwx_tx_ring *ring)
 {
+
     struct ieee80211com *ic = &sc->sc_ic;
     struct _ifnet *ifp = &ic->ic_if;
 
@@ -8274,7 +8432,7 @@ void ItlIwx::
 iwx_rx_tx_ba_notif(struct iwx_softc *sc, struct iwx_rx_packet *pkt, struct iwx_rx_data *data)
 {
     // BOOTFIX1 DEXTER ROUTE iwx_rx_tx_ba_notif: original body in its own label scope.
-    if (!dma5Mapped()) return dexterOriginal_iwx_rx_tx_ba_notif(sc, pkt, data);
+    if (!dma5Leased()) return dexterOriginal_iwx_rx_tx_ba_notif(sc, pkt, data);
 
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 &&
         __atomic_load_n(&fPc1Suspended,__ATOMIC_ACQUIRE)) {++fPc1DroppedCompletion;return;}
@@ -8282,10 +8440,13 @@ iwx_rx_tx_ba_notif(struct iwx_softc *sc, struct iwx_rx_packet *pkt, struct iwx_r
     struct ieee80211com *ic = &sc->sc_ic;
     struct iwx_compressed_ba_notif *ba_res = (struct iwx_compressed_ba_notif *)pkt->data;
     uint8_t tid;
-    uint8_t qid;
+    uint16_t qid;
     int i;
     struct iwx_tx_ring *ring;
 
+    if(bzDevice() && (iwx_rx_packet_payload_len(pkt)<offsetof(iwx_compressed_ba_notif,tfd) ||
+       offsetof(iwx_compressed_ba_notif,tfd)+size_t(le16toh(ba_res->tfd_cnt))*sizeof(iwx_compressed_ba_tfd)>
+       iwx_rx_packet_payload_len(pkt))) {bzFail(24,EPROTO);return;}
     sc->sc_tx_timer = 0;
 
     if (le32toh(ba_res->flags) != IWX_BA_RESP_TX_BAR && le32toh(ba_res->flags) != IWX_BA_RESP_TX_AGG){
@@ -8311,11 +8472,17 @@ iwx_rx_tx_ba_notif(struct iwx_softc *sc, struct iwx_rx_packet *pkt, struct iwx_r
         tid = ba_tfd->tid;
 
         qid = le16toh(ba_tfd->q_num);
+        if(bzDevice() && (qid<=IWX_DQA_CMD_QUEUE || qid>=nitems(sc->txq) || tid>=IWX_MAX_TID_COUNT ||
+           !sc->txq[qid].ring_count || !itlTxCompletionValid(sc->txq[qid].tail,sc->txq[qid].queued,
+           IWX_AGG_SSN_TO_TXQ_IDX(le16toh(ba_tfd->tfd_index),sc->txq[qid].ring_count),sc->txq[qid].ring_count))) {
+            bzFail(24,EPROTO);return;
+        }
         ring = &sc->txq[qid];
 
         sc->sc_tx_timer = 0;
 
         iwx_ampdu_txq_advance(sc, ring, IWX_AGG_SSN_TO_TXQ_IDX(le16toh(ba_tfd->tfd_index), ring->ring_count), true);
+        if(bzDevice())++fBzStats[18];
         iwx_clear_oactive(sc, ring);
     }
 }
@@ -8324,14 +8491,14 @@ void ItlIwx::
 iwx_ampdu_txq_advance(struct iwx_softc *sc, struct iwx_tx_ring *ring, int idx, bool normalCompletion2I)
 {
     // BOOTFIX1 DEXTER ROUTE iwx_ampdu_txq_advance: original body in its own label scope.
-    if (!dma5Mapped()) return dexterOriginal_iwx_ampdu_txq_advance(sc, ring, idx);
+    if (!dma5Leased()) return dexterOriginal_iwx_ampdu_txq_advance(sc, ring, idx);
 
     struct iwx_tx_data *txd;
 
     while (ring->tail != idx) {
         txd = &ring->data[ring->tail];
         if (txd->m != NULL) {
-            if (!dma5Mapped() && sc->sc_device_family>=IWX_DEVICE_FAMILY_AX210 && !normalCompletion2I) {
+            if (!dma5Leased() && sc->sc_device_family>=IWX_DEVICE_FAMILY_AX210 && !normalCompletion2I) {
                 // Conventional mbuf is the hardware payload itself. A software
                 // flush without positive TX completion cannot release it.
                 __atomic_fetch_or(&fTx2JAdmission,kTx2JClosed,__ATOMIC_ACQ_REL);
@@ -8352,7 +8519,7 @@ iwx_rx_tx_cmd(struct iwx_softc *sc, struct iwx_rx_packet *pkt,
               struct iwx_rx_data *data)
 {
     // BOOTFIX1 DEXTER ROUTE iwx_rx_tx_cmd: original body in its own label scope.
-    if (!dma5Mapped()) return dexterOriginal_iwx_rx_tx_cmd(sc, pkt, data);
+    if (!dma5Leased()) return dexterOriginal_iwx_rx_tx_cmd(sc, pkt, data);
 
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 &&
         __atomic_load_n(&fPc1Suspended,__ATOMIC_ACQUIRE)) {++fPc1DroppedCompletion;return;}
@@ -8361,7 +8528,9 @@ iwx_rx_tx_cmd(struct iwx_softc *sc, struct iwx_rx_packet *pkt,
     int idx;
     int tid;
     struct iwx_tx_resp *tx_resp = (struct iwx_tx_resp *)pkt->data;
+    if(bzDevice() && iwx_rx_packet_payload_len(pkt)<sizeof(*tx_resp)+sizeof(uint32_t)) {bzFail(23,EPROTO);return;}
     int qid = tx_resp->tx_queue;
+    if(bzDevice() && (qid<=IWX_DQA_CMD_QUEUE || qid>=nitems(sc->txq) || !sc->txq[qid].ring_count)) {bzFail(23,EPROTO);return;}
     struct iwx_tx_ring *ring = &sc->txq[qid];
     struct iwx_tx_data *txd;
 
@@ -8370,6 +8539,9 @@ iwx_rx_tx_cmd(struct iwx_softc *sc, struct iwx_rx_packet *pkt,
     
     sc->sc_tx_timer = 0;
 
+    if(bzDevice() && (!tx_resp->frame_count ||
+        offsetof(iwx_tx_resp,status)+size_t(tx_resp->frame_count)*sizeof(tx_resp->status)+sizeof(ssn)>
+        iwx_rx_packet_payload_len(pkt))) {bzFail(23,EPROTO);return;}
     if (tx_resp->frame_count > 1) {
         zc28Aggregate(pkt); // No per-frame Release formatting/output.
     } else {
@@ -8377,10 +8549,12 @@ iwx_rx_tx_cmd(struct iwx_softc *sc, struct iwx_rx_packet *pkt,
         memcpy(&ssn, &tx_resp->status + tx_resp->frame_count, sizeof(ssn));
         ssn = le32toh(ssn) & 0xfff;
         idx = IWX_AGG_SSN_TO_TXQ_IDX(ssn, ring->ring_count);
-        txd = &ring->data[idx];
+        if(bzDevice() && !itlTxCompletionValid(ring->tail,ring->queued,idx,ring->ring_count)) {bzFail(23,EPROTO);return;}
+        txd = &ring->data[bzDevice()?((idx-1)&(ring->ring_count-1)):idx];
         iwx_rx_tx_cmd_single(sc, pkt, txd);
         DPRINTFN(3, ("%s tid=%d ssn=%d idx=%d\n", __FUNCTION__, tid, ssn, idx));
         iwx_ampdu_txq_advance(sc, ring, idx, true);
+        if(bzDevice())++fBzStats[17];
         iwx_clear_oactive(sc, ring);
     }
 }
@@ -8542,6 +8716,8 @@ iwx_phy_ctxt_cmd_v3(struct iwx_softc *sc, struct iwx_phy_ctxt *ctxt,
     uint8_t chains_static, uint8_t chains_dynamic, uint32_t action,
     uint32_t apply_time)
 {
+    if (bzDevice()) return iwx_bz_port_phy_ctxt_cmd_v3(sc, ctxt, chains_static, chains_dynamic, action, apply_time);
+
     struct ieee80211com *ic = &sc->sc_ic;
     struct iwx_phy_context_cmd cmd;
     uint8_t active_cnt, idle_cnt;
@@ -8645,6 +8821,8 @@ iwx_phy_ctxt_cmd(struct iwx_softc *sc, struct iwx_phy_ctxt *ctxt,
                  uint8_t chains_static, uint8_t chains_dynamic, uint32_t action,
                  uint32_t apply_time)
 {
+    if (bzDevice()) return iwx_bz_port_phy_ctxt_cmd(sc, ctxt, chains_static, chains_dynamic, action, apply_time);
+
     XYLog("%s\n", __FUNCTION__);
     struct ieee80211com *ic = &sc->sc_ic;
     struct iwx_phy_context_cmd_v1 cmd;
@@ -8693,6 +8871,13 @@ iwx_phy_ctxt_cmd(struct iwx_softc *sc, struct iwx_phy_ctxt *ctxt,
 int ItlIwx::
 iwx_send_cmd(struct iwx_softc *sc, struct iwx_host_cmd *hcmd)
 {
+    if(bzDevice() && !getMainWorkLoop()->inGate()) {
+        return getMainCommandGate()->runAction(
+            [](OSObject *,void *owner,void *context,void *command,void *)->IOReturn {
+                return static_cast<ItlIwx *>(owner)->iwx_send_cmd(static_cast<iwx_softc *>(context),static_cast<iwx_host_cmd *>(command));
+            },this,sc,hcmd);
+    }
+
     struct iwx_tx_ring *ring = &sc->txq[IWX_DQA_CMD_QUEUE];
     struct iwx_tfh_tfd *desc;
     struct iwx_tx_data *txdata;
@@ -8709,6 +8894,8 @@ iwx_send_cmd(struct iwx_softc *sc, struct iwx_host_cmd *hcmd)
     IOPhysicalSegment seg;
     uint64_t waitStart2J = 0;
     bool published2J = false;
+    uint32_t bzSerial=0;
+    const uint32_t bzEpoch=fPc1ResetEpoch;
     const bool device2K = sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210;
     const uint32_t epoch2K = __atomic_load_n(&fCmd2KEpoch, __ATOMIC_SEQ_CST);
     bool mapped2K = false, claimed2K = false, linked2K = false;
@@ -8726,6 +8913,8 @@ iwx_send_cmd(struct iwx_softc *sc, struct iwx_host_cmd *hcmd)
 
     /* If this command waits for a response, allocate response buffer. */
     hcmd->resp_pkt = NULL;
+    if(bzDevice() && (fBzFault || idx>=IWX_CMD_QUEUE_SIZE_GEN3 ||
+        !fBzCommands.available(idx))) return EBUSY;
     if (device2K && !cmd2KAvailable(idx)) {
         __atomic_fetch_add(&fCmd2KStats[8], 1U, __ATOMIC_RELAXED);
         cmd2KReport(7); return EBUSY;
@@ -8877,6 +9066,18 @@ iwx_send_cmd(struct iwx_softc *sc, struct iwx_host_cmd *hcmd)
     //        sizeof (*desc), BUS_DMASYNC_PREWRITE);
     /* Kick command ring. */
     DPRINTF(("%s: Sending command (%.2x.%.2x), %d bytes at [%d]:%d ver: %d\n", __func__, group_id, cmd->hdr.cmd, cmd->hdr_wide.length, cmd->hdr.idx, cmd->hdr.qid, cmd->hdr_wide.version));
+    if(bzDevice()) {
+        if(!kgp_bz::dmaFits(paddr,hdrlen+paylen,1) ||
+           !ring->desc_dma.cmd || ring->desc_dma.cmd->synchronize(kIODirectionOut)!=kIOReturnSuccess ||
+           (!mapped2K && (!ring->cmd_dma.cmd || ring->cmd_dma.cmd->synchronize(kIODirectionOut)!=kIOReturnSuccess))) {
+            bzFail(29,EIO);err=EIO;goto out;
+        }
+        const uint32_t reply=iwx_cmd_groupid(hcmd->id)==0?iwx_cmd_opcode(code):(code&0xffffU);
+        bzSerial=fBzCommands.begin(idx,reply,generation,fPc1ResetEpoch,async);
+        if(!bzSerial) {err=EBUSY;goto out;}
+        txdata->flags|=IWX_TXDATA_FLAG_CMD_PENDING;
+        iwx_dma_queue_publish_barrier();
+    }
     waitStart2J = time2GNow();
     published2J = true;
     ring->queued++;
@@ -8884,7 +9085,16 @@ iwx_send_cmd(struct iwx_softc *sc, struct iwx_host_cmd *hcmd)
     IWX_WRITE(sc, IWX_HBUS_TARG_WRPTR, ring->qid << 16 | ring->cur);
     
     if (!async) {
-        err = tsleep_nsec(desc, PCATCH, "iwxcmd", SEC_TO_NSEC(1));
+        if(bzDevice()) {
+            uint32_t budget=1000;
+            while(!fBzCommands.completed(idx,bzSerial) && generation==sc->sc_generation && bzEpoch==fPc1ResetEpoch && !fBzFault) {
+                err=iwx_gate_sleep(sc,desc,&budget,IWX_GATE_WAIT_NOTIF);
+                if(fBzCommands.completed(idx,bzSerial)) {err=0;break;}
+                if(err) break;
+            }
+            if(fBzFault || generation!=sc->sc_generation || bzEpoch!=fPc1ResetEpoch) err=ENXIO;
+            if(err && generation==sc->sc_generation && bzEpoch==fPc1ResetEpoch) bzFail(30,err); // Pending slot/backing survives until positive reset.
+        } else err = tsleep_nsec(desc, PCATCH, "iwxcmd", SEC_TO_NSEC(1));
         flow2J(13, code, idx, generation, sc->sc_generation, err, time2GNow() - waitStart2J);
         if (err == 0) {
             /* if hardware is no longer up, return error */
@@ -8902,6 +9112,7 @@ iwx_send_cmd(struct iwx_softc *sc, struct iwx_host_cmd *hcmd)
         }
     }
 out:
+    if(bzDevice() && bzSerial) fBzCommands.finish(idx,bzSerial,err==0 && published2J);
     if (claimed2K) {
         if (!linked2K && m) mbuf_freem(m);
         cmd2KFinish(idx, serial2K, published2J, err);
@@ -8994,6 +9205,7 @@ iwx_cmd_done(struct iwx_softc *sc, int qid, int idx, int code)
         return;    /* Not a command ack. */
     }
     
+    if(bzDevice() && !fBzCommands.expected(idx,code,sc->sc_generation,fPc1ResetEpoch)) {bzFail(31,EPROTO);return;}
     data = &ring->data[idx];
     const int mapped2K = sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 ? cmd2KDone(idx, code, data) : 0;
     if (mapped2K < 0) return;
@@ -9009,7 +9221,11 @@ iwx_cmd_done(struct iwx_softc *sc, int qid, int idx, int code)
         mbuf_freem(data->m);
         data->m = NULL;
     }
-    wakeupOn(&ring->desc[idx]);
+    if(bzDevice()) {
+        if(!fBzCommands.complete(idx,code,sc->sc_generation,fPc1ResetEpoch)) {bzFail(31,EPROTO);return;}
+        data->flags &= ~IWX_TXDATA_FLAG_CMD_PENDING;
+        getMainCommandGate()->commandWakeup(&ring->desc[idx]);
+    } else wakeupOn(&ring->desc[idx]);
     
     DPRINTF(("%s: command 0x%x done\n", __func__, code));
     if (ring->queued == 0) {
@@ -9052,6 +9268,8 @@ const struct iwx_rate *ItlIwx::
 iwx_tx_fill_cmd(struct iwx_softc *sc, struct iwx_node *in,
                 struct ieee80211_frame *wh, uint32_t *flags, uint32_t *rate_n_flags)
 {
+    if (bzDevice()) return iwx_bz_port_tx_fill_cmd(sc, in, wh, flags, rate_n_flags);
+
     struct ieee80211com *ic = &sc->sc_ic;
     struct ieee80211_node *ni = &in->in_ni;
     struct ieee80211_rateset *rs = &ni->ni_rates;
@@ -9112,6 +9330,8 @@ void ItlIwx::
 iwx_tx_update_byte_tbl(struct iwx_softc *sc, struct iwx_tx_ring *txq, int idx, uint16_t byte_cnt,
                        uint16_t num_tbs)
 {
+    if (bzDevice()) return iwx_bz_port_tx_update_byte_tbl(sc, txq, idx, byte_cnt, num_tbs);
+
     uint8_t filled_tfd_size, num_fetch_chunks;
     uint16_t len = byte_cnt;
     uint16_t bc_ent;
@@ -9148,7 +9368,7 @@ int ItlIwx::
 iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
 {
     // BOOTFIX1 DEXTER ROUTE iwx_tx: original body in its own label scope.
-    if (!dma5Mapped()) return dexterOriginal_iwx_tx(sc, m, ni, ac);
+    if (!dma5Leased()) return dexterOriginal_iwx_tx(sc, m, ni, ac);
 
     struct ieee80211com *ic = &sc->sc_ic;
     struct iwx_node *in = (struct iwx_node *)ni;
@@ -9178,6 +9398,9 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
     int qid = IWX_INVALID_QUEUE;
     int idx;
 
+    if(bzDevice() && (fBzFault || !(sc->sc_flags & IWX_FLAG_MLD_TXQ_ACTIVE))) {
+        ++fBzStats[10];mbuf_freem(m);return ENXIO;
+    }
     wh = mtod(m, struct ieee80211_frame *);
     type = wh->i_fc[0] & IEEE80211_FC0_TYPE_MASK;
     subtype = wh->i_fc[0] & IEEE80211_FC0_SUBTYPE_MASK;
@@ -9206,6 +9429,16 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
         }
     }
 
+    if(bzDevice()) {
+        if(ieee80211_has_qos(wh) && type==IEEE80211_FC0_TYPE_DATA &&
+           subtype!=IEEE80211_FC0_SUBTYPE_NODATA && !IEEE80211_IS_MULTICAST(wh->i_addr1)) {
+            unsigned t=ieee80211_get_qos(wh)&IEEE80211_QOS_TID;
+            qid=sc->first_data_qid; // EAPOL/preauthorization uses management queue.
+            if(ni->ni_port_valid && t<IWX_MAX_TID_COUNT && sc->sc_tid_data[t].qid>0 &&
+                sc->sc_tid_data[t].qid!=IWX_INVALID_QUEUE) qid=sc->sc_tid_data[t].qid;
+        }
+        if(qid<0 || qid>=nitems(sc->txq)) {mbuf_freem(m);bzFail(21,EINVAL);return EINVAL;}
+    }
     ring = &sc->txq[qid];
     if (ring->ring_count == 0) {
         mbuf_freem(m);
@@ -9289,8 +9522,8 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
     //    totlen = m->m_pkthdr.len;
     totlen = mbuf_pkthdr_len(m);
     
-    if (hdrlen % 4)
-        offload_assist |= IWX_TX_CMD_OFFLD_PAD;
+    if (hdrlen % 4) offload_assist |= IWX_TX_CMD_OFFLD_PAD;
+    if(bzDevice()) offload_assist=itlTxOffloadHeader(hdrlen);
     
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210) {
         tx_gen3 = (struct iwx_tx_cmd_gen3 *)cmd->data;
@@ -9320,12 +9553,12 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
     /* Trim 802.11 header. */
     mbuf_adj(m, hdrlen);
     
-    if (dma5Mapped())
+    if (dma5Leased())
         nsegs = tx2IPrepare(data, m, ring->qid, idx, &segs[0]);
     else
     nsegs = data->map->cursor->getPhysicalSegmentsWithCoalesce(m, &segs[0], IWX_TFH_NUM_TBS - 2);
     if (nsegs == 0) {
-        if (!dma5Mapped()) XYLog("%s: can't map mbuf (error %d)\n", DEVNAME(sc),
+        if (!dma5Leased()) XYLog("%s: can't map mbuf (error %d)\n", DEVNAME(sc),
               nsegs);
         mbuf_freem(m);
         return ENOMEM;
@@ -9377,19 +9610,27 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
     // On failure no WRPTR is issued; a mapped prepared copy is conservatively
     // quarantined by the existing abort path, never treated as completed.
     if (!iwx_tx_publish_control(ring, unsigned(idx), desc, cmd)) {
-        if (dma5Mapped()) tx2IRetire(data, false);
+        if (dma5Leased()) tx2IRetire(data, false);
         __atomic_fetch_or(&fTx2JAdmission, kTx2JClosed, __ATOMIC_ACQ_REL);
         __atomic_store_n(&fTx2IBlocked, 1U, __ATOMIC_RELEASE);
         mbuf_freem(m);
         return EINVAL;
     }
+    if(bzDevice()) {
+        iwx_tx_update_byte_tbl(sc,ring,idx,totlen,num_tbs);
+        iwx_dma_info *regions[]={&ring->cmd_dma,&ring->desc_dma,&ring->bc_tbl};
+        for(auto *r:regions) if(!r->cmd || r->cmd->synchronize(kIODirectionOut)!=kIOReturnSuccess) {
+            bzFail(22,EIO);tx2IRetire(data,false);mbuf_freem(m);return EIO;
+        }
+        ++fBzStats[11];
+    }
     data->m = m;
     data->in = in;
     data->type = type;
-    iwx_tx_update_byte_tbl(sc, ring, idx, totlen, num_tbs);
+    if(!bzDevice()) iwx_tx_update_byte_tbl(sc, ring, idx, totlen, num_tbs);
     
     // ZC14 TX-1: pinned OSSynchronizeIO is empty; emit the intended publication fence.
-    if (dma5Mapped()) iwx_dma_publish_barrier(); // payload plus copied control stores precede MMIO
+    if (dma5Leased()) iwx_dma_publish_barrier(); // payload plus copied control stores precede MMIO
     /* Kick TX ring. */
     ring->cur = (ring->cur + 1) % getTxQueueSize();
     IWX_WRITE(sc, IWX_HBUS_TARG_WRPTR, ring->qid << 16 | ring->cur);
@@ -9401,13 +9642,15 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
         __atomic_fetch_add(&fTx5Telemetry[7],1ULL,__ATOMIC_RELAXED);
     }
     
-    if (dma5Mapped()) tx2IPublished(data);
+    if (dma5Leased()) tx2IPublished(data);
     return 0;
 }
 
 int ItlIwx::
 iwx_flush_sta_tids(struct iwx_softc *sc, int sta_id, uint16_t tids)
 {
+    if (bzDevice()) return iwx_bz_port_flush_sta_tids(sc, sta_id, tids);
+
     const unsigned generationPC1=unsigned(sc->sc_generation);
     struct iwx_rx_packet *pkt;
     struct iwx_tx_path_flush_cmd_rsp *resp;
@@ -9484,6 +9727,8 @@ out:
 int ItlIwx::
 iwx_flush_sta(struct iwx_softc *sc, struct iwx_node *in)
 {
+    if (bzDevice()) return iwx_bz_port_flush_sta(sc, in);
+
     const unsigned generationPC1=unsigned(sc->sc_generation);
     int err;
     
@@ -9686,6 +9931,8 @@ iwx_disable_beacon_filter(struct iwx_softc *sc)
 int ItlIwx::
 iwx_add_sta_cmd(struct iwx_softc *sc, struct iwx_node *in, int update)
 {
+    if (bzDevice()) return iwx_bz_port_add_sta_cmd(sc, in, update);
+
     struct iwx_add_sta_cmd add_sta_cmd;
     int err;
     uint32_t status, agg_size = 0;
@@ -9805,6 +10052,8 @@ iwx_add_sta_cmd(struct iwx_softc *sc, struct iwx_node *in, int update)
 int ItlIwx::
 iwx_add_aux_sta(struct iwx_softc *sc)
 {
+    if (bzDevice()) return iwx_bz_port_add_aux_sta(sc);
+
     
     XYLog("%s\n", __FUNCTION__);
     struct iwx_add_sta_cmd cmd;
@@ -9846,6 +10095,8 @@ iwx_add_aux_sta(struct iwx_softc *sc)
 int ItlIwx::
 iwx_rm_sta_cmd(struct iwx_softc *sc, struct iwx_node *in)
 {
+    if (bzDevice()) return iwx_bz_port_rm_sta_cmd(sc, in);
+
     struct ieee80211com *ic = &sc->sc_ic;
     struct iwx_rm_sta_cmd rm_sta_cmd;
     int err;
@@ -9908,6 +10159,8 @@ uint8_t ItlIwx::
 iwx_umac_scan_fill_channels(struct iwx_softc *sc,
                             struct iwx_scan_channel_cfg_umac *chan, int n_ssids, int bgscan)
 {
+    if (bzDevice()) return iwx_bz_port_umac_scan_fill_channels(sc, chan, n_ssids, bgscan);
+
     struct ieee80211com *ic = &sc->sc_ic;
     struct ieee80211_channel *c;
     uint8_t nchan;
@@ -10071,6 +10324,8 @@ iwx_fill_probe_req(struct iwx_softc *sc, struct iwx_scan_probe_req *preq)
 int ItlIwx::
 iwx_config_umac_scan(struct iwx_softc *sc)
 {
+    if (bzDevice()) return iwx_bz_port_config_umac_scan(sc);
+
     XYLog("%s\n", __FUNCTION__);
     struct iwx_scan_config *scan_config;
     int err;
@@ -10191,6 +10446,8 @@ iwx_config_legacy_umac_scan(struct iwx_softc *sc)
 int ItlIwx::
 iwx_umac_scan_size(struct iwx_softc *sc)
 {
+    if (bzDevice()) return iwx_bz_port_umac_scan_size(sc);
+
     int base_size = IWX_SCAN_REQ_UMAC_SIZE_V1;
     int tail_size;
     uint8_t scan_ver = iwx_lookup_cmd_ver(sc, IWX_LONG_GROUP, IWX_SCAN_REQ_UMAC);
@@ -10275,6 +10532,8 @@ iwx_get_scan_req_umac_data(struct iwx_softc *sc, struct iwx_scan_req_umac *req)
 int ItlIwx::
 iwx_umac_scan(struct iwx_softc *sc, int bgscan)
 {
+    if (bzDevice()) return iwx_bz_port_umac_scan(sc, bgscan);
+
     XYLog("%s\n", __FUNCTION__);
     struct ieee80211com *ic = &sc->sc_ic;
     struct iwx_host_cmd hcmd = {
@@ -10452,6 +10711,8 @@ iwx_umac_scan(struct iwx_softc *sc, int bgscan)
 int ItlIwx::
 iwx_umac_scan_v12(struct iwx_softc *sc, int bgscan)
 {
+    if (bzDevice()) return iwx_bz_port_umac_scan_v12(sc, bgscan);
+
     XYLog("%s\n", __FUNCTION__);
     struct ieee80211com *ic = &sc->sc_ic;
     int err = 0, async = bgscan;
@@ -11093,6 +11354,8 @@ iwx_del_task(struct iwx_softc *sc, struct taskq *taskq, struct task *task)
 int ItlIwx::
 iwx_scan(struct iwx_softc *sc)
 {
+    if (bzDevice()) return iwx_bz_port_scan(sc);
+
     XYLog("%s\n", __FUNCTION__);
     struct ieee80211com *ic = &sc->sc_ic;
     struct _ifnet *ifp = IC2IFP(ic);
@@ -11169,6 +11432,8 @@ iwx_umac_scan_abort(struct iwx_softc *sc)
 int ItlIwx::
 iwx_scan_abort(struct iwx_softc *sc)
 {
+    if (bzDevice()) return iwx_bz_port_scan_abort(sc);
+
     XYLog("%s\n", __FUNCTION__);
     int err;
     
@@ -11181,6 +11446,8 @@ iwx_scan_abort(struct iwx_softc *sc)
 int ItlIwx::
 iwx_enable_mgmt_queue(struct iwx_softc *sc)
 {
+    if (bzDevice()) return iwx_bz_port_enable_mgmt_queue(sc);
+
     int err;
     int cmdver;
 
@@ -11262,6 +11529,8 @@ static uint8_t iwx_rs_fw_bw_from_sta_bw(uint8_t bw)
 uint16_t ItlIwx::
 iwx_rs_fw_get_config_flags(struct iwx_softc *sc)
 {
+    if (bzDevice()) return iwx_bz_port_rs_fw_get_config_flags(sc);
+
     struct ieee80211com *ic = &sc->sc_ic;
     struct ieee80211_node *ni = ic->ic_bss;
     uint16_t flags = 0;
@@ -11426,6 +11695,8 @@ iwx_rs_fw_he_set_enabled_rates(struct iwx_softc *sc,
 int ItlIwx::
 iwx_rs_init(struct iwx_softc *sc, struct iwx_node *in, bool update)
 {
+    if (bzDevice()) return iwx_bz_port_rs_init(sc, in, update);
+
     struct ieee80211_node *ni = &in->in_ni;
     struct ieee80211_rateset *rs = &ni->ni_rates;
     struct iwx_tlc_config_cmd_v4 cfg_cmd;
@@ -11596,6 +11867,8 @@ static uint32_t iwx_new_rate_from_v1(uint32_t rate_v1)
 void ItlIwx::
 iwx_rs_update(struct iwx_softc *sc, struct iwx_tlc_update_notif *notif)
 {
+    if (bzDevice()) return iwx_bz_port_rs_update(sc, notif);
+
     struct ieee80211com *ic = &sc->sc_ic;
     struct ieee80211_node *ni = ic->ic_bss;
     struct ieee80211_rateset *rs = &ni->ni_rates;
@@ -11686,6 +11959,8 @@ iwx_phy_ctxt_update(struct iwx_softc *sc, struct iwx_phy_ctxt *phyctxt,
 int ItlIwx::
 iwx_auth(struct iwx_softc *sc)
 {
+    if (bzDevice()) return iwx_bz_port_auth(sc);
+
     XYLog("%s\n", __FUNCTION__);
     struct ieee80211com *ic = &sc->sc_ic;
     struct iwx_node *in = (struct iwx_node *)ic->ic_bss;
@@ -11801,6 +12076,8 @@ rm_mac_ctxt:
 int ItlIwx::
 iwx_deauth(struct iwx_softc *sc)
 {
+    if (bzDevice()) return iwx_bz_port_deauth(sc);
+
     XYLog("%s\n", __FUNCTION__);
     struct ieee80211com *ic = &sc->sc_ic;
     struct iwx_node *in = (struct iwx_node *)ic->ic_bss;
@@ -11860,6 +12137,8 @@ iwx_deauth(struct iwx_softc *sc)
 int ItlIwx::
 iwx_run(struct iwx_softc *sc)
 {
+    if (bzDevice()) return iwx_bz_port_run(sc);
+
     XYLog("%s\n", __FUNCTION__);
     struct ieee80211com *ic = &sc->sc_ic;
     struct iwx_node *in = (struct iwx_node *)ic->ic_bss;
@@ -11976,6 +12255,8 @@ iwx_run(struct iwx_softc *sc)
 int ItlIwx::
 iwx_run_stop(struct iwx_softc *sc)
 {
+    if (bzDevice()) return iwx_bz_port_run_stop(sc);
+
     struct ieee80211com *ic = &sc->sc_ic;
     struct iwx_node *in = (struct iwx_node *)ic->ic_bss;
     int err, i;
@@ -12055,6 +12336,8 @@ int ItlIwx::
 iwx_set_key(struct ieee80211com *ic, struct ieee80211_node *ni,
             struct ieee80211_key *k)
 {
+    if (container_of(static_cast<iwx_softc *>(ic->ic_if.if_softc), ItlIwx, com)->bzDevice()) return iwx_bz_port_set_key(ic, ni, k);
+
     struct iwx_softc *sc = (struct iwx_softc *)ic->ic_softc;
     struct iwx_add_sta_key_cmd cmd;
     ItlIwx *that = container_of(sc, ItlIwx, com);
@@ -12089,6 +12372,8 @@ void ItlIwx::
 iwx_delete_key(struct ieee80211com *ic, struct ieee80211_node *ni,
                struct ieee80211_key *k)
 {
+    if (container_of(static_cast<iwx_softc *>(ic->ic_if.if_softc), ItlIwx, com)->bzDevice()) return iwx_bz_port_delete_key(ic, ni, k);
+
     struct iwx_softc *sc = (struct iwx_softc *)ic->ic_softc;
     struct iwx_add_sta_key_cmd cmd;
     ItlIwx *that = container_of(sc, ItlIwx, com);
@@ -12118,6 +12403,8 @@ iwx_delete_key(struct ieee80211com *ic, struct ieee80211_node *ni,
 int ItlIwx::
 iwx_media_change(struct _ifnet *ifp)
 {
+    if (bzDevice()) return iwx_bz_port_media_change(ifp);
+
     struct iwx_softc *sc = (struct iwx_softc *)ifp->if_softc;
     struct ieee80211com *ic = &sc->sc_ic;
     uint8_t rate, ridx;
@@ -12150,6 +12437,13 @@ iwx_media_change(struct _ifnet *ifp)
 void ItlIwx::
 iwx_newstate_task(void *psc)
 {
+    auto *bzt=container_of(static_cast<iwx_softc *>(psc),ItlIwx,com);
+    if(bzt->bzDevice() && !bzt->getMainWorkLoop()->inGate()) {
+        bzt->getMainCommandGate()->runAction([](OSObject *,void *context,void *,void *,void *)->IOReturn {
+            iwx_newstate_task(context);return kIOReturnSuccess;
+        },psc);return;
+    }
+
     XYLog("%s\n", __FUNCTION__);
     struct iwx_softc *sc = (struct iwx_softc *)psc;
     struct ieee80211com *ic = &sc->sc_ic;
@@ -12179,6 +12473,8 @@ iwx_newstate_task(void *psc)
         }
     }
     
+    if(that->bzDevice() && nstate<=IEEE80211_S_AUTH && ostate>=IEEE80211_S_ASSOC)
+        that->iwx_mld_send_leave(sc,ostate);
     if (nstate <= ostate) {
         switch (ostate) {
             case IEEE80211_S_RUN:
@@ -12291,6 +12587,8 @@ iwx_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 void ItlIwx::
 iwx_endscan(struct iwx_softc *sc)
 {
+    if (bzDevice()) return iwx_bz_port_endscan(sc);
+
     struct ieee80211com *ic = &sc->sc_ic;
     
     struct ieee80211_node *ni, *nextbs;
@@ -12450,6 +12748,8 @@ iwx_send_bt_init_conf(struct iwx_softc *sc)
 int ItlIwx::
 iwx_send_soc_conf(struct iwx_softc *sc)
 {
+    if (bzDevice()) return iwx_bz_port_send_soc_conf(sc);
+
    struct iwx_soc_configuration_cmd cmd;
    int err;
    uint32_t cmd_id, flags = 0;
@@ -12489,6 +12789,8 @@ iwx_send_soc_conf(struct iwx_softc *sc)
 int ItlIwx::
 iwx_send_update_mcc_cmd(struct iwx_softc *sc, const char *alpha2)
 {
+    if (bzDevice()) return iwx_bz_port_send_update_mcc_cmd(sc, alpha2);
+
     XYLog("%s\n", __FUNCTION__);
     struct iwx_mcc_update_cmd mcc_cmd;
     struct iwx_host_cmd hcmd = {
@@ -12577,6 +12879,15 @@ iwx_send_temp_report_ths_cmd(struct iwx_softc *sc)
 int ItlIwx::
 iwx_init_hw(struct iwx_softc *sc)
 {
+    if(bzDevice() && !getMainWorkLoop()->inGate()) {
+        return getMainCommandGate()->runAction(
+            [](OSObject *,void *owner,void *context,void *,void *)->IOReturn {
+                return static_cast<ItlIwx *>(owner)->iwx_init_hw(static_cast<iwx_softc *>(context));
+            },this,sc);
+    }
+
+    if (bzDevice()) {if(fBzFault) return EIO;return iwx_bz_port_init_hw(sc);}
+
     XYLog("%s\n", __FUNCTION__);
     struct ieee80211com *ic = &sc->sc_ic;
     int err, i;
@@ -12860,7 +13171,7 @@ _iwx_start_task(OSObject *target, void *arg0, void *arg1, void *arg2, void *arg3
     // ZC8: acknowledge gate entry for BOTH routes. The conventional packet
     // body remains unchanged; only its scheduling notification is shared.
     if (arg1) static_cast<Start2LContext *>(arg1)->entered = true;
-    if (!container_of(static_cast<iwx_softc *>(static_cast<_ifnet *>(arg0)->if_softc), ItlIwx, com)->dma5Mapped()) return dexterOriginal__iwx_start_task(target, arg0, arg1, arg2, arg3);
+    if (!container_of(static_cast<iwx_softc *>(static_cast<_ifnet *>(arg0)->if_softc), ItlIwx, com)->dma5Leased()) return dexterOriginal__iwx_start_task(target, arg0, arg1, arg2, arg3);
 
     struct _ifnet *ifp = (struct _ifnet *)arg0;
     struct iwx_softc *sc = (struct iwx_softc *)ifp->if_softc;
@@ -13235,6 +13546,8 @@ struct iwx_umac_error_event_table {
 void ItlIwx::
 iwx_nic_umac_error(struct iwx_softc *sc)
 {
+    if (bzDevice()) return iwx_bz_port_nic_umac_error(sc);
+
     struct iwx_umac_error_event_table table;
     uint32_t base;
     
@@ -13328,6 +13641,8 @@ iwx_desc_lookup(uint32_t num)
 void ItlIwx::
 iwx_nic_error(struct iwx_softc *sc)
 {
+    if (bzDevice()) return iwx_bz_port_nic_error(sc);
+
     struct iwx_error_event_table table;
     uint32_t base;
     
@@ -13447,7 +13762,7 @@ void ItlIwx::
 iwx_rx_pkt(struct iwx_softc *sc, struct iwx_rx_data *data, struct mbuf_list *ml)
 {
     // BOOTFIX1 DEXTER ROUTE iwx_rx_pkt: original body in its own label scope.
-    if (!dma5Mapped()) return dexterOriginal_iwx_rx_pkt(sc, data, ml);
+    if (!dma5Leased()) return dexterOriginal_iwx_rx_pkt(sc, data, ml);
 
     alive2FEvent(5);
     struct _ifnet *ifp = IC2IFP(&sc->sc_ic);
@@ -13460,9 +13775,11 @@ iwx_rx_pkt(struct iwx_softc *sc, struct iwx_rx_data *data, struct mbuf_list *ml)
     //    bus_dmamap_sync(sc->sc_dmat, data->map, 0, IWX_RBUF_SIZE,
     //        BUS_DMASYNC_POSTREAD);
     
+    const unsigned backingSlot = bzDevice() ? unsigned(data-sc->rxq.data) : unsigned(sc->rxq.cur);
+    if (backingSlot>=IWX_RX_MQ_RING_COUNT) {bzFail(2,EINVAL);return;}
     m0 = data->m;
-    if (dma5Mapped() &&
-        !rxZcSync(sc->rxq.cur, m0))
+    if (dma5Leased() &&
+        !rxZcSync(backingSlot, m0))
         return; // Never parse unsynchronized direct DMA storage.
     const int rxSlot2G = rx2GBegin(sc, data, m0);
     while (m0 && offset + minsz < IWX_RBUF_SIZE) {
@@ -13487,13 +13804,16 @@ iwx_rx_pkt(struct iwx_softc *sc, struct iwx_rx_data *data, struct mbuf_list *ml)
          * LEGACY group. Firmware API versions >= 50 reject commands
          * in group 0, forcing us to use this hack.
          */
-        if (iwx_cmd_groupid(code) == IWX_LONG_GROUP) {
+        if (bzDevice() && !(qid & 0x80) && (qid != IWX_DQA_CMD_QUEUE || idx >= nitems(sc->txq[0].data))) {bzFail(3,EPROTO);break;}
+        if (iwx_cmd_groupid(code) == IWX_LONG_GROUP && (!bzDevice() || !(qid&0x80))) {
             struct iwx_tx_ring *ring = &sc->txq[qid];
             struct iwx_tx_data *txdata = &ring->data[idx];
             if (txdata->flags & IWX_TXDATA_FLAG_CMD_IS_NARROW)
                 code = iwx_cmd_opcode(code);
         }
         
+        if(bzDevice() && !(qid&0x80) &&
+            !fBzCommands.expected(idx,code,sc->sc_generation,fPc1ResetEpoch)) {bzFail(31,EPROTO);break;}
         len = sizeof(pkt->len_n_flags) + iwx_rx_packet_len(pkt);
         rx2GWord(rxSlot2G, 9, len);
         rx2GWord(rxSlot2G, 10, code);
@@ -13511,7 +13831,7 @@ iwx_rx_pkt(struct iwx_softc *sc, struct iwx_rx_data *data, struct mbuf_list *ml)
         
         if (code == IWX_REPLY_RX_MPDU_CMD && ++nmpdu == 1) {
             /* Take mbuf m0 off the RX ring. */
-            if (iwx_rx_addbuf(sc, IWX_RBUF_SIZE, sc->rxq.cur)) {
+            if (iwx_rx_addbuf(sc, IWX_RBUF_SIZE, backingSlot)) {
                 ifp->netStat->inputErrors++;
                 rx2GFinish(rxSlot2G, 6);
                 break;
@@ -13526,6 +13846,7 @@ iwx_rx_pkt(struct iwx_softc *sc, struct iwx_rx_data *data, struct mbuf_list *ml)
                 break;
                 
             case IWX_REPLY_RX_MPDU_CMD: {
+                if(bzDevice())++fBzStats[19];
                 size_t maxlen = IWX_RBUF_SIZE - offset - minsz;
                 nextoff = offset +
                 roundup(len, IWX_FH_RSCSR_FRAME_ALIGN);
@@ -13572,6 +13893,17 @@ iwx_rx_pkt(struct iwx_softc *sc, struct iwx_rx_data *data, struct mbuf_list *ml)
                 break;
                 
             case IWX_ALIVE: {
+                if(bzDevice()) {
+                    if(iwx_rx_packet_payload_len(pkt)!=sizeof(iwx_alive_resp_v6)) {bzFail(19,EPROTO);break;}
+                    const auto *r=reinterpret_cast<const iwx_alive_resp_v6 *>(pkt->data);
+                    sc->sc_uc.uc_ok=le16toh(r->status)==IWX_ALIVE_STATUS_OK;
+                    sc->sc_uc.uc_lmac_error_event_table[0]=le32toh(r->lmac_data[0].dbg_ptrs.error_event_table_ptr);
+                    sc->sc_uc.uc_lmac_error_event_table[1]=le32toh(r->lmac_data[1].dbg_ptrs.error_event_table_ptr);
+                    sc->sc_uc.uc_umac_error_event_table=le32toh(r->umac_data.dbg_ptrs.error_info_addr);
+                    for(unsigned i=0;i<3;++i)sc->sku_id[i]=le32toh(r->sku_id.data[i]);
+                    sc->sc_uc.uc_intr=1;getMainCommandGate()->commandWakeup(&sc->sc_uc.uc_intr);++fBzStats[8];break;
+                }
+
                 struct iwx_alive_resp_v4 *resp4;
                 struct iwx_alive_resp_v5 *resp5;
                 
@@ -13669,6 +14001,14 @@ iwx_rx_pkt(struct iwx_softc *sc, struct iwx_rx_data *data, struct mbuf_list *ml)
             case IWX_WIDE_ID(IWX_LONG_GROUP, IWX_SCAN_REQ_UMAC):
             case IWX_WIDE_ID(IWX_LONG_GROUP, IWX_SCAN_ABORT_UMAC):
             case IWX_WIDE_ID(IWX_MAC_CONF_GROUP, IWX_SESSION_PROTECTION_CMD):
+            case IWX_WIDE_ID(IWX_MAC_CONF_GROUP,IWX_MAC_CONFIG_CMD):
+            case IWX_WIDE_ID(IWX_MAC_CONF_GROUP,IWX_LINK_CONFIG_CMD):
+            case IWX_WIDE_ID(IWX_MAC_CONF_GROUP,IWX_STA_CONFIG_CMD):
+            case IWX_WIDE_ID(IWX_MAC_CONF_GROUP,IWX_STA_REMOVE_CMD):
+            case IWX_WIDE_ID(IWX_DATA_PATH_GROUP,IWX_SCD_QUEUE_CONFIG_CMD):
+            case IWX_WIDE_ID(IWX_DATA_PATH_GROUP,IWX_SEC_KEY_CMD):
+            case IWX_WIDE_ID(IWX_DATA_PATH_GROUP,IWX_RLC_CONFIG_CMD):
+            case IWX_WIDE_ID(IWX_DATA_PATH_GROUP,IWX_RX_BAID_ALLOCATION_CONFIG_CMD):
             case IWX_REPLY_BEACON_FILTERING_CMD:
             case IWX_MAC_PM_POWER_TABLE:
             case IWX_TIME_QUOTA_CMD:
@@ -13681,8 +14021,9 @@ iwx_rx_pkt(struct iwx_softc *sc, struct iwx_rx_data *data, struct mbuf_list *ml)
             case IWX_SCD_QUEUE_CFG: {
                 size_t pkt_len;
                 
-                if (sc->sc_cmd_resp_pkt[idx] == NULL)
-                    break;
+                if (bzDevice() && (qid!=IWX_DQA_CMD_QUEUE || idx>=sc->txq[0].ring_count ||
+                    !(sc->txq[0].data[idx].flags & IWX_TXDATA_FLAG_CMD_PENDING))) break;
+                if (sc->sc_cmd_resp_pkt[idx] == NULL) break;
                 
                 //            bus_dmamap_sync(sc->sc_dmat, data->map, 0,
                 //                sizeof(*pkt), BUS_DMASYNC_POSTREAD);
@@ -13705,6 +14046,13 @@ iwx_rx_pkt(struct iwx_softc *sc, struct iwx_rx_data *data, struct mbuf_list *ml)
             }
                 
             case IWX_WIDE_ID(IWX_REGULATORY_AND_NVM_GROUP, IWX_PNVM_INIT_COMPLETE_NTFY):
+                if(bzDevice()) {
+                    if(iwx_rx_packet_payload_len(pkt)!=sizeof(iwl_pnvm_init_complete_ntfy)) {bzFail(25,EPROTO);break;}
+                    sc->sc_pnvm_status=kgp_bz::le32(pkt->data);
+                    if(sc->sc_pnvm_status) {bzFail(25,EIO);break;}
+                    sc->sc_init_complete|=IWX_PNVM_COMPLETE;
+                    ++fBzStats[12];getMainCommandGate()->commandWakeup(&sc->sc_init_complete);break;
+                }
                 wakeupOn(&sc->sc_init_complete);
                 struct iwl_pnvm_init_complete_ntfy *pnvm_ntf;
                 SYNC_RESP_STRUCT(pnvm_ntf, pkt, struct iwl_pnvm_init_complete_ntfy *);
@@ -13713,7 +14061,8 @@ iwx_rx_pkt(struct iwx_softc *sc, struct iwx_rx_data *data, struct mbuf_list *ml)
                 
             case IWX_INIT_COMPLETE_NOTIF:
                 sc->sc_init_complete |= IWX_INIT_COMPLETE;
-                wakeupOn(&sc->sc_init_complete);
+                if(bzDevice())getMainCommandGate()->commandWakeup(&sc->sc_init_complete);
+                else wakeupOn(&sc->sc_init_complete);
                 break;
                 
             case IWX_SCAN_COMPLETE_UMAC: {
@@ -13895,12 +14244,14 @@ iwx_rx_pkt(struct iwx_softc *sc, struct iwx_rx_data *data, struct mbuf_list *ml)
 void ItlIwx::
 iwx_notif_intr(struct iwx_softc *sc)
 {
-    // BOOTFIX1 DEXTER ROUTE iwx_notif_intr: original body in its own label scope.
-    if (!dma5Mapped()) return dexterOriginal_iwx_notif_intr(sc);
+    if (bzDevice()) return bzNotif(sc);
 
-    if (dma5Mapped() &&
+    // BOOTFIX1 DEXTER ROUTE iwx_notif_intr: original body in its own label scope.
+    if (!dma5Leased()) return dexterOriginal_iwx_notif_intr(sc);
+
+    if (dma5Leased() &&
         __atomic_load_n(&fRxZcClosing, __ATOMIC_ACQUIRE)) return;
-    if (dma5Mapped()) ++fRxZcNotif;
+    if (dma5Leased()) ++fRxZcNotif;
     if (sc->sc_device_family>=IWX_DEVICE_FAMILY_AX210 && __atomic_load_n(&fPc1Fault,__ATOMIC_ACQUIRE)) return;
     alive2FEvent(4);
     struct mbuf_list ml = MBUF_LIST_INITIALIZER();
@@ -13916,22 +14267,22 @@ iwx_notif_intr(struct iwx_softc *sc)
     hw &= (IWX_RX_MQ_RING_COUNT - 1);
     __atomic_store_n(&fRx2GHw, uint32_t(hw), __ATOMIC_RELAXED);
     DPRINTFN(3, ("%s hw=%d\n", __FUNCTION__, hw));
-    if (dma5Mapped() &&
+    if (dma5Leased() &&
         (!fRxZcRunning || rxZcFailed() || __atomic_load_n(&fPc1Fault, __ATOMIC_ACQUIRE))) {
         rxZcReport(0); return;
     }
     while (sc->rxq.cur != hw) {
         struct iwx_rx_data *data = &sc->rxq.data[sc->rxq.cur];
-        if (dma5Mapped()) fRxZcBatchQueued = ml_len(&ml);
+        if (dma5Leased()) fRxZcBatchQueued = ml_len(&ml);
         iwx_rx_pkt(sc, data, &ml);
-        if (dma5Mapped() && !rxZcRepost(sc->rxq.cur)) {
+        if (dma5Leased() && !rxZcRepost(sc->rxq.cur)) {
             if_input(&sc->sc_ic.ic_if, &ml);
             rxZcReport(0);
             return; // No new RX credits after sync/ownership/generation failure.
         }
         sc->rxq.cur = (sc->rxq.cur + 1) % IWX_RX_MQ_RING_COUNT;
     }
-    if (dma5Mapped()) {
+    if (dma5Leased()) {
         fRxZcBatchQueued = ml_len(&ml);
         if (fRxZcBatchQueued > fRxZcBatchMax) fRxZcBatchMax = fRxZcBatchQueued;
     }
@@ -13943,7 +14294,7 @@ iwx_notif_intr(struct iwx_softc *sc)
      */
     hw = (hw == 0) ? IWX_RX_MQ_RING_COUNT - 1 : hw - 1;
     IWX_WRITE(sc, IWX_RFH_Q0_FRBDCB_WIDX_TRG, hw & ~7);
-    if (dma5Mapped()) rxZcReport(0);
+    if (dma5Leased()) rxZcReport(0);
     dma5Report();
 }
 
@@ -13951,7 +14302,7 @@ int ItlIwx::
 iwx_intr(OSObject *object, IOInterruptEventSource* sender, int count)
 {
     // BOOTFIX1 DEXTER ROUTE iwx_intr: original body in its own label scope.
-    if (!static_cast<ItlIwx *>(object)->dma5Mapped()) return dexterOriginal_iwx_intr(object, sender, count);
+    if (!static_cast<ItlIwx *>(object)->dma5Leased()) return dexterOriginal_iwx_intr(object, sender, count);
 
 //    XYLog("Interrupt!!!\n");
     ItlIwx *that = (ItlIwx*)object;
@@ -14120,13 +14471,24 @@ iwx_intr_msix(OSObject *object, IOInterruptEventSource* sender, int count)
     uint32_t inta_fh, inta_hw;
     int vector = 0;
     
+    if(that->bzDevice()) {
+        __atomic_fetch_add(&that->fBzStats[1],1ULL,__ATOMIC_RELAXED);
+        if(that->fBzFault || __atomic_load_n(&that->fPc1Fault,__ATOMIC_ACQUIRE)) return 0;
+    }
     inta_fh = IWX_READ(sc, IWX_CSR_MSIX_FH_INT_CAUSES_AD);
     inta_hw = IWX_READ(sc, IWX_CSR_MSIX_HW_INT_CAUSES_AD);
+    if(that->bzDevice() && (!kgp_bz::ioValid(inta_fh)||!kgp_bz::ioValid(inta_hw))) {
+        that->bzFail(16,ENXIO);return 0;
+    }
     IWX_WRITE(sc, IWX_CSR_MSIX_FH_INT_CAUSES_AD, inta_fh);
     IWX_WRITE(sc, IWX_CSR_MSIX_HW_INT_CAUSES_AD, inta_hw);
     inta_fh &= sc->sc_fh_mask;
     inta_hw &= sc->sc_hw_mask;
     
+    if(that->bzDevice() && ((inta_fh & IWX_MSIX_FH_INT_CAUSES_FH_ERR) ||
+        (inta_hw & (IWX_MSIX_HW_INT_CAUSES_REG_SW_ERR_V2 | IWX_MSIX_HW_INT_CAUSES_REG_HW_ERR)))) {
+        that->bzFail(17,EIO);if(!(sc->sc_flags & IWX_FLAG_SHUTDOWN))task_add(systq,&sc->init_task);return 1;
+    }
     if (inta_fh & IWX_MSIX_FH_INT_CAUSES_Q0 ||
         inta_fh & IWX_MSIX_FH_INT_CAUSES_Q1) {
         that->iwx_notif_intr(sc);
@@ -14144,6 +14506,7 @@ iwx_intr_msix(OSObject *object, IOInterruptEventSource* sender, int count)
 #if 1 /* usually #ifdef IWX_DEBUG but always enabled for now */
         int i;
         
+        if(that->bzDevice()) that->bzFail(17,EIO);
         that->iwx_nic_error(sc);
         
         /* Dump driver status (TX and RX rings) while we're here. */
@@ -14171,6 +14534,7 @@ iwx_intr_msix(OSObject *object, IOInterruptEventSource* sender, int count)
     }
     
     if (inta_hw & IWX_MSIX_HW_INT_CAUSES_REG_HW_ERR) {
+        if(that->bzDevice()) that->bzFail(18,EIO);
         XYLog("%s: hardware error, stopping device \n", DEVNAME(sc));
         if ((sc->sc_flags & IWX_FLAG_SHUTDOWN) == 0) {
             sc->sc_flags |= IWX_FLAG_HW_ERR;
@@ -14180,12 +14544,14 @@ iwx_intr_msix(OSObject *object, IOInterruptEventSource* sender, int count)
     }
     
     if (inta_hw & IWX_MSIX_HW_INT_CAUSES_REG_ALIVE) {
+        if(that->bzDevice()) that->bzPublishRx(sc);
+        else {
         int i;
-        
         /* Firmware has now configured the RFH. */
         for (i = 0; i < IWX_RX_MQ_RING_COUNT; i++)
             that->iwx_update_rx_desc(sc, &sc->rxq, i);
         IWX_WRITE(sc, IWX_RFH_Q0_FRBDCB_WIDX_TRG, 8);
+        }
     }
     
     /*
@@ -14227,6 +14593,14 @@ iwx_intr_msix(OSObject *object, IOInterruptEventSource* sender, int count)
 #define IEEE80211_MAX_AMPDU_BUF_HT    0x40
 #define IEEE80211_MAX_AMPDU_BUF        0x100
 
+const struct iwl_cfg_trans_params iwl_gl_trans_cfg = {
+    .device_family=IWX_DEVICE_FAMILY_BZ,.low_latency_xtal=1,.xtal_latency=12000,
+};
+const struct iwl_cfg iwl_cfg_gl_c0_fm_c0 = {
+    .name="Intel(R) Wi-Fi 7 BE200 (private single-link experiment)",
+    .fwname="iwlwifi-gl-c0-fm-c0-92.ucode",.device_family=IWX_DEVICE_FAMILY_BZ,
+    .num_rbds=kgp_bz::RxCount,
+};
 const struct iwl_cfg_trans_params iwl_qu_trans_cfg = {
     .device_family = IWX_DEVICE_FAMILY_22000,
     .integrated = 1,
@@ -14430,6 +14804,7 @@ const struct iwl_cfg iwl_cfg_quz_a0_hr_b0 = {
 };
 
 static const struct pci_matchid iwx_devices[] = {
+    {IWL_PCI_DEVICE(0x272B, PCI_ANY_ID, iwl_gl_trans_cfg)},
     /* Qu devices */
     {IWL_PCI_DEVICE(0x02F0, PCI_ANY_ID, iwl_qu_trans_cfg)},
     {IWL_PCI_DEVICE(0x06F0, PCI_ANY_ID, iwl_qu_trans_cfg)},
@@ -14818,6 +15193,9 @@ const struct iwl_cfg iwl_ax201_cfg_qu_c0_hr_b0 = {
 };
 
 static const struct iwl_dev_info iwl_dev_info_table[] = {
+    _IWL_DEV_INFO(0x272B,IWL_CFG_ANY,IWL_CFG_MAC_TYPE_GL,IWX_SILICON_C_STEP,
+        IWL_CFG_RF_TYPE_FM,IWL_CFG_ANY,IWL_CFG_ANY,IWL_CFG_ANY,IWL_CFG_NO_CDB,
+        iwl_cfg_gl_c0_fm_c0,"Intel BE200 GL-C0/FM-C0 private"),
     /* AX200 */
     IWL_DEV_INFO(0x2723, IWL_CFG_ANY, iwl_ax200_cfg_cc, iwl_ax200_name),
     IWL_DEV_INFO(0x2723, 0x1653, iwl_ax200_cfg_cc, iwl_ax200_killer_1650w_name),
@@ -15403,6 +15781,13 @@ iwx_match(IOPCIDevice *device)
 int ItlIwx::
 iwx_preinit(struct iwx_softc *sc)
 {
+    if(bzDevice() && !getMainWorkLoop()->inGate()) {
+        return getMainCommandGate()->runAction(
+            [](OSObject *,void *owner,void *context,void *,void *)->IOReturn {
+                return static_cast<ItlIwx *>(owner)->iwx_preinit(static_cast<iwx_softc *>(context));
+            },this,sc);
+    }
+
     struct ieee80211com *ic = &sc->sc_ic;
     struct _ifnet *ifp = IC2IFP(ic);
     int err;
@@ -15480,9 +15865,10 @@ bool ItlIwx::
 intrFilter(OSObject *object, IOFilterInterruptEventSource *src)
 {
     // BOOTFIX1 DEXTER ROUTE intrFilter: original body in its own label scope.
-    if (!static_cast<ItlIwx *>(object)->dma5Mapped()) return dexterOriginal_intrFilter(object, src);
+    if (!static_cast<ItlIwx *>(object)->dma5Leased()) return dexterOriginal_intrFilter(object, src);
 
     ItlIwx *that = (ItlIwx*)object;
+    if(that->bzDevice()) { __atomic_fetch_add(&that->fBzStats[0],1ULL,__ATOMIC_RELAXED);return true; }
     IWX_WRITE(&that->com, IWX_CSR_INT_MASK, 0);
     that->alive2FEvent(0);
     return true;
@@ -15531,7 +15917,13 @@ iwx_attach(struct iwx_softc *sc, struct pci_attach_args *pa)
         XYLog("%s: can't map mem space\n", DEVNAME(sc));
         return false;
     }
-    if (0) {
+    if (bzDevice()) {
+        const IOReturn setup = pa->pa_tag->configureInterrupts(0x00020000U,1,1,0);
+        pa->pa_tag->setProperty("KGP_BE200_MSIX_SETUP",uint32_t(setup),32);
+        if(setup!=kIOReturnSuccess) {bzFail(4,ENXIO);return false;}
+        sc->sc_msix=1;
+        if(pci_intr_map_msi(pa,&sc->ih)) {bzFail(4,ENXIO);return false;}
+    } else if (0) {
         sc->sc_msix = 1;
         XYLog("msix intr mode\n");
     } else if (pci_intr_map_msi(pa, &sc->ih)) {
@@ -15556,11 +15948,14 @@ iwx_attach(struct iwx_softc *sc, struct pci_attach_args *pa)
         int ret = pa->pa_tag->getInterruptType(index, &interruptType);
         if (ret != kIOReturnSuccess)
             break;
-        if (interruptType & kIOInterruptTypePCIMessaged)
+        if (interruptType & (kIOInterruptTypePCIMessaged | (bzDevice()?0x00020000U:0)))
         {
             msiIntrIndex = index;
             break;
         }
+    }
+    if (bzDevice()) {
+        pa->pa_tag->setProperty("KGP_BE200_MSIX_VECTOR",uint32_t(msiIntrIndex),32);
     }
     if (alive2FOwned()) fAlive2F.word[57] = static_cast<uint32_t>(msiIntrIndex);
     if (msiIntrIndex == -1) {
@@ -15584,6 +15979,11 @@ iwx_attach(struct iwx_softc *sc, struct pci_attach_args *pa)
     }
     fBoot5InterruptAdded = true;
     sc->sc_ih->enable();
+    if(bzDevice()) {
+        int cap=0;if(!pci_get_capability(sc->sc_pct,sc->sc_pcitag,PCI_CAP_MSIX,&cap,nullptr) ||
+            !kgp_bz::msixAccepted(0,msiIntrIndex,true,
+                (sc->sc_pcitag->configRead16(cap+2)&0x8000U)!=0)) {bzFail(5,ENXIO);return false;}
+    }
     
     /* Clear pending interrupts. */
     IWX_WRITE(sc, IWX_CSR_INT_MASK, 0);
@@ -15943,6 +16343,8 @@ iwx_resume(struct iwx_softc *sc)
 int ItlIwx::
 iwx_activate(struct iwx_softc *sc, int act)
 {
+    if (bzDevice()) return iwx_bz_port_activate(sc, act);
+
     struct _ifnet *ifp = &sc->sc_ic.ic_if;
     int err = 0;
     
@@ -16769,7 +17171,7 @@ dexterOriginal_iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni,
     // On failure no WRPTR is issued; a mapped prepared copy is conservatively
     // quarantined by the existing abort path, never treated as completed.
     if (!iwx_tx_publish_control(ring, unsigned(idx), desc, cmd)) {
-        if (dma5Mapped()) tx2IRetire(data, false);
+        if (dma5Leased()) tx2IRetire(data, false);
         __atomic_fetch_or(&fTx2JAdmission, kTx2JClosed, __ATOMIC_ACQ_REL);
         __atomic_store_n(&fTx2IBlocked, 1U, __ATOMIC_RELEASE);
         mbuf_freem(m);
@@ -17209,6 +17611,12 @@ IOReturn ItlIwx::zc19Snapshot(OSObject *, void *context, void *, void *, void *)
     w[30]=0; w[31]=0;
     that->rxZcCapturePeriodic();
     that->zc28Capture();
+    if(that->bzDevice()) { auto *b=that->fBzWire; b[0]=200;b[1]=1;b[2]=sizeof(that->fBzWire);b[3]=that->fZc19Health[3];
+        b[4]=that->fZc19Health[4];b[5]=that->fZc19Health[5];b[6]=that->com.sc_generation;b[7]=that->fPc1ResetEpoch;
+        b[8]=that->fBzFault;b[9]=that->fBzError;b[10]=that->fBzHardwareOwned;b[11]=that->com.sc_ic.ic_state;
+        b[12]=that->com.sc_msix;b[13]=that->fBzRx.write;b[14]=that->fBzRx.published;b[15]=that->com.rxq.cur;
+        for(unsigned i=0;i<32;++i)b[16+i]=__atomic_load_n(&that->fBzStats[i],__ATOMIC_RELAXED);
+    }
     return kIOReturnSuccess;
 }
 void ItlIwx::zc19Publish()
@@ -17223,6 +17631,11 @@ void ItlIwx::zc19Publish()
     }
     rxZcPublishPeriodic();
     zc28Publish();
+    if(bzDevice()) bzCapture();
     if (!pci.pa_tag->setProperty("KGP_ZC19",fZc19Health,sizeof(fZc19Health)))
         ++fZc19PublishFail;
 }
+
+#include "ItlIwxBz.inc"
+
+#include "ItlIwxBzTransport.inc"

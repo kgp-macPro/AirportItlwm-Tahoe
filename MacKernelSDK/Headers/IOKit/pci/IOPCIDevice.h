@@ -710,7 +710,10 @@ public:
     virtual UInt32 extendedFindPCICapability( UInt32 capabilityID, IOByteCount * offset = 0 );
 
     // Unused Padding
-    OSMetaClassDeclareReservedUnused(IOPCIDevice,  3);
+    OSMetaClassDeclareReservedUsed(IOPCIDevice,  3);
+    // Apple IOPCIFamily 4822b27a36e2de70e231ecf2bf3021384fab6ec2 ABI.
+    virtual IOReturn configureInterrupts(UInt32 interruptType, UInt32 numRequired,
+                                       UInt32 numRequested, IOOptionBits options=0);
     OSMetaClassDeclareReservedUnused(IOPCIDevice,  4);
     OSMetaClassDeclareReservedUnused(IOPCIDevice,  5);
     OSMetaClassDeclareReservedUnused(IOPCIDevice,  6);

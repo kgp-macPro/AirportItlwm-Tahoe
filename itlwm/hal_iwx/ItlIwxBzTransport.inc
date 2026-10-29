@@ -1,0 +1,168 @@
+/* GL/BE200 ownership integration. KGP 2026, GPL-2.0-or-later.
+ * Hardware ABI: pinned AirportBZ/Intel references; ZC28 owns backing/lifetimes.
+ * See docs/BE200_PROVENANCE.md. No native WCL or allocator import. */
+bool ItlIwx::bzAdmit()
+{
+    auto *s=&com;
+    fBzAdmitted=kgp_bz::deviceAllowed(pci.pa_tag->configRead16(kIOPCIConfigVendorID),
+        pci.pa_tag->configRead16(kIOPCIConfigDeviceID),CSR_HW_REV_TYPE(s->sc_hw_rev),
+        IWX_CSR_HW_REV_STEP(s->sc_hw_rev),CSR_HW_RFID_TYPE(s->sc_hw_rf_id),
+        CSR_HW_RFID_STEP(s->sc_hw_rf_id)) && s->sc_cfg &&
+        s->sc_device_family==IWX_DEVICE_FAMILY_BZ && !s->sc_integrated;
+    if(!fBzAdmitted) bzFail(6,ENODEV);
+    return fBzAdmitted;
+}
+void ItlIwx::bzFail(uint32_t why,int error)
+{
+    uint32_t zero=0;
+    if(__atomic_compare_exchange_n(&fBzFault,&zero,why,false,__ATOMIC_ACQ_REL,__ATOMIC_RELAXED))
+        fBzError=error;
+    fBzRx.close();
+    __atomic_store_n(&fTx2IBlocked,1U,__ATOMIC_RELEASE);
+    com.sc_boot_diag.error=error;
+    // Wake waiters as failed, never synthesize command completion or DMA stop.
+    if(getMainWorkLoop() && getMainWorkLoop()->inGate()) {
+        getMainCommandGate()->commandWakeup(&com.sc_uc.uc_intr);
+        getMainCommandGate()->commandWakeup(&com.sc_init_complete);
+        if(com.txq[0].desc) for(unsigned i=0;i<IWX_CMD_QUEUE_SIZE_GEN3;++i)
+            getMainCommandGate()->commandWakeup(&com.txq[0].desc[i]);
+    }
+}
+bool ItlIwx::bzMasterStop(struct iwx_softc *sc)
+{
+    IWX_SETBITS(sc,IWX_CSR_GP_CNTRL,IWX_CSR_GP_CNTRL_REG_FLAG_BUS_MASTER_DISABLE_REQ);
+    for(unsigned i=0;i<10000;++i) {
+        const uint32_t value=IWX_READ(sc,IWX_CSR_GP_CNTRL);
+        if(kgp_bz::masterStopped(value)) {++fBzStats[2];return true;}
+        if(!kgp_bz::ioValid(value)) break;
+        DELAY(10);
+    }
+    ++fBzStats[3];bzFail(7,ETIMEDOUT);
+    return false; // Timeout/delay/invalid MMIO NEVER authorize reuse.
+}
+void ItlIwx::bzStoppedCleanup(struct iwx_softc *sc)
+{
+    if(fBzHardwareOwned || !fPc1LastMaster || !fPc1Suspended ||
+       fPc1TerminalEpoch!=fPc1ResetEpoch || !getMainWorkLoop()->inGate()) return;
+    iwx_ctxt_info_free_fw_img(sc);iwx_ctxt_info_free_paging(sc);
+    if(sc->sc_tvqm_ring.desc_dma.cmd || sc->sc_tvqm_ring.cmd_dma.cmd || sc->sc_tvqm_ring.bc_tbl.cmd) {
+        iwx_reset_tx_ring(sc,&sc->sc_tvqm_ring);iwx_free_tx_ring(sc,&sc->sc_tvqm_ring);
+    }
+    fBzStats[15]=fBzFault;fBzStats[16]=fBzError;
+    fBzQueueOwned=0;fBzCommands.reset(true);
+    for(unsigned i=0;i<IWX_CMD_QUEUE_SIZE_GEN3;++i) sc->txq[0].data[i].flags &= ~IWX_TXDATA_FLAG_CMD_PENDING;
+    fBzFault=fBzError=0; // ONLY positive stop under gate permits a new BZ generation.
+
+    for(unsigned i=0;i<IWX_MAX_DRAM_ENTRY;++i) iwx_dma_contig_free(&sc->pnvm_frag_dma[i]);
+    iwx_dma_contig_free(&sc->pnvm_desc_dma);
+    // Context/prph/IML/PNVM common extents are freed by the ordinary stop path.
+}
+void ItlIwx::bzResetRx(struct iwx_softc *sc)
+{
+    const bool terminal=!fBzHardwareOwned && (!fBzRx.issued ||
+        (fPc1LastMaster && fPc1Suspended && getMainWorkLoop()->inGate()));
+    if(!terminal || !fBzRx.reset(sc->sc_generation,fPc1ResetEpoch,terminal)) {
+        bzFail(8,EBUSY);return;
+    }
+    memset(sc->rxq.free_desc_dma.vaddr,0,sc->rxq.free_desc_dma.size);
+    memset(sc->rxq.used_desc_dma.vaddr,0,sc->rxq.used_desc_dma.size);
+    memset(sc->rxq.stat_dma.vaddr,0,sc->rxq.stat_dma.size);
+    sc->rxq.cur=sc->rxq.write=0;
+}
+void ItlIwx::bzUpdateRxDesc(struct iwx_softc *sc,struct iwx_rx_ring *r,unsigned slot,unsigned dataIndex)
+{
+    if(slot!=fBzRx.write || dataIndex>=kgp_bz::RxCount || !fRxZcPool ||
+        fRxZcSlot[dataIndex]>=kRxZcCount) {bzFail(9,EINVAL);return;}
+    auto &entry=fRxZcPool->entry[fRxZcSlot[dataIndex]];
+    if(entry.state!=KgpRxZcPool::Posted || !entry.command ||
+        entry.command->getIOMemoryDescriptor()!=entry.memory ||
+        !kgp_bz::dmaFits(entry.address,IWX_RBUF_SIZE,256) ||
+        entry.command->synchronize(kIODirectionOut)!=kIOReturnSuccess ||
+        !fBzRx.prepare(dataIndex,sc->sc_generation,fPc1ResetEpoch)) {bzFail(10,EIO);return;}
+    auto *d=static_cast<iwx_rx_transfer_desc *>(r->free_desc_dma.vaddr);
+    memset(&d[slot],0,sizeof(d[slot]));d[slot].addr=htole64(entry.address);
+    d[slot].rbid=htole16(dataIndex+1);r->write=fBzRx.write;
+}
+void ItlIwx::bzPublishRx(struct iwx_softc *sc)
+{
+    if(fBzFault || !fBzHardwareOwned || !fRxZcRunning ||
+       fRxZcGeneration!=unsigned(sc->sc_generation) || fRxZcEpoch!=fPc1ResetEpoch) return;
+    unsigned credits=0;
+    if(!sc->rxq.free_desc_dma.cmd ||
+        sc->rxq.free_desc_dma.cmd->synchronize(kIODirectionOut)!=kIOReturnSuccess ||
+        !fBzRx.publish(sc->sc_generation,fPc1ResetEpoch,&credits)) {bzFail(11,EIO);return;}
+    iwx_dma_queue_publish_barrier();
+    IWX_WRITE(sc,IWX_HBUS_TARG_WRPTR,IWX_HBUS_TARG_WRPTR_RX_Q(0)|credits);
+    ++fBzStats[4];
+}
+void ItlIwx::bzNotif(struct iwx_softc *sc)
+{
+    if(!getMainWorkLoop()->inGate() || fBzFault || !fRxZcRunning ||
+       __atomic_load_n(&fPc1Fault,__ATOMIC_ACQUIRE)) return;
+    const unsigned generation=sc->sc_generation,epoch=fPc1ResetEpoch;
+    const uint32_t cookie=fBzRx.begin(generation,epoch);
+    if(!cookie) {++fBzStats[5];return;}
+    struct mbuf_list ml=MBUF_LIST_INITIALIZER();
+    auto *r=&sc->rxq;
+    if(!r->stat_dma.cmd || r->stat_dma.cmd->synchronize(kIODirectionIn)!=kIOReturnSuccess ||
+       !r->used_desc_dma.cmd || r->used_desc_dma.cmd->synchronize(kIODirectionIn)!=kIOReturnSuccess) {
+        bzFail(12,EIO);fBzRx.end(cookie);return;
+    }
+    const unsigned hw=le16toh(*static_cast<uint16_t *>(r->stat)) & (kgp_bz::RxCount-1);
+    const auto *cq=static_cast<const kgp_bz::Completion *>(r->used_desc_dma.vaddr);
+    unsigned processed=0;
+    while(r->cur!=hw && processed++<kgp_bz::RxCount) {
+        // Copy only a completion descriptor after synchronizing; never log DMA pointers.
+        const auto c=cq[r->cur];unsigned dataIndex=0;
+        if(c.reserved || !kgp_bz::completeMessage(c.flags) ||
+           !fBzRx.claim(le16toh(c.rbid),generation,epoch,&dataIndex)) {
+            ++fBzStats[6];bzFail(13,EPROTO);break;
+        }
+        ++fBzStats[7];
+        iwx_rx_pkt(sc,&r->data[dataIndex],&ml);
+        if(fBzFault || !fBzRx.serviceCurrent(cookie,generation,epoch) || generation!=unsigned(sc->sc_generation) || epoch!=fPc1ResetEpoch) break;
+        if(!rxZcRepost(dataIndex)) {bzFail(14,EIO);break;}
+        bzUpdateRxDesc(sc,r,fBzRx.write,dataIndex);
+        if(fBzFault) break;
+        r->cur=(r->cur+1)&(kgp_bz::RxCount-1);
+    }
+    // Upper stack can reenter/reset: recheck lifetime before publishing credits.
+    if_input(&sc->sc_ic.ic_if,&ml);
+    if(!fBzFault && generation==unsigned(sc->sc_generation) && epoch==fPc1ResetEpoch &&
+        fBzRx.serviceCurrent(cookie,generation,epoch)) bzPublishRx(sc);
+    fBzRx.end(cookie);
+}
+void ItlIwx::bzCapture()
+{
+    if(pci.pa_tag) pci.pa_tag->setProperty("KGP_BE200_TRANSPORT",fBzWire,sizeof(fBzWire));
+}
+int ItlIwx::bzValidateFirmware()
+{
+    auto *s=&com;
+    struct V {uint8_t group,id,version;bool notification,implicit;};
+    const V versions[]={
+        {IWX_LEGACY_GROUP,IWX_ALIVE,6,true,false},
+        {IWX_LONG_GROUP,IWX_SCAN_REQ_UMAC,17,false,false},
+        {IWX_MAC_CONF_GROUP,IWX_MAC_CONFIG_CMD,2,false,false},
+        {IWX_MAC_CONF_GROUP,IWX_LINK_CONFIG_CMD,2,false,false},
+        {IWX_MAC_CONF_GROUP,IWX_STA_CONFIG_CMD,1,false,true},
+        {IWX_MAC_CONF_GROUP,IWX_STA_REMOVE_CMD,1,false,true},
+        {IWX_DATA_PATH_GROUP,IWX_SEC_KEY_CMD,1,false,false},
+        {IWX_DATA_PATH_GROUP,IWX_SCD_QUEUE_CONFIG_CMD,3,false,false},
+        {IWX_MAC_CONF_GROUP,IWX_SESSION_PROTECTION_CMD,2,false,false},
+        {IWX_LONG_GROUP,IWX_PHY_CONTEXT_CMD,5,false,false},
+        {IWX_DATA_PATH_GROUP,IWX_RLC_CONFIG_CMD,2,false,false},
+        {IWX_DATA_PATH_GROUP,IWX_TLC_MNG_CONFIG_CMD,4,false,false},
+        {IWX_DATA_PATH_GROUP,IWX_TLC_MNG_UPDATE_NOTIF,3,true,false},
+        {IWX_LONG_GROUP,IWX_TX_CMD,10,false,false},
+        {IWX_LONG_GROUP,IWX_TX_CMD,7,true,false},
+        {IWX_DATA_PATH_GROUP,IWX_RX_BAID_ALLOCATION_CONFIG_CMD,2,false,false},
+        {IWX_REGULATORY_AND_NVM_GROUP,IWX_NVM_GET_INFO,4,true,false},
+    };
+    if(!isset(s->sc_enabled_capa,IWX_UCODE_TLV_CAPA_MLD_API_SUPPORT)) return EPROTONOSUPPORT;
+    for(const auto &v:versions) {
+        const unsigned found=v.notification?iwx_lookup_notif_ver(s,v.group,v.id):iwx_lookup_cmd_ver(s,v.group,v.id);
+        if(!kgp_bz::version(found,v.version,v.implicit)) {bzFail(15,EPROTONOSUPPORT);return EPROTONOSUPPORT;}
+    }
+    return 0;
+}
