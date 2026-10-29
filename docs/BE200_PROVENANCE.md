@@ -98,6 +98,11 @@ Command slots additionally require both firmware completion and caller release.
 Code, generation, reset epoch and software serial are checked; uncertain outcomes
 retain ownership. BZ waits use commandGate sleep/wakeup, not msleep while holding
 that gate. Existing ZC21 negative error/TVQM/BA and ZC16/PC1 guarantees remain.
+The reference activate() shortcut was excluded: BZ uses the ZC28 lifecycle body,
+including quiesce-before-RUNNING and propagation of resume/readiness failure.
+MLD data-queue creation failures abort association rather than reporting RUN
+with KGP's retained/blocked uncertain queue. New generation wins over late queue
+creation; a late caller cannot unlock a new generation's NIC lock.
 Late return into a new lifetime cannot publish old RX credits or release its
 service cookie. The RX parser's normal notification/data paths do not perform a
 synchronous BZ command wait: key callbacks enqueue async commands, state changes

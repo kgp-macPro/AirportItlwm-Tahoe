@@ -5360,6 +5360,7 @@ iwx_mld_run(struct iwx_softc *sc, struct iwx_node *in)
     int chains = iwx_mimo_enabled(sc) ? 2 : 1;
     uint32_t step;
     int err;
+    const int generation=sc->sc_generation;
 
     if (in->in_ni.ni_chw == IEEE80211_CHAN_WIDTH_80P80)
         in->in_ni.ni_chw = IEEE80211_CHAN_WIDTH_20;
@@ -5424,7 +5425,8 @@ iwx_mld_run(struct iwx_softc *sc, struct iwx_node *in)
      * Give every data TID its own queue now: the firmware runs TX block ack
      * itself but only aggregates frames on a per-TID queue. The lazy path
      * in iwx_tx() never produced one on hardware, so allocate up front.
-     * A failure is not fatal; that TID stays on the management queue.
+     * A failure is fatal to this association: KGP retains uncertain DMA
+     * ownership, so management-queue fallback cannot certify success.
      */
     {
         uint32_t allocated = 0;
@@ -5434,9 +5436,9 @@ iwx_mld_run(struct iwx_softc *sc, struct iwx_node *in)
                 allocated |= 1 << t;
                 continue;
             }
-            if (!iwx_nic_lock(sc))
-                break;
+            if (!iwx_nic_lock(sc)) {err=EBUSY;goto fail;}
             int q = iwx_tvqm_alloc_txq(sc, t, 0);
+            if(generation!=sc->sc_generation) {err=ENXIO;goto fail;}
             iwx_nic_unlock(sc);
             if (q < 0) {
                 sc->sc_mld_txq_failed |= 1 << t;
@@ -5444,7 +5446,7 @@ iwx_mld_run(struct iwx_softc *sc, struct iwx_node *in)
                     static_cast<UInt32>(-q), 32);
                 XYLog("%s: could not allocate TX queue for tid %d (error %d)\n",
                       DEVNAME(sc), t, q);
-                continue;
+                err=-q;goto fail; // KGP ambiguous queue failure closes admission; never publish RUN.
             }
             allocated |= 1 << t;
         }
@@ -6364,31 +6366,4 @@ iwx_bz_port_nic_error(struct iwx_softc *sc)
     iwx_nic_lmac_error(sc);
     if (sc->sc_uc.uc_umac_error_event_table)
         iwx_nic_umac_error(sc);
-}
-
-int ItlIwx::
-iwx_bz_port_activate(struct iwx_softc *sc, int act)
-{
-    struct _ifnet *ifp = &sc->sc_ic.ic_if;
-    int err = 0;
-
-    switch (act) {
-        case DVACT_QUIESCE:
-            /* Also cancel a firmware load that has not reached IFF_RUNNING. */
-            iwx_stop(ifp);
-            break;
-        case DVACT_RESUME:
-            err = iwx_resume(sc);
-            if (err)
-                XYLog("%s: could not initialize hardware\n",
-                      DEVNAME(sc));
-            break;
-        case DVACT_WAKEUP:
-            /* Hardware should be up at this point. */
-            if (iwx_set_hw_ready(sc))
-                task_add(systq, &sc->init_task);
-            break;
-    }
-
-    return 0;
 }

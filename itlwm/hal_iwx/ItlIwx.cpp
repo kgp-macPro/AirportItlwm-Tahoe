@@ -16331,8 +16331,6 @@ iwx_resume(struct iwx_softc *sc)
 int ItlIwx::
 iwx_activate(struct iwx_softc *sc, int act)
 {
-    if (bzDevice()) return iwx_bz_port_activate(sc, act);
-
     struct _ifnet *ifp = &sc->sc_ic.ic_if;
     int err = 0;
     
