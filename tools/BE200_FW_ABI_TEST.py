@@ -42,8 +42,8 @@ pre='#include <cstdint>\n#include <cassert>\n#include <cerrno>\n#include <cstdio
 pre+='struct iwx_softc {unsigned char sc_enabled_capa[16]={};iwx_fw_cmd_version cmd_versions[256];int n_cmd_versions=215;};\nstruct ItlIwx {iwx_softc com;unsigned errors=0;void bzFail(unsigned,int){++errors;}uint8_t iwx_lookup_cmd_ver(iwx_softc*,uint8_t,uint8_t);uint8_t iwx_lookup_notif_ver(iwx_softc*,uint8_t,uint8_t);int bzValidateFirmware();};\n'
 arr=','.join('{'+','.join(map(str,v))+'}' for v in versions)
 test='int main(){ItlIwx x;x.com.sc_enabled_capa[110/8]|=1U<<(110%8);iwx_fw_cmd_version v[]={'+arr+'};for(unsigned i=0;i<215;i++)x.com.cmd_versions[i]=v[i];assert(!x.bzValidateFirmware());\n'
-test+='for(unsigned i=0;i<215;i++)if(x.com.cmd_versions[i].group==3&&x.com.cmd_versions[i].cmd==9)x.com.cmd_versions[i].cmd_ver=3;assert(x.bzValidateFirmware()!=0);puts("PASS actual GL92 production version selector; unknown STA defaults accepted, changed LINK layout rejected");}\n'
-(O/'version_fixture.cpp').write_text(pre+fns+test)
+test+='for(unsigned i=0;i<215;i++)if(x.com.cmd_versions[i].group==3&&x.com.cmd_versions[i].cmd==9)x.com.cmd_versions[i].cmd_ver=3;assert(x.bzValidateFirmware()!=0);for(unsigned i=0;i<215;i++)x.com.cmd_versions[i]=v[i];assert(!x.bzValidateFirmware());for(unsigned i=0;i<215;i++)if(x.com.cmd_versions[i].group==12&&x.com.cmd_versions[i].cmd==254)x.com.cmd_versions[i].notif_ver=2;assert(x.bzValidateFirmware()!=0);puts("PASS actual GL92 selector: implicit STA accepted; LINK and independent PNVM layout mutations rejected");}\n'
+(O/'version_fixture.cpp').write_text(pre+structbody(cpp,'iwl_pnvm_init_complete_ntfy')+'\nstatic_assert(sizeof(iwl_pnvm_init_complete_ntfy)==4,"PNVM v1 wire size");\n'+fns+test)
 cmd=[C,'-isysroot',SDK,'-std=c++17','-O1','-g','-fsanitize=address,undefined','-I'+str(R),str(O/'version_fixture.cpp'),'-o',str(O/'version_fixture')]
 subprocess.run(cmd,check=True);subprocess.run([str(O/'version_fixture')],check=True)
 # Original pinned Linux ABI fixture: replace EVERY iwx struct with the current

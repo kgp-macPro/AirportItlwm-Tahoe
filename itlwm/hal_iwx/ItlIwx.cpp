@@ -429,7 +429,7 @@ bool ItlIwx::dma5Select()
     if (selection) selection->release();
     if (!resolved) { boot5Mark(10, "device DMA policy unresolved; attach refused", 2); return false; }
     pci.pa_tag->setProperty("KGP_ZC5_DMA_MODE", mapped ? "mapped RX/TX" : "original Dexter RX/TX");
-    pci.pa_tag->setProperty("KGP_RX_EXPERIMENT", "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P3");
+    pci.pa_tag->setProperty("KGP_RX_EXPERIMENT", "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P4");
     boot5Mark(11, mapped ? "DMA routing completed: mapped" : "DMA routing completed: original Dexter");
     return true;
 }
@@ -2306,7 +2306,7 @@ bool ItlIwx::attach(IOPCIDevice *device)
     fBzDevice = device->configRead16(kIOPCIConfigVendorID)==0x8086 &&
         device->configRead16(kIOPCIConfigDeviceID)==0x272b;
     if(fBzDevice) { com.sc_device_family=IWX_DEVICE_FAMILY_BZ;
-        device->setProperty("KGP_BE200_CANDIDATE","BE200-GL92-PRIVATE-P3"); }
+        device->setProperty("KGP_BE200_CANDIDATE","BE200-GL92-PRIVATE-P4"); }
     pci.pa_tag = device;
     pci.workloop = getMainWorkLoop();
     const bool attached2G = iwx_attach(&com, &pci);
@@ -4616,7 +4616,7 @@ iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
     }
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 &&
         !pci.pa_tag->setProperty("KGP_RX_EXPERIMENT",
-            "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P3")) {
+            "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P4")) {
         err = ENOMEM; goto fail;
     }
     return 0;
@@ -14047,11 +14047,7 @@ iwx_rx_pkt(struct iwx_softc *sc, struct iwx_rx_data *data, struct mbuf_list *ml)
                 
             case IWX_WIDE_ID(IWX_REGULATORY_AND_NVM_GROUP, IWX_PNVM_INIT_COMPLETE_NTFY):
                 if(bzDevice()) {
-                    if(iwx_rx_packet_payload_len(pkt)!=sizeof(iwl_pnvm_init_complete_ntfy)) {bzFail(25,EPROTO);break;}
-                    sc->sc_pnvm_status=kgp_bz::le32(pkt->data);
-                    if(sc->sc_pnvm_status) {bzFail(25,EIO);break;}
-                    sc->sc_init_complete|=IWX_PNVM_COMPLETE;
-                    ++fBzStats[12];getMainCommandGate()->commandWakeup(&sc->sc_init_complete);break;
+                    bzPnvmComplete(sc,pkt->data,iwx_rx_packet_payload_len(pkt));break;
                 }
                 wakeupOn(&sc->sc_init_complete);
                 struct iwl_pnvm_init_complete_ntfy *pnvm_ntf;

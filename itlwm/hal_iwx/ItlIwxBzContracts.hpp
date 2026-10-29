@@ -51,6 +51,29 @@ inline bool validTlvs(const uint8_t *p,size_t n) {
 }
 struct Completion { uint16_t rbid;uint8_t flags,reserved; } __attribute__((packed));
 static_assert(sizeof(Completion)==CompletionBytes,"BZ completion ABI");
+/* PNVM completion has no wire transaction/generation tag. Issue once per
+ * positive-stop lifetime. A matched v1 notification completes the wait; status
+ * remains opaque (Linux v6.9 fw/pnvm.c). Completion NEVER releases DMA backing. */
+struct PnvmLedger {
+    uint32_t generation=0,epoch=0,status=0;
+    bool issued=false,published=false,received=false;
+    bool arm(uint32_t g,uint32_t e) {
+        if(issued)return false;
+        generation=g;epoch=e;status=0;issued=true;published=received=false;return true;
+    }
+    bool publish(uint32_t g,uint32_t e) {
+        if(!issued||published||generation!=g||epoch!=e)return false;
+        published=true;return true;
+    }
+    bool complete(uint32_t g,uint32_t e,uint32_t raw) {
+        if(!published||received||generation!=g||epoch!=e)return false;
+        status=raw;received=true;return true;
+    }
+    bool reset(bool positiveTerminal) {
+        if(issued&&!positiveTerminal)return false;
+        generation=epoch=status=0;issued=published=received=false;return true;
+    }
+};
 /* Command slot reuse requires BOTH firmware completion and caller release.
  * The wire carries an index, not this software serial. Reset finality remains
  * the positive hardware terminal + gate contract, not a serial comparison. */

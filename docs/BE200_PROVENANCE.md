@@ -216,3 +216,42 @@ implementation metadata is kept distinct from hardware qualification.
 P3 hardware PNVM acceptance,NVM,scan,association,keys,DHCP/data,both DMA routes and
 lifecycle remain untested. P2's partial boot success is not inherited runtime
 qualification for P3 or evidence of functional BE200 infrastructure Wi-Fi.
+
+
+## P4 PNVM completion contract / first-error preservation (29 October 2026)
+
+P3 runtime UUID 883AE5BE-7063-375B-97C2-D79E557BCF2C was verified on the actual
+21:22:31 CET boot. Out-sync, ROM start and valid ALIVE passed. PNVM was found,
+inflated to 295036 bytes, matched SKU 0x51120 / MAC 0x47 / RF 0x112, and prepared
+two fragments (1656/28212 bytes). An expected completion with raw status 0x00050001
+arrived. First driver failure was region25/EIO5 from P3's zero-only test; final
+error35 was a later masked timeout. NVM/interface were not reached. This supersedes
+P3's old untested status and any assertion that PNVM resource lookup still fails.
+
+Pinned Linux v6.9 a38297e3fb012ddfa7ce0321a7e5a8daeb1872b6,
+drivers/net/wireless/intel/iwlwifi/fw/pnvm.c, iwl_pnvm_complete_fn logs opaque
+status and returns true. Its expected-notification wait does not require status
+zero. Original Intel GPL-2.0 OR BSD-3-Clause source is retained in audit evidence;
+no function body was imported into production. The private correction follows
+that contract, not a guessed meaning of 0x00050001. GL92 explicitly advertises
+PNVM notification v1; the actual four-byte wire structure and version selector
+are tested. Other notification versions remain unsupported.
+
+bzPnvmComplete accepts only an issued/published outstanding request under the
+gate, exact payload size, no current fatal fault and matching generation/reset
+epoch. Duplicate, malformed, unexpected and stale completions fail closed. The
+PnvmLedger allows one issue per positive-stop lifetime because the wire carries
+no software transaction or epoch tag. Cross-reset protection still requires the
+existing positive hardware stop, IRQ/drain serialization and cleared rings; a
+software epoch cannot identify a wire message by itself. Completion never frees
+or unprepares PNVM DMA storage. Only bzStoppedCleanup's existing positive-terminal
+contract resets the ledger and releases retained extents.
+
+Both actual BZ wait functions check the first fatal error before/after gate sleep
+and polling, and reject changed generation OR reset epoch even if completion bits
+are set. Non-BZ behavior remains unchanged. Boot-only properties export PNVM
+NotifySeen, opaque NotifyStatus and WaitError plus refreshed private counters.
+No ISR/RX registry allocation or per-packet printing is introduced. Firmware bytes,
+SDK declaration, DMA allocator, geometry, IRQ policy, frontend and admission remain
+unchanged. P4 remains hardware-unverified; NVM, interface, scan, association, keying,
+DHCP/ARP, traffic, both modes and lifecycle require subsequent physical evidence.

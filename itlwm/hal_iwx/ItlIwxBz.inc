@@ -1358,11 +1358,15 @@ iwx_bz_port_load_pnvm(struct iwx_softc *sc)
        sc->prph_scratch_dma.cmd->synchronize(kIODirectionOut)!=kIOReturnSuccess) {bzFail(27,EIO);return EIO;}
     iwx_dma_queue_publish_barrier();
     sc->sc_init_complete &= ~IWX_PNVM_COMPLETE;
+    if(!fBzPnvm.arm(sc->sc_generation,fPc1ResetEpoch)) {bzFail(27,EBUSY);return EBUSY;}
     /* kick the doorbell */
     if (!iwx_nic_lock(sc)) {
         iwx_pnvm_free(&sc->sc_fw);
         ItlStartupFailure(sc->sc_pcitag, "hal:pnvm-doorbell-lock", EBUSY);
         return EBUSY;
+    }
+    if(!fBzPnvm.publish(sc->sc_generation,fPc1ResetEpoch)) {
+        iwx_nic_unlock(sc);bzFail(27,EPROTO);return EPROTO;
     }
     iwx_write_umac_prph(sc, IWX_UREG_DOORBELL_TO_ISR6,
                        IWX_UREG_DOORBELL_TO_ISR6_PNVM);
@@ -1371,7 +1375,10 @@ iwx_bz_port_load_pnvm(struct iwx_softc *sc)
     ItlStartupStage(sc->sc_pcitag, "hal:pnvm-wait-complete");
     err = iwx_wait_notification(sc, &sc->sc_init_complete, IWX_PNVM_COMPLETE, 2000);
     sc->sc_pcitag->setProperty("ItlwmFirmwareInitFlags", sc->sc_init_complete, 32);
-    /* Notification status is captured in the ISR, published only here. */
+    bzPublishInitCounters(sc);
+    sc->sc_pcitag->setProperty("ItlwmPnvmNotifySeen",static_cast<UInt32>(fBzPnvm.received),32);
+    sc->sc_pcitag->setProperty("ItlwmPnvmWaitError",static_cast<UInt32>(err),32);
+    /* Opaque status is valid only when NotifySeen=1; no status-bit inference. */
     sc->sc_pcitag->setProperty("ItlwmPnvmNotifyStatus", sc->sc_pnvm_status, 32);
     if (err)
         ItlStartupFailure(sc->sc_pcitag, "hal:pnvm-wait-complete", err);
@@ -2529,11 +2536,15 @@ int ItlIwx::
 iwx_wait_notification(struct iwx_softc *sc, int *value, int bits, uint32_t milliseconds)
 {
     int generation = sc->sc_generation;
+    const uint32_t epoch=fPc1ResetEpoch;
+    if(bzDevice()) {int failure=bzWaitFailure(sc,generation,epoch);if(failure)return failure;}
     uint32_t budget = milliseconds;
     while (generation == sc->sc_generation && (*value & bits) != bits) {
+        if(bzDevice()) {int failure=bzWaitFailure(sc,generation,epoch);if(failure)return failure;}
         if (sc->sc_boot_diag.active && value == &sc->sc_uc.uc_intr && sc->sc_boot_diag.error)
             return sc->sc_boot_diag.error;
         int err = iwx_gate_sleep(sc, value, &budget, IWX_GATE_WAIT_NOTIF);
+        if(bzDevice()) {int failure=bzWaitFailure(sc,generation,epoch);if(failure)return failure;}
         if (generation != sc->sc_generation)
             return ENXIO;
         if (sc->sc_boot_diag.active && value == &sc->sc_uc.uc_intr && sc->sc_boot_diag.error)
@@ -2541,6 +2552,7 @@ iwx_wait_notification(struct iwx_softc *sc, int *value, int bits, uint32_t milli
         if (err && (*value & bits) != bits)
             return err;
     }
+    if(bzDevice()) {int failure=bzWaitFailure(sc,generation,epoch);if(failure)return failure;}
     if (generation != sc->sc_generation)
         return ENXIO;
     if (sc->sc_boot_diag.active && value == &sc->sc_uc.uc_intr && sc->sc_boot_diag.error)
@@ -2571,16 +2583,21 @@ int ItlIwx::
 iwx_wait_alive_poll(struct iwx_softc *sc, int *value, int bits, uint32_t milliseconds)
 {
     int generation = sc->sc_generation;
+    const uint32_t epoch=fPc1ResetEpoch;
+    if(bzDevice()) {int failure=bzWaitFailure(sc,generation,epoch);if(failure)return failure;}
     uint32_t remaining = milliseconds;
 
     while (generation == sc->sc_generation && (*value & bits) != bits) {
+        if(bzDevice()) {int failure=bzWaitFailure(sc,generation,epoch);if(failure)return failure;}
         if (sc->sc_boot_diag.active && sc->sc_boot_diag.error)
             return sc->sc_boot_diag.error;
         if (sc->sc_boot_diag.active)
             iwx_bz_poll_msix_causes(sc);
+        if(bzDevice()) {int failure=bzWaitFailure(sc,generation,epoch);if(failure)return failure;}
         if ((*value & bits) == bits)
             break;
         int err = iwx_gate_sleep(sc, value, &remaining, IWX_GATE_WAIT_ALIVE);
+        if(bzDevice()) {int failure=bzWaitFailure(sc,generation,epoch);if(failure)return failure;}
         if (generation != sc->sc_generation)
             return ENXIO;
         if (sc->sc_boot_diag.active && sc->sc_boot_diag.error)
@@ -2588,6 +2605,7 @@ iwx_wait_alive_poll(struct iwx_softc *sc, int *value, int bits, uint32_t millise
         if (err && (*value & bits) != bits)
             return err;
     }
+    if(bzDevice()) {int failure=bzWaitFailure(sc,generation,epoch);if(failure)return failure;}
     if (generation != sc->sc_generation)
         return ENXIO;
     if (sc->sc_boot_diag.active && sc->sc_boot_diag.error)
@@ -2677,16 +2695,7 @@ iwx_bz_port_load_firmware(struct iwx_softc *sc)
     sc->sc_pcitag->setProperty("ItlwmFirmwareAliveInterrupt", sc->sc_uc.uc_intr, 32);
     sc->sc_pcitag->setProperty("ItlwmFirmwareAliveValid", sc->sc_uc.uc_ok, 32);
     if (sc->sc_device_family == IWX_DEVICE_FAMILY_BZ) {
-        // Actual private transport counters; legacy reference boot counters
-        // below do not observe bzInterrupt/bzNotif. Boot-thread export only.
-        sc->sc_pcitag->setProperty("KGP_BE200_INIT_FILTER_COUNT",
-            __atomic_load_n(&fBzStats[0], __ATOMIC_RELAXED), 64);
-        sc->sc_pcitag->setProperty("KGP_BE200_INIT_ACTION_COUNT", fBzStats[1], 64);
-        sc->sc_pcitag->setProperty("KGP_BE200_INIT_RX_CLAIMS", fBzStats[7], 64);
-        sc->sc_pcitag->setProperty("KGP_BE200_INIT_ALIVE_COUNT", fBzStats[8], 64);
-        sc->sc_pcitag->setProperty("KGP_BE200_ALIVE_SKU0", sc->sku_id[0], 32);
-        sc->sc_pcitag->setProperty("KGP_BE200_ALIVE_SKU1", sc->sku_id[1], 32);
-        sc->sc_pcitag->setProperty("KGP_BE200_ALIVE_SKU2", sc->sku_id[2], 32);
+        bzPublishInitCounters(sc);
         /* uc_intr is a parsed firmware message, not the hardware ALIVE IRQ. */
         sc->sc_pcitag->setProperty("ItlwmBootParsedAlive", sc->sc_uc.uc_intr, 32);
         sc->sc_pcitag->setProperty("ItlwmBootMsixMode", sc->sc_msix, 32);

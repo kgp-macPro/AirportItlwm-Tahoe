@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Actual P2/P3 PNVM loader/lookup/inflate/section code with embedded PNVM.
+"""Actual P2/current PNVM loader/lookup/inflate/section code with embedded PNVM.
 Allocation/DMA/sync/MMIO/wait mocked. Does not prove FW acceptance or runtime DMA.
 """
 from pathlib import Path
@@ -75,22 +75,26 @@ struct iwx_softc {unsigned sc_device_family=3;uint32_t sc_hw_rev=0x478,sc_hw_rf_
  unsigned char sc_enabled_capa[16]={};const char*sc_fwname=kgp_bz::FirmwareName;
  uint32_t sku_id[3]={};Provider provider;Provider*sc_pcitag=&provider;iwx_fw_info sc_fw;
  DMA pnvm_desc_dma,pnvm_dram,pnvm_frag_dma[64],prph_scratch_dma;void*sc_dmat=nullptr;
- int sc_init_complete=0;uint32_t sc_pnvm_status=0;};
+ int sc_generation=1;int sc_init_complete=0;uint32_t sc_pnvm_status=0;};
 static uint64_t iwx_boot_time_ns(){static unsigned n=0;return ++n;}
 static void ItlStartupStage(Provider*p,const char*s){p->s["stage"]=s;}
 static void ItlStartupFailure(Provider*p,const char*s,int e){p->s["stage"]=s;p->n["error"]=e;}
-struct ItlIwx {bool hardwareOwned=true,lock=true;int failDma=0,allocs=0,doorbells=0,barriers=0,fault=0,waitResult=0;
+struct iwl_pnvm_init_complete_ntfy {uint32_t status;};
+struct ItlIwx {kgp_bz::PnvmLedger fBzPnvm;unsigned fPc1ResetEpoch=1,fBzFault=0;uint64_t fBzStats[32]={};
+ struct Gate {bool inGate(){return true;}void commandWakeup(void*){}}gate;Gate*getMainWorkLoop(){return &gate;}Gate*getMainCommandGate(){return &gate;}
+ void bzPublishInitCounters(iwx_softc*){}void bzPnvmComplete(iwx_softc*,const void*,size_t);
+ bool hardwareOwned=true,lock=true;int failDma=0,allocs=0,doorbells=0,barriers=0,fault=0,waitResult=0;
  std::vector<std::unique_ptr<uint8_t[]>>buffers;std::vector<std::unique_ptr<Command>>commands;
  int iwx_bz_port_read_pnvm(iwx_softc*);int iwx_bz_port_pnvm_handle_section(iwx_softc*,const uint8_t*,size_t);int iwx_bz_port_load_pnvm(iwx_softc*);void iwx_pnvm_free(iwx_fw_info*);
  int iwx_read_pnvm(iwx_softc*s){return iwx_bz_port_read_pnvm(s);}int iwx_pnvm_handle_section(iwx_softc*s,const uint8_t*p,size_t n){return iwx_bz_port_pnvm_handle_section(s,p,n);}
  int iwx_dma_contig_alloc(void*,DMA*d,size_t n,unsigned){if(++allocs==failDma)return ENOMEM;
   buffers.emplace_back(new uint8_t[n]{});commands.emplace_back(new Command);d->cmd=commands.back().get();d->vaddr=buffers.back().get();d->size=n;d->paddr=0x100000+allocs*0x10000;return 0;}
  void iwx_dma_contig_free(DMA*d){if(hardwareOwned)return;*d={};}
- void bzFail(unsigned why,int){fault=why;}
+ void bzFail(unsigned why,int){fault=why;fBzFault=why;}
  void iwx_dma_queue_publish_barrier(){++barriers;}
  bool iwx_nic_lock(iwx_softc*){return lock;}void iwx_nic_unlock(iwx_softc*){}
  void iwx_write_umac_prph(iwx_softc*,unsigned,unsigned){++doorbells;assert(barriers);}
- int iwx_wait_notification(iwx_softc*s,int*v,int bits,uint32_t){if(!waitResult)*v|=bits;return waitResult;}
+ int iwx_wait_notification(iwx_softc*s,int*v,int bits,uint32_t){if(!waitResult){uint32_t status=0x50001;bzPnvmComplete(s,&status,sizeof(status));assert((*v&bits)==bits);}return waitResult;}
  void setup(iwx_softc&s){s.sc_device_family=IWX_DEVICE_FAMILY_BZ;s.sc_enabled_capa[IWX_UCODE_TLV_CAPA_FRAGMENTED_PNVM_IMG/8]|=1U<<(IWX_UCODE_TLV_CAPA_FRAGMENTED_PNVM_IMG%8);
   assert(!iwx_dma_contig_alloc(nullptr,&s.prph_scratch_dma,sizeof(iwx_prph_scratch),0));}
 };
@@ -139,8 +143,8 @@ int main(int argc,char**argv){assert(argc==2);std::ifstream f(argv[1],std::ios::
 san=sys.argv[1]if len(sys.argv)>1 else'address,undefined'
 with tempfile.TemporaryDirectory(prefix='be200-pnvm-')as d:
  d=Path(d);(d/'embedded-pnvm.zlib').write_bytes(packed)
- for tag,reader in [('P2',fn(old,readname)),('P3',fn(source,readname))]:
-  body=pre.replace('using UInt32',constants+'\nusing UInt32',1)+'\nstatic char *kernel_strchr(const char*s,int c){return const_cast<char*>(std::strchr(s,c));}\n#define strchr(a,b) kernel_strchr(a,b)\n'+reverse+'\n#undef strchr\n'+'\n#define strrchr(x,y) reverse_strchr(x,y)\n'+getfw+inflate+'\n#define malloc(a,b,c) kernelMalloc(a,b,c)\n'+fn(cpp,'ItlIwx::iwx_pnvm_free')+section+reader+load+'\n#undef malloc\n'+main
+ for tag,reader in [('P2',fn(old,readname)),('P4',fn(source,readname))]:
+  body=pre.replace('using UInt32',constants+'\nusing UInt32',1)+'\nstatic char *kernel_strchr(const char*s,int c){return const_cast<char*>(std::strchr(s,c));}\n#define strchr(a,b) kernel_strchr(a,b)\n'+reverse+'\n#undef strchr\n'+'\n#define strrchr(x,y) reverse_strchr(x,y)\n'+getfw+inflate+'\n#define malloc(a,b,c) kernelMalloc(a,b,c)\n'+fn(cpp,'ItlIwx::iwx_pnvm_free')+section+reader+fn((R/'itlwm/hal_iwx/ItlIwxBzTransport.inc').read_text(),'ItlIwx::bzPnvmComplete')+load+'\n#undef malloc\n'+main
   (d/(tag+'.cpp')).write_text(body)
   cmd=[C,'-isysroot',SDK,'-std=gnu++17','-O1','-g','-fsanitize='+san,'-I'+str(R)]+(['-DOLD_P2']if tag=='P2'else[])+[str(d/(tag+'.cpp')),'-lz','-o',str(d/tag)]
   print('COMMAND',repr(cmd),flush=True);subprocess.run(cmd,check=True);subprocess.run([str(d/tag),str(d/'embedded-pnvm.zlib')],check=True,timeout=60)

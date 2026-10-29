@@ -1,9 +1,14 @@
-PRIVATE BE200 GL92 P3 — FIRST HARDWARE TEST (not a performance qualification)
+PRIVATE BE200 GL92 P4 — FIRST HARDWARE TEST (not a performance qualification)
 
-STATUS: P3 experimental; not installed/loaded or physically tested by Codex.
-P1 failed pre-ROM; P2 passed boot synchronization and parsed valid ALIVE,then
-failed PNVM resource lookup due to a wrong filename. P3 corrects that explicit
-firmware/PNVM pairing. All previous candidates/evidence remain preserved.
+STATUS: P4 experimental; not installed/loaded or physically tested by Codex.
+P1 failed pre-ROM; P2 passed Out-sync/valid ALIVE but failed PNVM name lookup.
+P3 found/inflated the correct PNVM, matched SKU 0x51120 and received a completion
+with raw status 0x00050001. Its unsupported zero-only rule rejected that response;
+a later wait timeout masked the first EIO. P4 uses the pinned Linux completion
+contract with exact v1 layout, single-request/lifetime checks and raw-status
+retention. First BZ faults and reset epochs are now respected by both waits.
+This does NOT decode the raw status bits or prove calibration/NVM success.
+All previous candidates/evidence remain preserved.
 This remains an experimental first-infrastructure build,not a proved Wi-Fi fix.
 Initial target: discrete Intel 8086:272B, GL-C0/FM-C0. BE201 is not admitted.
 Single-link 2.4/5GHz infrastructure, legacy Ventura frontend on the established
@@ -69,8 +74,12 @@ How the evidence distinguishes failures:
 - ROM/IML/ALIVE stage/error: firmware loading, hardware identity or boot transport.
 - Parsed ALIVE with poll hits but no filter/action: do not claim working IRQs.
 - ItlwmPnvmName must be iwlwifi-gl-c0-fm-c0.pnvm. DescFound/InflateOk/HwMatch,
-  FailStep/ReadError/NotifyStatus distinguish lookup,parse,PNVM completion and NVM.
-- KGP_BE200_INIT_* are actual private lifetime IRQ/RX/ALIVE counters; the inherited
+  FailStep/ReadError/NotifySeen/WaitError/NotifyStatus distinguish lookup, parse,
+  expected completion and wait failure. NotifyStatus is opaque; valid only when
+  NotifySeen=1. NotifySeen=1/WaitError=0 means the expected completion arrived,
+  not independently proved RF calibration. Follow subsequent NVM/interface stages.
+  FailStep is parser progress, not alone evidence of a failure.
+- KGP_BE200_INIT_* are actual private lifetime IRQ/RX/ALIVE/PNVM counters; the inherited
   ItlwmBootIrq* fields do not observe every private path. ALIVE_SKU0/1/2 is the
   parsed firmware SKU,not a card label. Neither counter proves peer traffic.
 - PNVM/NVM timeout/status: exact SKU/payload/API or command/notification delivery.

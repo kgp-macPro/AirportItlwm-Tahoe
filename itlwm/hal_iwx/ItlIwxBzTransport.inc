@@ -28,6 +28,43 @@ void ItlIwx::bzFail(uint32_t why,int error)
             getMainCommandGate()->commandWakeup(&com.txq[0].desc[i]);
     }
 }
+// Called under the command gate, including after a sleep/poll which can reenter.
+// A completed flag must never override a fatal fault or a changed DMA lifetime.
+int ItlIwx::bzWaitFailure(struct iwx_softc *sc,int generation,uint32_t epoch)
+{
+    if(generation!=sc->sc_generation || epoch!=fPc1ResetEpoch)return ENXIO;
+    if(fBzFault)return fBzError ? int(fBzError) : EIO;
+    return 0;
+}
+void ItlIwx::bzPnvmComplete(struct iwx_softc *sc,const void *payload,size_t length)
+{
+    if(!getMainWorkLoop()->inGate() || fBzFault)return;
+    if(!payload || length!=sizeof(iwl_pnvm_init_complete_ntfy) ||
+       !fBzPnvm.complete(sc->sc_generation,fPc1ResetEpoch,kgp_bz::le32(payload))) {
+        bzFail(25,EPROTO);return;
+    }
+    // GL92 notification v1 is checked before boot. The upstream callback accepts
+    // the matched completion and logs the status; no zero-only contract exists.
+    sc->sc_pnvm_status=fBzPnvm.status;
+    sc->sc_init_complete|=IWX_PNVM_COMPLETE;
+    ++fBzStats[12];getMainCommandGate()->commandWakeup(&sc->sc_init_complete);
+}
+void ItlIwx::bzPublishInitCounters(struct iwx_softc *sc)
+{
+    // Boot-thread/gate snapshots only: no export/allocation in ISR or RX dispatch.
+    if(!getMainWorkLoop()->inGate())return;
+    sc->sc_pcitag->setProperty("KGP_BE200_INIT_FILTER_COUNT",
+        __atomic_load_n(&fBzStats[0],__ATOMIC_RELAXED),64);
+    sc->sc_pcitag->setProperty("KGP_BE200_INIT_ACTION_COUNT",fBzStats[1],64);
+    sc->sc_pcitag->setProperty("KGP_BE200_INIT_RX_CLAIMS",fBzStats[7],64);
+    sc->sc_pcitag->setProperty("KGP_BE200_INIT_ALIVE_COUNT",fBzStats[8],64);
+    sc->sc_pcitag->setProperty("KGP_BE200_INIT_PNVM_COUNT",fBzStats[12],64);
+    sc->sc_pcitag->setProperty("KGP_BE200_ALIVE_SKU0",sc->sku_id[0],32);
+    sc->sc_pcitag->setProperty("KGP_BE200_ALIVE_SKU1",sc->sku_id[1],32);
+    sc->sc_pcitag->setProperty("KGP_BE200_ALIVE_SKU2",sc->sku_id[2],32);
+    sc->sc_pcitag->setProperty("KGP_BE200_INIT_GENERATION",sc->sc_generation,32);
+    sc->sc_pcitag->setProperty("KGP_BE200_INIT_RESET_EPOCH",fPc1ResetEpoch,32);
+}
 bool ItlIwx::bzMasterStop(struct iwx_softc *sc)
 {
     IWX_SETBITS(sc,IWX_CSR_GP_CNTRL,IWX_CSR_GP_CNTRL_REG_FLAG_BUS_MASTER_DISABLE_REQ);
@@ -49,7 +86,7 @@ void ItlIwx::bzStoppedCleanup(struct iwx_softc *sc)
         iwx_reset_tx_ring(sc,&sc->sc_tvqm_ring);iwx_free_tx_ring(sc,&sc->sc_tvqm_ring);
     }
     fBzStats[15]=fBzFault;fBzStats[16]=fBzError;
-    fBzQueueOwned=0;fBzCommands.reset(true);
+    fBzQueueOwned=0;fBzCommands.reset(true);fBzPnvm.reset(true);
     for(unsigned i=0;i<IWX_CMD_QUEUE_SIZE_GEN3;++i) sc->txq[0].data[i].flags &= ~IWX_TXDATA_FLAG_CMD_PENDING;
     fBzFault=fBzError=0; // ONLY positive stop under gate permits a new BZ generation.
 
@@ -158,6 +195,7 @@ int ItlIwx::bzValidateFirmware()
         {IWX_LONG_GROUP,IWX_TX_CMD,7,true,false},
         {IWX_DATA_PATH_GROUP,IWX_RX_BAID_ALLOCATION_CONFIG_CMD,2,false,false},
         {IWX_REGULATORY_AND_NVM_GROUP,IWX_NVM_GET_INFO,4,true,false},
+        {IWX_REGULATORY_AND_NVM_GROUP,IWX_PNVM_INIT_COMPLETE_NTFY,1,true,false},
     };
     if(!isset(s->sc_enabled_capa,IWX_UCODE_TLV_CAPA_MLD_API_SUPPORT)) return EPROTONOSUPPORT;
     for(const auto &v:versions) {

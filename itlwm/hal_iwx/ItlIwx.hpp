@@ -749,10 +749,14 @@ public:
     uint32_t fBzFault = 0, fBzError = 0;
     bool fBzHardwareOwned = false;
     uint32_t fBzQueueOwned=0;
+    kgp_bz::PnvmLedger fBzPnvm;
     kgp_bz::CommandLedger fBzCommands;
     kgp_bz::RxLedger fBzRx;
     uint64_t fBzStats[32] = {}, fBzWire[48] = {};
     int bzValidateFirmware();
+    int bzWaitFailure(struct iwx_softc *, int, uint32_t);
+    void bzPnvmComplete(struct iwx_softc *, const void *, size_t);
+    void bzPublishInitCounters(struct iwx_softc *);
     int bzSyncBootMemory(struct iwx_softc *);
     void bzStoppedCleanup(struct iwx_softc *);
     int bzInterrupt(struct iwx_softc *);

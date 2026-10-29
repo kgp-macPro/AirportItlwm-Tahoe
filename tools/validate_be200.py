@@ -3,7 +3,7 @@
 from pathlib import Path
 import sys,subprocess,concurrent.futures,json,hashlib,os,datetime,importlib.util,plistlib,struct
 R=Path(__file__).resolve().parents[1];O=Path(sys.argv[1]);O.mkdir(parents=True,exist_ok=False)
-checks=[('BE200_PNVM_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_BOOT_SYNC_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_TRANSPORT_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_LIFECYCLE_HOST_TEST',s)for s in ['address,undefined','thread']]
+checks=[('BE200_PNVM_COMPLETION_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_PNVM_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_BOOT_SYNC_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_TRANSPORT_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_LIFECYCLE_HOST_TEST',s)for s in ['address,undefined','thread']]
 checks +=[(n,'address,undefined') for n in ['ZC16_COMMAND_HOST_TEST','ZC16_REORDER_HOST_TEST','ZC28_BATCH_HOST_TEST','ZC7_ADMISSION_HOST_TEST','ZC28_SERVICE_OBSERVER_HOST_TEST','ZC28_DRAIN_HOST_TEST','ZC16_LIFECYCLE_HOST_TEST','ZC28_RATE_UPDATE_HOST_TEST']]+[('ZC28_RX_DECODER_TEST',None)]
 def run(v):
  n,san=v;cmd=[sys.executable,'-B',str(R/'tools/host_tests'/(n+'.py'))]+([san]if san else[]);p=O/(n+'-'+(san or 'python').replace(',','-')+'.log');env=dict(os.environ);env['PYTHONDONTWRITEBYTECODE']='1';env['ASAN_OPTIONS']='halt_on_error=1';env['UBSAN_OPTIONS']='halt_on_error=1'
