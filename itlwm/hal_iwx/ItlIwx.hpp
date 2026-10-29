@@ -754,6 +754,7 @@ public:
     uint64_t fBzStats[32] = {}, fBzWire[48] = {};
     int bzValidateFirmware();
     void bzStoppedCleanup(struct iwx_softc *);
+    int bzInterrupt(struct iwx_softc *);
     bool bzDevice() const { return fBzDevice; }
     bool dma5Leased() const { return dma5Mapped() || (fDma5Selected && fBzAdmitted); }
     void bzFail(uint32_t, int);

@@ -166,3 +166,32 @@ int ItlIwx::bzValidateFirmware()
     }
     return 0;
 }
+
+int ItlIwx::bzInterrupt(struct iwx_softc *sc)
+{
+    __atomic_fetch_add(&fBzStats[1],1ULL,__ATOMIC_RELAXED);
+    if(!getMainWorkLoop()->inGate() || fBzFault || __atomic_load_n(&fPc1Fault,__ATOMIC_ACQUIRE)) return 0;
+    uint32_t fh=IWX_READ(sc,IWX_CSR_MSIX_FH_INT_CAUSES_AD);
+    uint32_t hw=IWX_READ(sc,IWX_CSR_MSIX_HW_INT_CAUSES_AD);
+    if(!kgp_bz::ioValid(fh)||!kgp_bz::ioValid(hw)) {bzFail(16,ENXIO);return 0;}
+    IWX_WRITE(sc,IWX_CSR_MSIX_FH_INT_CAUSES_AD,fh);
+    IWX_WRITE(sc,IWX_CSR_MSIX_HW_INT_CAUSES_AD,hw);
+    fh &= sc->sc_fh_mask;hw &= sc->sc_hw_mask;
+    if((fh & IWX_MSIX_FH_INT_CAUSES_FH_ERR) ||
+       (hw & (IWX_MSIX_HW_INT_CAUSES_REG_SW_ERR_V2|IWX_MSIX_HW_INT_CAUSES_REG_HW_ERR))) {
+        bzFail(17,EIO);
+        if(!(sc->sc_flags & IWX_FLAG_SHUTDOWN))task_add(systq,&sc->init_task);
+        return 1;
+    }
+    // A coalesced hardware ALIVE/RX interrupt must publish initial credits
+    // before validating returned tags. ALIVE is the RFH-ready handshake,
+    // not the parsed firmware ALIVE notification or a DMA completion proof.
+    if(hw & IWX_MSIX_HW_INT_CAUSES_REG_ALIVE) bzPublishRx(sc);
+    if(fh & (IWX_MSIX_FH_INT_CAUSES_Q0|IWX_MSIX_FH_INT_CAUSES_Q1)) bzNotif(sc);
+    if(hw & IWX_MSIX_HW_INT_CAUSES_REG_RF_KILL) {
+        iwx_check_rfkill(sc);if(!(sc->sc_flags & IWX_FLAG_SHUTDOWN))task_add(systq,&sc->init_task);
+    }
+    if(!fBzFault && !__atomic_load_n(&fPc1Fault,__ATOMIC_ACQUIRE))
+        IWX_WRITE(sc,IWX_CSR_MSIX_AUTOMASK_ST_AD,1U); // OS-selected single vector0.
+    return 1;
+}

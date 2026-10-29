@@ -14465,30 +14465,22 @@ out:
 int ItlIwx::
 iwx_intr_msix(OSObject *object, IOInterruptEventSource* sender, int count)
 {
+    if(static_cast<ItlIwx *>(object)->bzDevice())
+        return static_cast<ItlIwx *>(object)->bzInterrupt(&static_cast<ItlIwx *>(object)->com);
+
 //    XYLog("Interrupt!!!\n");
     ItlIwx *that = (ItlIwx*)object;
     struct iwx_softc *sc = &that->com;
     uint32_t inta_fh, inta_hw;
     int vector = 0;
     
-    if(that->bzDevice()) {
-        __atomic_fetch_add(&that->fBzStats[1],1ULL,__ATOMIC_RELAXED);
-        if(that->fBzFault || __atomic_load_n(&that->fPc1Fault,__ATOMIC_ACQUIRE)) return 0;
-    }
     inta_fh = IWX_READ(sc, IWX_CSR_MSIX_FH_INT_CAUSES_AD);
     inta_hw = IWX_READ(sc, IWX_CSR_MSIX_HW_INT_CAUSES_AD);
-    if(that->bzDevice() && (!kgp_bz::ioValid(inta_fh)||!kgp_bz::ioValid(inta_hw))) {
-        that->bzFail(16,ENXIO);return 0;
-    }
     IWX_WRITE(sc, IWX_CSR_MSIX_FH_INT_CAUSES_AD, inta_fh);
     IWX_WRITE(sc, IWX_CSR_MSIX_HW_INT_CAUSES_AD, inta_hw);
     inta_fh &= sc->sc_fh_mask;
     inta_hw &= sc->sc_hw_mask;
     
-    if(that->bzDevice() && ((inta_fh & IWX_MSIX_FH_INT_CAUSES_FH_ERR) ||
-        (inta_hw & (IWX_MSIX_HW_INT_CAUSES_REG_SW_ERR_V2 | IWX_MSIX_HW_INT_CAUSES_REG_HW_ERR)))) {
-        that->bzFail(17,EIO);if(!(sc->sc_flags & IWX_FLAG_SHUTDOWN))task_add(systq,&sc->init_task);return 1;
-    }
     if (inta_fh & IWX_MSIX_FH_INT_CAUSES_Q0 ||
         inta_fh & IWX_MSIX_FH_INT_CAUSES_Q1) {
         that->iwx_notif_intr(sc);
@@ -14506,7 +14498,6 @@ iwx_intr_msix(OSObject *object, IOInterruptEventSource* sender, int count)
 #if 1 /* usually #ifdef IWX_DEBUG but always enabled for now */
         int i;
         
-        if(that->bzDevice()) that->bzFail(17,EIO);
         that->iwx_nic_error(sc);
         
         /* Dump driver status (TX and RX rings) while we're here. */
@@ -14534,7 +14525,6 @@ iwx_intr_msix(OSObject *object, IOInterruptEventSource* sender, int count)
     }
     
     if (inta_hw & IWX_MSIX_HW_INT_CAUSES_REG_HW_ERR) {
-        if(that->bzDevice()) that->bzFail(18,EIO);
         XYLog("%s: hardware error, stopping device \n", DEVNAME(sc));
         if ((sc->sc_flags & IWX_FLAG_SHUTDOWN) == 0) {
             sc->sc_flags |= IWX_FLAG_HW_ERR;
@@ -14544,14 +14534,12 @@ iwx_intr_msix(OSObject *object, IOInterruptEventSource* sender, int count)
     }
     
     if (inta_hw & IWX_MSIX_HW_INT_CAUSES_REG_ALIVE) {
-        if(that->bzDevice()) that->bzPublishRx(sc);
-        else {
         int i;
+
         /* Firmware has now configured the RFH. */
         for (i = 0; i < IWX_RX_MQ_RING_COUNT; i++)
             that->iwx_update_rx_desc(sc, &sc->rxq, i);
         IWX_WRITE(sc, IWX_RFH_Q0_FRBDCB_WIDX_TRG, 8);
-        }
     }
     
     /*

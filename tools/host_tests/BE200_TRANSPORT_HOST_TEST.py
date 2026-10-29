@@ -8,7 +8,7 @@ R=Path(__file__).resolve().parents[2]
 s=(R/'itlwm/hal_iwx/ItlIwxBzTransport.inc').read_text()
 def fn(n):
  m=re.sub(r'//[^\n]*|/\*.*?\*/|"(?:\\.|[^"\\])*"',lambda x:' '*len(x[0]),s,flags=re.S)
- x=re.search(r'(?:void|bool)\s+ItlIwx::'+n+r'\(',m);assert x,n
+ x=re.search(r'(?:void|bool|int)\s+ItlIwx::'+n+r'\(',m);assert x,n
  a=m.index('{',x.end());b=a+1;d=1
  while d:d+=(m[b]=='{')-(m[b]=='}');b+=1
  return s[x.start():b]
@@ -39,8 +39,9 @@ struct Data {unsigned slot=0;};
 struct iwx_rx_ring {DMA free_desc_dma,used_desc_dma,stat_dma;unsigned cur=0,write=0;void*stat=nullptr;Data data[512];};
 struct mbuf_list {unsigned count=0;};
 #define MBUF_LIST_INITIALIZER() {}
-struct iwx_softc {unsigned sc_generation=1;iwx_rx_ring rxq;struct{unsigned deliveries=0;}sc_ic;};
+struct iwx_softc {uint32_t sc_fh_mask=~0U,sc_hw_mask=~0U,sc_flags=0;unsigned init_task=0;unsigned sc_generation=1;iwx_rx_ring rxq;struct{unsigned deliveries=0;}sc_ic;};
 struct KgpRxZcPool {enum State {Posted,Complete};struct Entry {State state=Posted;Command*command=nullptr;void*memory=nullptr;uint64_t address=0;}entry[512];};
+void *systq=nullptr;static void task_add(void*,unsigned*p){++*p;}
 static std::function<void()> onInput;
 static void if_input(void *p,mbuf_list*m){if(onInput){auto f=onInput;onInput={};f();}m->count=0;}
 struct Loop {bool held=true;bool inGate(){return held;}};
@@ -50,14 +51,16 @@ struct ItlIwx {
  unsigned fPc1TerminalEpoch=0,fRxZcGeneration=1,fRxZcEpoch=1;
  static constexpr unsigned kRxZcCount=512;
  unsigned fRxZcSlot[512]={};KgpRxZcPool pool;KgpRxZcPool*fRxZcPool=&pool;
- kgp_bz::RxLedger fBzRx;uint64_t fBzStats[32]={};unsigned accesses=0,doorbells=0,writes=0;
+ kgp_bz::RxLedger fBzRx;uint64_t fBzStats[32]={};unsigned accesses=0,doorbells=0,writes=0,rearms=0,rfkills=0;
  uint32_t lastDoorbell=0;bool requested=false,replace=true;std::vector<uint32_t> reads;size_t readIndex=0;
  iwx_rx_transfer_desc descriptors[512]={};kgp_bz::Completion completions[512]={};uint16_t producer=0;
  Command commands[515];std::vector<unsigned> received;
  Loop*getMainWorkLoop(){return &loop;}
  void bzFail(uint32_t reason,int e){if(!fBzFault){fBzFault=reason;fBzError=e;}fBzRx.close();}
  uint32_t mmioRead(){return reads.empty()?0:reads[readIndex<reads.size()?readIndex++:reads.size()-1];}
- void mmioWrite(unsigned r,uint32_t v){assert(r==IWX_HBUS_TARG_WRPTR);++writes;++doorbells;lastDoorbell=v;}
+ void mmioWrite(unsigned r,uint32_t v){++writes;if(r==IWX_HBUS_TARG_WRPTR){++doorbells;lastDoorbell=v;}else if(r==IWX_CSR_MSIX_AUTOMASK_ST_AD){assert(v==1);++rearms;}}
+ void iwx_check_rfkill(iwx_softc*){++rfkills;}
+ int bzInterrupt(iwx_softc*);
  static void iwx_dma_queue_publish_barrier(){__atomic_thread_fence(__ATOMIC_SEQ_CST);}
  void iwx_rx_pkt(iwx_softc*,Data*d,mbuf_list*m){++accesses;received.push_back(d->slot);++m->count;}
  bool rxZcRepost(unsigned){return replace;}
@@ -72,6 +75,14 @@ struct ItlIwx {
 };
 '''
 pre=pre.replace('struct{unsigned deliveries=0;}sc_ic;','struct{unsigned ic_if=0;}sc_ic;')
+
+reg=(R/'itlwm/hal_iwx/if_iwxreg.h').read_text()+(R/'itlwm/hal_iwx/if_iwxvar.h').read_text()
+irq=fn('bzInterrupt');defs=''
+for n in sorted(set(re.findall(r'\bIWX_[A-Z0-9_]+',irq))):
+ x=re.search(r'^#define\s+'+n+r'\s+([^\n]+)',reg,re.M);assert x,n
+ defs+='#define '+n+' '+x[1]+'\n'
+pre=pre.replace('using IOReturn',defs+'\nusing IOReturn',1)
+
 test=r'''
 int main(){unsigned tests=0;
  assert(kgp_bz::deviceAllowed(0x8086,0x272b,0x47,2,0x112,2));
@@ -129,12 +140,21 @@ int main(){unsigned tests=0;
    t.fBzHardwareOwned=true;t.bzPublishRx(&t.com);};
   t.bzNotif(&t.com);assert(!t.fBzFault&&t.doorbells==2);assert(t.com.rxq.cur==0);++tests;
  }
+
+ {ItlIwx t;t.bzResetRx(&t.com);for(unsigned i=0;i<511;++i)t.bzUpdateRxDesc(&t.com,&t.com.rxq,i,i);t.fBzHardwareOwned=true;
+  t.completions[0]={1,0,0};t.producer=1;t.reads={IWX_MSIX_FH_INT_CAUSES_Q0,IWX_MSIX_HW_INT_CAUSES_REG_ALIVE};
+  assert(t.bzInterrupt(&t.com)==1);assert(!t.fBzFault&&t.accesses==1&&t.doorbells==2&&t.rearms==1);++tests;}
+ {ItlIwx t;t.initial();t.reads={IWX_MSIX_FH_INT_CAUSES_Q0,IWX_MSIX_HW_INT_CAUSES_REG_SW_ERR_V2|IWX_MSIX_HW_INT_CAUSES_REG_ALIVE};
+  t.completions[0]={1,0,0};t.producer=1;t.bzInterrupt(&t.com);assert(t.fBzFault&&!t.accesses&&t.doorbells==1&&!t.rearms&&t.com.init_task==1);++tests;}
+ {ItlIwx t;t.reads={0,IWX_MSIX_HW_INT_CAUSES_REG_RF_KILL};t.bzInterrupt(&t.com);assert(t.rfkills==1&&t.com.init_task==1&&t.rearms==1);++tests;}
+ {ItlIwx t;t.reads={0xffffffffU,0};t.bzInterrupt(&t.com);assert(t.fBzFault&&!t.rearms&&!t.accesses);++tests;}
+ {ItlIwx t;t.fPc1Fault=1;t.bzInterrupt(&t.com);assert(t.readIndex==0&&!t.rearms&&!t.accesses);++tests;}
  std::cout<<"PASS "<<tests<<" production-contract/transport scenarios; 8 nonsequential hardware IDs plus 40000 wrapped ledger returns. Mock DMA/MMIO; NOT hardware qualification.\n";
 }
 '''
 san=sys.argv[1] if len(sys.argv)>1 else 'address,undefined'
 with tempfile.TemporaryDirectory(prefix='be200-transport-') as d:
- p=Path(d);source=pre+'\n'.join(fn(n) for n in ['bzMasterStop','bzResetRx','bzUpdateRxDesc','bzPublishRx','bzNotif'])+test
+ p=Path(d);source=pre+'\n'.join(fn(n) for n in ['bzMasterStop','bzResetRx','bzUpdateRxDesc','bzPublishRx','bzNotif','bzInterrupt'])+test
  (p/'test.cpp').write_text(source)
  cmd=['/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++','-isysroot','/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk','-std=c++17','-O1','-g','-fsanitize='+san,'-I'+str(R),str(p/'test.cpp'),'-o',str(p/'test')]
  print('COMMAND',repr(cmd),flush=True);subprocess.run(cmd,check=True);subprocess.run([str(p/'test')],check=True,timeout=60)

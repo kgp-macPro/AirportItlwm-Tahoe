@@ -56,7 +56,9 @@ Genuine provider MSI-X configuration precedes vector resolution. Setup, discover
 and enabled PCI MSI-X capability are checked. IOKit owns vector allocation;
 the driver removes/disables its filtered source on partial failure/detach and
 never manually frees OS-owned table storage. Cause banks/masks/IVAR and rearm
-are used, including reset/rfkill restoration; no legacy ICT on BZ.
+are used, including reset/rfkill restoration; no legacy ICT on BZ. A BZ-only service method handles fatal causes first and
+publishes RFH-ready ALIVE credits before coalesced RX; the legacy MSI-X body
+is restored verbatim behind its BZ dispatcher.
 
 BZ GP_CNTRL master-disable request/status and SW_RESET replace the old-family
 register sequence. Invalid MMIO, delay or timeout is not a DMA terminal. Failure
