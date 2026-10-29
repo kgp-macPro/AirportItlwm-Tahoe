@@ -78,7 +78,7 @@ pre=pre.replace('struct{unsigned deliveries=0;}sc_ic;','struct{unsigned ic_if=0;
 
 reg=(R/'itlwm/hal_iwx/if_iwxreg.h').read_text()+(R/'itlwm/hal_iwx/if_iwxvar.h').read_text()
 irq=fn('bzInterrupt');defs=''
-for n in sorted(set(re.findall(r'\bIWX_[A-Z0-9_]+',irq))):
+for n in sorted((set(re.findall(r'\bIWX_[A-Z0-9_]+',irq)) | {'IWX_CSR_MSIX_BASE'}) - {'IWX_READ','IWX_WRITE'}):
  x=re.search(r'^#define\s+'+n+r'\s+([^\n]+)',reg,re.M) or re.search(r'\b'+n+r'\s*=\s*([^,\n]+)',reg);assert x,n
  defs+='#define '+n+' '+x[1]+'\n'
 pre=pre.replace('using IOReturn',defs+'\nusing IOReturn',1)
