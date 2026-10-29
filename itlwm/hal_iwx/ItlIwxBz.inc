@@ -106,7 +106,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifdef AIRPORT_WCL
 // Private GL/BZ source port. Selective HAL reference: HuajiFruit/AirportBZ
 // 0ccab1627764406861fb9eb0a06ca36e31b4440f. Existing GPL/BSD/Intel notices apply.
 // Native WCL and reference DMA arena are not imported. See docs/BE200_PROVENANCE.md.
