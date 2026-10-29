@@ -2953,6 +2953,10 @@ iwx_bz_port_run_init_mvm_ucode(struct iwx_softc *sc, int readnvm)
                 sc->sc_nvm.hw_addr);
 
     }
+    bzConnectionEvent(9,readnvm,sc->sc_init_complete,sc->sc_generation);
+    sc->sc_pcitag->setProperty("ItlwmNvmInitComplete",true);
+    if(readnvm)sc->sc_pcitag->setProperty("ItlwmNvmReadComplete",true);
+    ItlStartupStage(sc->sc_pcitag,"hal:nvm-ready");
     return 0;
 }
 
@@ -4353,6 +4357,8 @@ iwx_bz_port_scan(struct iwx_softc *sc)
     int err;
 
     /* Diagnostics: net80211 reached the driver scan path. */
+    fBzScanBeacons=fBzScanProbes=0;
+    bzConnectionEvent(3,sc->sc_scan_builds+1,sc->sc_ic.ic_state,0);
     sc->sc_scan_start_ns = iwx_boot_time_ns();
     sc->sc_pcitag->setProperty("ItlwmScanCalled", static_cast<UInt32>(1), 32);
     sc->sc_pcitag->setProperty("ItlwmScanIffFlags",
@@ -4845,6 +4851,7 @@ reset_node:
 void ItlIwx::
 iwx_mld_probe(struct iwx_softc *sc, uint32_t step, int err)
 {
+    bzConnectionEvent(2,step,uint32_t(err),sc->sc_flags);
     sc->sc_pcitag->setProperty("ItlwmMldAssocStep", step, 32);
     sc->sc_pcitag->setProperty("ItlwmMldAssocErr",
         static_cast<UInt32>(err < 0 ? -err : err), 32);
@@ -5904,6 +5911,7 @@ iwx_bz_port_endscan(struct iwx_softc *sc)
             ++nodes;
             scan_ni = RB_NEXT(ieee80211_tree, &ic->ic_tree, scan_ni);
         }
+        bzConnectionEvent(4,nodes,fBzScanBeacons,fBzScanProbes);
         sc->sc_pcitag->setProperty("ItlwmScanNodes", nodes, 32);
         if (sc->sc_scan_start_ns != 0) {
             uint64_t elapsed = iwx_boot_time_ns() - sc->sc_scan_start_ns;

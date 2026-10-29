@@ -5,7 +5,7 @@ import subprocess,hashlib,json,sys,os,datetime
 R=Path(__file__).resolve().parents[1];E=Path(sys.argv[1]);V=Path(sys.argv[2]);attempt=sys.argv[3]if len(sys.argv)>3 else'final-01'
 G='/Applications/Xcode.app/Contents/Developer/usr/bin/git';X='/Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild'
 def git(*a):return subprocess.check_output([G,*a],cwd=R,text=True).strip()
-assert R.name=='TRACK-BE200-P4-COMPLETION-20261029' and git('branch','--show-current')=='experiment/be200-p4-pnvm-completion-20261029'
+assert R.name=='TRACK-BE200-P5-CONNECTION-20261029' and git('branch','--show-current')=='experiment/be200-p5-connection-20261029'
 assert not git('status','--porcelain=v1','--untracked-files=all'),'Uncommitted sources'
 assert git('merge-base','483940988c502379fb6d3dcde885dca83f00b7aa','HEAD')=='483940988c502379fb6d3dcde885dca83f00b7aa'
 val=json.loads((V/'RESULT.json').read_text());assert val['status']=='PASS' and val['head']==git('rev-parse','HEAD')

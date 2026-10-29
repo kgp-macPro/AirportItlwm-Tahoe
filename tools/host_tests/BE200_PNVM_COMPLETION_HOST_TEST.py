@@ -3,7 +3,7 @@
 Opaque status semantics follow pinned Linux callback; no hardware proof.
 """
 from pathlib import Path
-import re,subprocess,tempfile,sys,hashlib
+import re,subprocess,tempfile,sys,hashlib,json
 R=Path(__file__).resolve().parents[2];G='/Applications/Xcode.app/Contents/Developer/usr/bin/git'
 C='/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++'
 SDK='/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk'
@@ -18,6 +18,7 @@ oldsrc=subprocess.check_output([G,'show','1d35f8ffe2e014f5b11dad364b78f34ac7e07c
 oldcpp=subprocess.check_output([G,'show','1d35f8ffe2e014f5b11dad364b78f34ac7e07cc8:itlwm/hal_iwx/ItlIwx.cpp'],cwd=R,text=True)
 a=oldcpp.index('                    if(iwx_rx_packet_payload_len(pkt)!=sizeof(iwl_pnvm_init_complete_ntfy))');b=oldcpp.index('\n                }',a)
 oldbody=oldcpp[a:b].replace('break;','return;')
+hardware=json.loads((R/'tools/host_tests/fixtures/BE200_P4_INTERFACE.json').read_text());assert hardware['properties']['ItlwmPnvmNotifySeen']==1
 pre=r'''
 #include <cassert>
 #include <cstdint>
@@ -29,13 +30,14 @@ pre=r'''
 constexpr unsigned IWX_PNVM_COMPLETE=4,IWX_GATE_WAIT_NOTIF=1,IWX_GATE_WAIT_ALIVE=2,IWX_CMD_QUEUE_SIZE_GEN3=128;
 struct iwl_pnvm_init_complete_ntfy {uint32_t status;};
 struct iwx_softc {int sc_generation=1,sc_init_complete=0;uint32_t sc_pnvm_status=0;
- struct {int uc_intr=0;}sc_uc;struct{bool active=false;int error=0;}sc_boot_diag;
+ struct {int ic_state=0;}sc_ic;struct {int uc_intr=0;}sc_uc;struct{bool active=false;int error=0;}sc_boot_diag;
  struct{int*desc=nullptr;}txq[1];};
 struct Gate {bool held=true;unsigned wakes=0;bool inGate(){return held;}void commandWakeup(void*){++wakes;}};
 struct ItlIwx {iwx_softc com;Gate gate;bool bz=true;unsigned fBzFault=0,fBzError=0,fPc1ResetEpoch=1,fTx2IBlocked=0;
  kgp_bz::PnvmLedger fBzPnvm;kgp_bz::RxLedger fBzRx;uint64_t fBzStats[32]={};
  unsigned action=0,sleeps=0,polls=0;bool duringPoll=false;uint32_t raw=0x50001;
  Gate*getMainWorkLoop(){return &gate;}Gate*getMainCommandGate(){return &gate;}bool bzDevice(){return bz;}
+ void bzConnectionEvent(unsigned,uint64_t,uint64_t,uint64_t){}
  void bzFail(uint32_t,int);int bzWaitFailure(iwx_softc*,int,uint32_t);void bzPnvmComplete(iwx_softc*,const void*,size_t);
  int iwx_wait_notification(iwx_softc*,int*,int,uint32_t);int iwx_wait_alive_poll(iwx_softc*,int*,int,uint32_t);
  void event(iwx_softc*s,int*v,int bits){
@@ -80,6 +82,7 @@ int main(){unsigned cases=0;
 #endif
 }
 '''
+pre=pre.replace('uint32_t raw=0x50001;', 'uint32_t raw='+str(hardware['properties']['ItlwmPnvmNotifyStatus'])+';')
 san=sys.argv[1]if len(sys.argv)>1 else'address,undefined'
 with tempfile.TemporaryDirectory(prefix='be200-pnvm-completion-')as d:
  d=Path(d)

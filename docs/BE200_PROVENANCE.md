@@ -1,4 +1,4 @@
-# Private GL/BE200 source port — experimental P1
+# Private GL/BE200 source port — P1–P5 private implementation history
 
 Baseline: exact frozen ZC28 `483940988c502379fb6d3dcde885dca83f00b7aa`.
 The published root source, releases, beta archives and r7 runner are unchanged.
@@ -255,3 +255,70 @@ No ISR/RX registry allocation or per-packet printing is introduced. Firmware byt
 SDK declaration, DMA allocator, geometry, IRQ policy, frontend and admission remain
 unchanged. P4 remains hardware-unverified; NVM, interface, scan, association, keying,
 DHCP/ARP, traffic, both modes and lifecycle require subsequent physical evidence.
+
+
+## P5 connection repair (29 October 2026)
+
+P4 is the first runtime-proven published interface reference:boot21:48:18CET,
+UUID60D98C1A-A61E-3EE4-9B70-A17F40E01F6F;ARPT/AirportItlwm/en2,Wi-Fi On,
+FW92.67ce4588.0. PNVMseen1/raw0x50001/wait0;interface and NVM path progressed.
+KGP recreated service and forgot bbc,then observed it rediscovered before join
+failed(USER-OBSERVED). Driver scan builds71/channels41/nodes4/API17 plus live scan
+returns in airportd support actual scan processing. Some merged scan entries have
+old ages;no exact BSSID/payload freshness claim from a screenshot alone.
+
+Saved watchdog captures AUTH state2,fault3/error100,gen91/reset46,46positiveStops,
+47ALIVE/PNVM,46packet publications,zeroTXretirements. Last MLD probe7/err0 denotes
+host setup completion,not over-air authentication. That old property has no
+lifetime stamp;do not assert it belongs to the same snapshot generation. P4 did
+not capture the rejected header. Its rx_auth_frames counter was unwired;zero is
+not proof of absent auth RX. EAPOL/keys/IPv4 were not established;no DHCP diagnosis.
+
+Confirmed source defect:iwx_rx_pkt rejected every direct response outside host
+commandqueue0,then checked all remaining direct replies against CommandLedger,
+before dispatch. Packet TX_CMD completions carry packet queue/index coordinates.
+Pinned Linuxv6.9 a38297e3fb012ddfa7ce0321a7e5a8daeb1872b6 mvm/ops.c sets
+no_reclaim_cmds={TX_CMD};pcie/rx.c excludes those from host-command reclaim. Pinned
+AirportBZ also restricts host-command context/completion to commandqueue0 and
+leaves packet TX dispatch separate. No external body imported in this correction.
+
+bzRouteReply now distinguishes Notification,Command and PacketTx. Only Command
+passes strict commandqueue/index/expected-code/gen/epoch ledger and long-group
+narrow alias lookup;only that route calls iwx_cmd_done. TX_CMD goes to its own
+validated packet-completion handler whether the RX-origin bit is set or not.
+This does not complete a host command,authorize arbitrary qids or free uncertain
+backing. Single BZ packet response requires a currently owned allocated queue,
+full wire/status/SSN bounds and positive advancement within outstanding window
+before selecting last retired descriptor. Actual retirement/fences/stop contracts
+stay intact. Non-BZ routing behavior is preserved. A zero-progress duplicate is
+rejected for single-frame BZ completion;generic BA helper semantics are unchanged.
+
+Linux fw/api/tx.h explicitly uses the same iwl_mvm_tx_resp layout for versions6/7;
+normalized production field sequence is checked,not inferred from version number.
+The compatibility bus_dmamap_sync routine is a no-op. It is not relied on for BZ
+coherency:RX backing was synchronized by rxZcSync before dispatch and bounded
+packet completion calls existing checked token/finality retirement. No allocator,
+firmware/SDK/MSI-X,PNVM,boot/stop,frontend or device qualification changes.
+
+Bounded diagnostics:ConnectionTrace201/1,64records x8qwords plus8qword header
+(4160bytes),with serial/time,generation/reset,event and3scalar arguments. It
+retains recent history across internal resets and reports overwritten count.
+All mutation under existing gate;timer snapshot copies to fixed wire storage
+under gate;IORegistry publication occurs outside gate. No pointer retention,
+firmware-owned mutable reads,new DMA,hot-path allocation or printing. One clock
+per rare control event/pre-RUN TX response,none per bulk packet;beacon/probe
+counters are simple gate-owned increments. Recorded management fields are only
+algorithm/transaction/status/reason/AID,never addresses,SSIDs,keys or data payload.
+No hardware overhead measurement or observer-effect elimination is claimed.
+The collector is a short diagnostic procedure,separate from r7 performance runs.
+
+Exact P4 watchdog/properties are retained as a fixture with original hash/path;
+observed PNVM rawstatus feeds actual completion regression. Packet response cases
+are synthetic per pinned API,explicitly NOT the missing P4 rejected packet.
+Tests run actual router,TX response/single-status/queue advance and MLD auth/probe
+functions plus shared ledger/history under sanitizers with mocked KPIs/MMIO.
+Expected auth setup ordering follows pinned reference;failure branches may not
+publish AUTH_READY. Actual Linux TX_RSPv7 layout and no-reclaim contract supply
+expectations. P4 successful boot,Out/fullfence/PNVM and existing-device checks are
+retained. Passing offline tests cannot establish P5 association/traffic or safety
+on real hardware. P5 is private,unqualified;KGP alone installs/reboots/tests.

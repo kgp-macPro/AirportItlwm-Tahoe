@@ -749,6 +749,12 @@ public:
     uint32_t fBzFault = 0, fBzError = 0;
     bool fBzHardwareOwned = false;
     uint32_t fBzQueueOwned=0;
+    kgp_bz::ConnectionTrace fBzConnection;
+    uint64_t fBzConnectionWire[kgp_bz::ConnectionTrace::Words]={};
+    uint32_t fBzScanBeacons=0,fBzScanProbes=0;
+    void bzConnectionEvent(unsigned,uint64_t,uint64_t,uint64_t);
+    void bzObserveMgmt(const void *,size_t);
+    kgp_bz::ReplyRoute bzRouteReply(struct iwx_softc *,unsigned,unsigned,int *,unsigned);
     kgp_bz::PnvmLedger fBzPnvm;
     kgp_bz::CommandLedger fBzCommands;
     kgp_bz::RxLedger fBzRx;

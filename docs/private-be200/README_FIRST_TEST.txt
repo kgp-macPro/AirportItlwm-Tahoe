@@ -1,13 +1,17 @@
-PRIVATE BE200 GL92 P4 — FIRST HARDWARE TEST (not a performance qualification)
+PRIVATE BE200 GL92 P5 — FIRST HARDWARE TEST (not a performance qualification)
 
-STATUS: P4 experimental; not installed/loaded or physically tested by Codex.
-P1 failed pre-ROM; P2 passed Out-sync/valid ALIVE but failed PNVM name lookup.
-P3 found/inflated the correct PNVM, matched SKU 0x51120 and received a completion
-with raw status 0x00050001. Its unsupported zero-only rule rejected that response;
-a later wait timeout masked the first EIO. P4 uses the pinned Linux completion
-contract with exact v1 layout, single-request/lifetime checks and raw-status
-retention. First BZ faults and reset epochs are now respected by both waits.
-This does NOT decode the raw status bits or prove calibration/NVM success.
+STATUS: P5 experimental; not installed/loaded or physically tested by Codex.
+P4 physically passed PNVM and published ARPT/AirportItlwm/en2. Wi-Fi could be
+enabled and KGP rediscovered the network after forgetting it; join failed.
+Saved P4 transport shows repeated fault3/EPROTO100,46positive stops,47ALIVEs,
+46packet publications and zero TX retirements. Last MLD probe AUTH_READY is not
+over-air authentication success and was not lifetime-stamped in P4.
+P5 separates packet TX responses from host command responses before dispatch,
+as required by pinned Linux's TX_CMD no-reclaim contract. Strict command ledger,
+owned packet queue/window/finality protections remain. A bounded history records
+control steps,pre-RUN TX status,auth/assoc status,first faults and lifetime stamps.
+P4 did not preserve its rejected wire header; the initiating TX reply is a strong
+inference,not captured proof. P5 must be tested; no association success is claimed.
 All previous candidates/evidence remain preserved.
 This remains an experimental first-infrastructure build,not a proved Wi-Fi fix.
 Initial target: discrete Intel 8086:272B, GL-C0/FM-C0. BE201 is not admitted.
@@ -31,10 +35,23 @@ Start with an existing WPA2/CCMP network. Do not begin with a 3x14 campaign.
    If an actual Wi-Fi hardware port/interface exists but the network service is
    absent after its earlier deletion, KGP may add that service manually in System
    Settings. Service recreation cannot repair an attach failure.
-3. Inspect the normal Wi-Fi UI: note whether networks appear, then manually
-   join the chosen WPA2 network. Record any prior traffic, failure or delay.
-   Do not include passwords or key material in notes. Capture scan/join result:
-   /bin/bash "$HOME/Desktop/AirportItlwm/BE200-EXPERIMENTAL/COLLECT_BE200.sh" joined
+3. Before ONE manual connection attempt, run:
+   /bin/bash "$HOME/Desktop/AirportItlwm/BE200-EXPERIMENTAL/COLLECT_BE200_JOIN.sh"
+   The collector saves BEFORE,streams focused logs,then asks you to join in the
+   normal Wi-Fi UI. It never initiates a scan/join,changes settings or sends
+   traffic. Press Return after the UI reports success/failure,within120seconds.
+   It waits2seconds for existing watchdog publication,takes AFTER and prints
+   ONE ZIP path under ~/Desktop/AirportItlwm/EVIDENCE/BE200_JOIN/.
+   Keep unsuccessful attempts. Do not delete/recreate services or forget the
+   network for this capture; record prior attempts/security/band without passwords.
+   If no association,stop here and return that ZIP. Do not diagnose DHCP yet.
+   Check connection_histories in decoded JSON: each event includes same-host
+   uptime ns,generation/reset epoch. 'AUTH_READY' means setup returned,not over-air
+   authentication. TX status1=success;0x82=noACK per pinned firmware API. Packet
+   completion alone does not prove peer receipt. RX-auth/assoc status and subsequent
+   MLD RUN steps distinguish progress. Key counters are submissions,not acceptance.
+   Schema201/1 retains64events and reports overwritten history; absence or gaps
+   remain unavailable evidence. No SSID/MAC/key/data bytes are in driver history.
 4. Discover the actual Wi-Fi interface and binding (not inferred from card name):
    networksetup -listallhardwareports
    ioreg -p IOService -w0 | /usr/bin/grep -i -B 6 -A 6 AirportItlwm
@@ -82,6 +99,9 @@ How the evidence distinguishes failures:
 - KGP_BE200_INIT_* are actual private lifetime IRQ/RX/ALIVE/PNVM counters; the inherited
   ItlwmBootIrq* fields do not observe every private path. ALIVE_SKU0/1/2 is the
   parsed firmware SKU,not a card label. Neither counter proves peer traffic.
+- KGP_BE200_CONNECTION: bounded control history exported by existing watchdog
+  outside gate. Raw packet/command rejection and first fault retain lifetime.
+  Only rare pre-RUN TX/management transitions get timestamps; no bulk-data logging.
 - PNVM/NVM timeout/status: exact SKU/payload/API or command/notification delivery.
 - Scan version/channels/completion plus RX counters: scan request vs result path.
 - MLD step/error and submitted-key count: auth/link/station/key transaction;

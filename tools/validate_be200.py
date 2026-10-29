@@ -3,8 +3,8 @@
 from pathlib import Path
 import sys,subprocess,concurrent.futures,json,hashlib,os,datetime,importlib.util,plistlib,struct
 R=Path(__file__).resolve().parents[1];O=Path(sys.argv[1]);O.mkdir(parents=True,exist_ok=False)
-checks=[('BE200_PNVM_COMPLETION_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_PNVM_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_BOOT_SYNC_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_TRANSPORT_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_LIFECYCLE_HOST_TEST',s)for s in ['address,undefined','thread']]
-checks +=[(n,'address,undefined') for n in ['ZC16_COMMAND_HOST_TEST','ZC16_REORDER_HOST_TEST','ZC28_BATCH_HOST_TEST','ZC7_ADMISSION_HOST_TEST','ZC28_SERVICE_OBSERVER_HOST_TEST','ZC28_DRAIN_HOST_TEST','ZC16_LIFECYCLE_HOST_TEST','ZC28_RATE_UPDATE_HOST_TEST']]+[('ZC28_RX_DECODER_TEST',None)]
+checks=[('BE200_CONNECTION_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_PNVM_COMPLETION_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_PNVM_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_BOOT_SYNC_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_TRANSPORT_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_LIFECYCLE_HOST_TEST',s)for s in ['address,undefined','thread']]
+checks +=[(n,'address,undefined') for n in ['ZC16_COMMAND_HOST_TEST','ZC16_REORDER_HOST_TEST','ZC28_BATCH_HOST_TEST','ZC7_ADMISSION_HOST_TEST','ZC28_SERVICE_OBSERVER_HOST_TEST','ZC28_DRAIN_HOST_TEST','ZC16_LIFECYCLE_HOST_TEST','ZC28_RATE_UPDATE_HOST_TEST']]+[('ZC28_RX_DECODER_TEST',None),('BE200_JOIN_TOOL_TEST',None)]
 def run(v):
  n,san=v;cmd=[sys.executable,'-B',str(R/'tools/host_tests'/(n+'.py'))]+([san]if san else[]);p=O/(n+'-'+(san or 'python').replace(',','-')+'.log');env=dict(os.environ);env['PYTHONDONTWRITEBYTECODE']='1';env['ASAN_OPTIONS']='halt_on_error=1';env['UBSAN_OPTIONS']='halt_on_error=1'
  with p.open('w') as f:x=subprocess.run(cmd,cwd=R,stdout=f,stderr=subprocess.STDOUT,env=env,timeout=240)
@@ -25,7 +25,25 @@ for bad in [b'',raw[:-1],struct.pack('<48Q',199,*w[1:])]:
  try:m.decode({'KGP_BE200_TRANSPORT':bad})
  except ValueError:pass
  else:raise AssertionError('Malformed trace accepted')
-results.append({'test':'collector bash syntax / decoder nesting, raw retention, absent/truncated/unknown records','exit':0})
+subprocess.run(['/bin/bash','-n',str(R/'docs/private-be200/COLLECT_BE200_JOIN.sh')],check=True)
+# Actual decoder, simulated stage/fault history including reset boundary and wrap.
+trace=[201,1,4160,70,64,6,64,0]+[0]*512
+for serial in range(7,71):
+ i=(serial-1)%64;trace[8+i*8:16+i*8]=[serial,serial*1000000,1 if serial<60 else 3,1 if serial<60 else 2,10 if serial==59 else 2,3,100,0]
+blob=struct.pack('<520Q',*trace);history=m.connection(blob)
+assert history['overwritten']==6 and len(history['events'])==64 and history['events'][0]['serial']==7 and history['events'][-1]['reset_epoch']==2
+assert m.decode({'KGP_BE200_CONNECTION':blob})['connection_histories'][0]['raw_hex']==blob.hex()
+for which in range(5):
+ bad=list(trace)
+ if which==0:bad[0]=202
+ if which==1:bad[4]=63
+ if which==2:bad[8]=0
+ if which==3:bad[5]=0
+ if which==4:bad[6]=65
+ try:m.connection(struct.pack('<520Q',*bad))
+ except ValueError:pass
+ else:raise AssertionError('Malformed connection trace accepted')
+results.append({'test':'both collector syntax / actual decoder unknown,truncated,wrap,overwrite,missing-event,epoch fixtures','exit':0})
 # Source/data preservation boundaries, not a regex substitute for transport tests.
 G='/Applications/Xcode.app/Contents/Developer/usr/bin/git'
 unchanged=['AirportItlwm/AirportItlwm.cpp','itl80211/openbsd/sys/_ifq.cpp','itl80211/openbsd/sys/_ifq.h','tools/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh']

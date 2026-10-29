@@ -51,6 +51,23 @@ inline bool validTlvs(const uint8_t *p,size_t n) {
 }
 struct Completion { uint16_t rbid;uint8_t flags,reserved; } __attribute__((packed));
 static_assert(sizeof(Completion)==CompletionBytes,"BZ completion ABI");
+// Gate-serialized connection-control history, no pointers or packet payloads.
+// One record per rare transition/pre-RUN TX response; never bulk data packets.
+struct ConnectionTrace {
+    static constexpr unsigned Count=64,Words=8+Count*8;
+    uint64_t total=0,record[Count][8]={};
+    void add(uint64_t ns,uint32_t g,uint32_t e,unsigned event,uint64_t a,uint64_t b,uint64_t c) {
+        auto *r=record[total%Count];++total;
+        r[0]=total;r[1]=ns;r[2]=g;r[3]=e;r[4]=event;r[5]=a;r[6]=b;r[7]=c;
+    }
+    void snapshot(uint64_t *out) const {
+        out[0]=201;out[1]=1;out[2]=Words*sizeof(uint64_t);out[3]=total;
+        out[4]=total<Count?total:Count;out[5]=total>Count?total-Count:0;
+        out[6]=Count;out[7]=0;
+        for(unsigned i=0;i<Count;++i)for(unsigned j=0;j<8;++j)out[8+i*8+j]=record[i][j];
+    }
+};
+enum class ReplyRoute : int { Invalid=-1, Notification=0, Command=1, PacketTx=2 };
 /* PNVM completion has no wire transaction/generation tag. Issue once per
  * positive-stop lifetime. A matched v1 notification completes the wait; status
  * remains opaque (Linux v6.9 fw/pnvm.c). Completion NEVER releases DMA backing. */

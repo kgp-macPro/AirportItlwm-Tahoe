@@ -53,6 +53,17 @@ for n in set(re.findall(r'^struct (iwx_\w+)\s*\{',fixture,re.M)):
  fixture=fixture.replace(structbody(fixture,n),structbody(reg,n))
 (O/'wire_abi.cpp').write_text(fixture)
 subprocess.run([C,'-isysroot',SDK,'-std=c++17',str(O/'wire_abi.cpp'),'-o',str(O/'wire_abi')],check=True);subprocess.run([str(O/'wire_abi')],check=True)
+# TX_RSP v7 is explicitly the same pinned Linux layout as v6, not assumed.
+linux_tx=(A/'sources/linux-a38297e3fb01/fw/api/tx.h').read_text()
+def txshape(s,n):
+ text=structbody(s,n)
+ text=re.sub(r'__le(16|32|64)',r'uint\1_t',text)
+ text=re.sub(r'\bu(8|16|32|64)\b',r'uint\1_t',text)
+ text=text.replace('iwl_mvm_tx_resp','iwx_tx_resp')
+ text=re.sub(r'\bagg_tx_status\b','iwx_agg_tx_status',text)
+ return re.sub(r'\s+','',text)
+assert txshape(linux_tx,'iwl_mvm_tx_resp')==txshape(reg,'iwx_tx_resp')
+(O/'TX_V7_LAYOUT.txt').write_text('PASS exact normalized field layout: Linux TX_RSP_API_S_VER_6/7 == production iwx_tx_resp. Full little-endian fields, queue/status/SSN offsets preserved.\n')
 # SDK patch at its DECLARED reserved slot, derived compiler member-pointer ABI.
 header='MacKernelSDK/Headers/IOKit/pci/IOPCIDevice.h';old=subprocess.check_output([G,'show','483940988c502379fb6d3dcde885dca83f00b7aa:'+header],cwd=R,text=True)
 (O/'IOPCIDevice.base.h').write_text(old)

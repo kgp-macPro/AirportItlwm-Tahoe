@@ -429,7 +429,7 @@ bool ItlIwx::dma5Select()
     if (selection) selection->release();
     if (!resolved) { boot5Mark(10, "device DMA policy unresolved; attach refused", 2); return false; }
     pci.pa_tag->setProperty("KGP_ZC5_DMA_MODE", mapped ? "mapped RX/TX" : "original Dexter RX/TX");
-    pci.pa_tag->setProperty("KGP_RX_EXPERIMENT", "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P4");
+    pci.pa_tag->setProperty("KGP_RX_EXPERIMENT", "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P5");
     boot5Mark(11, mapped ? "DMA routing completed: mapped" : "DMA routing completed: original Dexter");
     return true;
 }
@@ -2306,7 +2306,7 @@ bool ItlIwx::attach(IOPCIDevice *device)
     fBzDevice = device->configRead16(kIOPCIConfigVendorID)==0x8086 &&
         device->configRead16(kIOPCIConfigDeviceID)==0x272b;
     if(fBzDevice) { com.sc_device_family=IWX_DEVICE_FAMILY_BZ;
-        device->setProperty("KGP_BE200_CANDIDATE","BE200-GL92-PRIVATE-P4"); }
+        device->setProperty("KGP_BE200_CANDIDATE","BE200-GL92-PRIVATE-P5"); }
     pci.pa_tag = device;
     pci.workloop = getMainWorkLoop();
     const bool attached2G = iwx_attach(&com, &pci);
@@ -4616,7 +4616,7 @@ iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
     }
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 &&
         !pci.pa_tag->setProperty("KGP_RX_EXPERIMENT",
-            "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P4")) {
+            "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P5")) {
         err = ENOMEM; goto fail;
     }
     return 0;
@@ -7707,6 +7707,7 @@ iwx_rx_frame(struct iwx_softc *sc, mbuf_t m, int chanidx,
         chanidx = ieee80211_chan2ieee(ic, ic->ic_ibss_chan);
     
     wh = mtod(m, struct ieee80211_frame *);
+    if(bzDevice())bzObserveMgmt(wh,mbuf_len(m));
     ni = ieee80211_find_rxnode(ic, wh);
     if ((rxi->rxi_flags & IEEE80211_RXI_HWDEC) &&
         iwx_ccmp_decap(sc, m, ni, rxi) != 0) {
@@ -8529,8 +8530,8 @@ iwx_rx_tx_cmd(struct iwx_softc *sc, struct iwx_rx_packet *pkt,
     int tid;
     struct iwx_tx_resp *tx_resp = (struct iwx_tx_resp *)pkt->data;
     if(bzDevice() && iwx_rx_packet_payload_len(pkt)<sizeof(*tx_resp)+sizeof(uint32_t)) {bzFail(23,EPROTO);return;}
-    int qid = tx_resp->tx_queue;
-    if(bzDevice() && (qid<=IWX_DQA_CMD_QUEUE || qid>=nitems(sc->txq) || !sc->txq[qid].ring_count)) {bzFail(23,EPROTO);return;}
+    int qid = le16toh(tx_resp->tx_queue);
+    if(bzDevice() && (qid<=IWX_DQA_CMD_QUEUE || qid>=nitems(sc->txq) || qid>=32 || !(fBzQueueOwned&(1U<<qid)) || !sc->txq[qid].ring_count)) {bzFail(23,EPROTO);return;}
     struct iwx_tx_ring *ring = &sc->txq[qid];
     struct iwx_tx_data *txd;
 
@@ -8549,8 +8550,11 @@ iwx_rx_tx_cmd(struct iwx_softc *sc, struct iwx_rx_packet *pkt,
         memcpy(&ssn, &tx_resp->status + tx_resp->frame_count, sizeof(ssn));
         ssn = le32toh(ssn) & 0xfff;
         idx = IWX_AGG_SSN_TO_TXQ_IDX(ssn, ring->ring_count);
-        if(bzDevice() && !itlTxCompletionValid(ring->tail,ring->queued,idx,ring->ring_count)) {bzFail(23,EPROTO);return;}
+        if(bzDevice() && (idx==ring->tail || !itlTxCompletionValid(ring->tail,ring->queued,idx,ring->ring_count))) {bzFail(23,EPROTO);return;}
         txd = &ring->data[bzDevice()?((idx-1)&(ring->ring_count-1)):idx];
+        if(bzDevice() && sc->sc_ic.ic_state!=IEEE80211_S_RUN)
+            bzConnectionEvent(5,uint32_t(le16toh(tx_resp->status.status))|(uint32_t(qid)<<16),ssn,
+                uint32_t(tx_resp->failure_frame)|(uint32_t(pkt->hdr.qid)<<8));
         iwx_rx_tx_cmd_single(sc, pkt, txd);
         DPRINTFN(3, ("%s tid=%d ssn=%d idx=%d\n", __FUNCTION__, tid, ssn, idx));
         iwx_ampdu_txq_advance(sc, ring, idx, true);
@@ -13804,23 +13808,23 @@ iwx_rx_pkt(struct iwx_softc *sc, struct iwx_rx_data *data, struct mbuf_list *ml)
          * LEGACY group. Firmware API versions >= 50 reject commands
          * in group 0, forcing us to use this hack.
          */
-        if (bzDevice() && !(qid & 0x80) && (qid != IWX_DQA_CMD_QUEUE || idx >= nitems(sc->txq[0].data))) {bzFail(3,EPROTO);break;}
-        if (iwx_cmd_groupid(code) == IWX_LONG_GROUP && (!bzDevice() || !(qid&0x80))) {
-            struct iwx_tx_ring *ring = &sc->txq[qid];
-            struct iwx_tx_data *txdata = &ring->data[idx];
-            if (txdata->flags & IWX_TXDATA_FLAG_CMD_IS_NARROW)
-                code = iwx_cmd_opcode(code);
-        }
-        
-        if(bzDevice() && !(qid&0x80) &&
-            !fBzCommands.expected(idx,code,sc->sc_generation,fPc1ResetEpoch)) {bzFail(31,EPROTO);break;}
         len = sizeof(pkt->len_n_flags) + iwx_rx_packet_len(pkt);
         rx2GWord(rxSlot2G, 9, len);
-        rx2GWord(rxSlot2G, 10, code);
         if (len < minsz || len > (IWX_RBUF_SIZE - offset)) {
             rx2GFinish(rxSlot2G, 4);
+            if(bzDevice())bzFail(3,EPROTO);
             break;
         }
+        kgp_bz::ReplyRoute bzRoute=kgp_bz::ReplyRoute::Notification;
+        if(bzDevice()) {
+            bzRoute=bzRouteReply(sc,qid,idx,&code,len);
+            if(bzRoute==kgp_bz::ReplyRoute::Invalid)break;
+        } else if(iwx_cmd_groupid(code)==IWX_LONG_GROUP) {
+            struct iwx_tx_ring *ring=&sc->txq[qid];
+            if(ring->data[idx].flags&IWX_TXDATA_FLAG_CMD_IS_NARROW)
+                code=iwx_cmd_opcode(code);
+        }
+        rx2GWord(rxSlot2G, 10, code);
         if (rxSlot2G >= 0 && len >= minsz + 16 && mbuf_len(m0) >= offset + minsz + 16) {
             for (unsigned i = 0; i < 4; ++i) {
                 uint32_t value; memcpy(&value, pkt->data + 4*i, 4);
@@ -14222,7 +14226,8 @@ iwx_rx_pkt(struct iwx_softc *sc, struct iwx_rx_data *data, struct mbuf_list *ml)
          * For example, uCode issues IWX_REPLY_RX when it sends a
          * received frame to the driver.
          */
-        if (handled && !(qid & (1 << 7))) {
+        if (handled && !(qid & (1 << 7)) &&
+            (!bzDevice() || bzRoute==kgp_bz::ReplyRoute::Command)) {
             iwx_cmd_done(sc, qid, idx, code);
         }
         
@@ -17617,6 +17622,7 @@ IOReturn ItlIwx::zc19Snapshot(OSObject *, void *context, void *, void *, void *)
         b[8]=that->fBzFault;b[9]=that->fBzError;b[10]=that->fBzHardwareOwned;b[11]=that->com.sc_ic.ic_state;
         b[12]=that->com.sc_msix;b[13]=that->fBzRx.write;b[14]=that->fBzRx.published;b[15]=that->com.rxq.cur;
         for(unsigned i=0;i<32;++i)b[16+i]=__atomic_load_n(&that->fBzStats[i],__ATOMIC_RELAXED);
+        that->fBzConnection.snapshot(that->fBzConnectionWire);
     }
     return kIOReturnSuccess;
 }

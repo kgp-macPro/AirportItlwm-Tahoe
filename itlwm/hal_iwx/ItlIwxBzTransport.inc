@@ -1,6 +1,48 @@
 /* GL/BE200 ownership integration. KGP 2026, GPL-2.0-or-later.
  * Hardware ABI: pinned AirportBZ/Intel references; ZC28 owns backing/lifetimes.
  * See docs/BE200_PROVENANCE.md. No native WCL or allocator import. */
+void ItlIwx::bzConnectionEvent(unsigned event,uint64_t a,uint64_t b,uint64_t c)
+{
+    if(!getMainWorkLoop() || !getMainWorkLoop()->inGate())return;
+    fBzConnection.add(time2GNow(),com.sc_generation,fPc1ResetEpoch,event,a,b,c);
+}
+kgp_bz::ReplyRoute ItlIwx::bzRouteReply(struct iwx_softc *sc,unsigned qid,unsigned idx,int *code,unsigned length)
+{
+    using R=kgp_bz::ReplyRoute;
+    // TX_CMD replies describe packet queues, even without the unsolicited bit.
+    // Linux v6.9 mvm/ops.c no_reclaim_cmds + pcie/rx.c: never command-reclaim TX.
+    if(*code==IWX_TX_CMD)return R::PacketTx;
+    if(qid&0x80U)return R::Notification;
+    if(qid!=IWX_DQA_CMD_QUEUE || idx>=IWX_CMD_QUEUE_SIZE_GEN3) {
+        bzConnectionEvent(10,(qid<<16)|(idx<<24),length,*code);
+        bzFail(3,EPROTO);return R::Invalid;
+    }
+    if(iwx_cmd_groupid(*code)==IWX_LONG_GROUP &&
+       (sc->txq[qid].data[idx].flags&IWX_TXDATA_FLAG_CMD_IS_NARROW))
+        *code=iwx_cmd_opcode(*code);
+    if(!fBzCommands.expected(idx,*code,sc->sc_generation,fPc1ResetEpoch)) {
+        bzConnectionEvent(10,(qid<<16)|(idx<<24),length,*code);
+        bzFail(31,EPROTO);return R::Invalid;
+    }
+    return R::Command;
+}
+void ItlIwx::bzObserveMgmt(const void *bytes,size_t length)
+{
+    // CPU-owned, already synchronized/validated host frame. No addresses/keys.
+    if(!bytes || length<24)return;
+    const auto *p=static_cast<const uint8_t *>(bytes);
+    if((p[0]&0x0c)!=0)return;
+    const unsigned subtype=p[0]&0xf0;
+    if(subtype==0x80) {++fBzScanBeacons;return;}
+    if(subtype==0x50) {++fBzScanProbes;return;}
+    if(p[1]&0x40)return; // Do not interpret protected management bodies.
+    if(subtype==0xb0 && length>=30)
+        bzConnectionEvent(6,uint32_t(kgp_bz::le16(p+24))|(uint32_t(kgp_bz::le16(p+26))<<16),kgp_bz::le16(p+28),subtype);
+    else if((subtype==0x10 || subtype==0x30) && length>=30)
+        bzConnectionEvent(7,kgp_bz::le16(p+26),kgp_bz::le16(p+28),subtype);
+    else if((subtype==0xc0 || subtype==0xa0) && length>=26)
+        bzConnectionEvent(8,kgp_bz::le16(p+24),subtype,0);
+}
 bool ItlIwx::bzAdmit()
 {
     auto *s=&com;
@@ -16,7 +58,10 @@ void ItlIwx::bzFail(uint32_t why,int error)
 {
     uint32_t zero=0;
     if(__atomic_compare_exchange_n(&fBzFault,&zero,why,false,__ATOMIC_ACQ_REL,__ATOMIC_RELAXED))
+    {
         fBzError=error;
+        bzConnectionEvent(1,why,uint32_t(error),com.sc_ic.ic_state);
+    }
     fBzRx.close();
     __atomic_store_n(&fTx2IBlocked,1U,__ATOMIC_RELEASE);
     com.sc_boot_diag.error=error;
@@ -171,7 +216,10 @@ void ItlIwx::bzNotif(struct iwx_softc *sc)
 }
 void ItlIwx::bzCapture()
 {
-    if(pci.pa_tag) pci.pa_tag->setProperty("KGP_BE200_TRANSPORT",fBzWire,sizeof(fBzWire));
+    if(pci.pa_tag) {
+        pci.pa_tag->setProperty("KGP_BE200_TRANSPORT",fBzWire,sizeof(fBzWire));
+        pci.pa_tag->setProperty("KGP_BE200_CONNECTION",fBzConnectionWire,sizeof(fBzConnectionWire));
+    }
 }
 int ItlIwx::bzValidateFirmware()
 {
