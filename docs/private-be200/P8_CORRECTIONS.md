@@ -173,3 +173,27 @@ Mocks do not prove cache attributes, interrupt timing, firmware aggregation,
 over-air delivery, performance, power or long-term stability. Hardware must
 establish the improvement. No requirement to repeat unchanged P7 campaigns:
 the saved complete r8 baseline is the reference for the next candidate test.
+
+## Additional active function: Find My
+
+KGP reports our AX210/BE200 MacPro shown only locally, whereas laobamac makes
+the same MacPro findable from other Apple devices. Exact card, driver version,
+boot and patch/framework state of that successful Find My control still need
+evidence; Fulvio's separate native-control performance archive is not a substitute.
+
+Registration, fresh Wi-Fi-based local positioning, iCloud position reporting
+and the Bluetooth-based offline Find My network are distinct stages. The
+legacy frontend's getSCAN_RESULT definitely advertised rates after copying
+none (zero count after bzero), and could advertise more inline IE bytes than
+copied. P8 fixes bounded truthful rate/SSID/IE output, preserving complete IE
+boundaries, addresses, channel, age and iterator behavior. Actual getter/target
+wire structures are sanitizer-tested. No AWDL/Bluetooth/cloud capability is
+invented, and no account/privacy setting is changed. This correctness repair
+does NOT establish Find My working; the native converter has similar old code,
+so this defect alone is not a unique explanation of the functional contrast.
+
+Primary Apple references: [Location Services](https://support.apple.com/en-euro/guide/mac-help/mh35873/mac),
+[Find My setup](https://support.apple.com/en-ie/102648). Primary search descriptions
+were available on30October2026; direct guide downloads failed/HTTP429. No full
+guide download is claimed. Focused passive locationd/findmy/airportd evidence
+and a user-controlled functional comparison remain separate from throughput.
