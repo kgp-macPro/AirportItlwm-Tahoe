@@ -4,7 +4,7 @@ import plistlib,struct,json,sys
 from pathlib import Path
 NAMES=['schema','version','bytes','publication','capture_ns','actual_mode','generation','reset_epoch','fault','error','hardware_owned','net80211_state','msix','refill_producer','published_producer','completion_consumer']
 STATS=['irq_filter','irq_action','positive_master_stop','master_stop_failure','rx_credit_publications','nested_service_refused','bad_completion_or_fragment','claimed_rx','parsed_alive','rx_auth_frames','tx_without_queue','packet_publications','pnvm_complete','reserved13','reserved14','last_stopped_fault','last_stopped_error','tx_response_reclaims','ba_response_reclaims','rx_mpdu','reserved20','reserved21','reserved22','reserved23','reserved24','reserved25','reserved26','reserved27','reserved28','reserved29','reserved30','reserved31']
-EVENTS={1:'first_fault',2:'mld_step',3:'scan_start',4:'scan_complete',5:'packet_tx_completion_before_RUN',6:'rx_authentication',7:'rx_association',8:'rx_disconnect',9:'init_complete',10:'rx_header_rejected'}
+EVENTS={1:'first_fault',2:'mld_step',3:'scan_start',4:'scan_complete',5:'packet_tx_completion_before_RUN',6:'rx_authentication',7:'rx_association',8:'rx_disconnect',9:'init_complete',10:'rx_header_rejected',11:'lifecycle_stop_begin',12:'stale_state_cancelled',13:'scan_accepted_current_lifetime',14:'command_refused_inactive_firmware'}
 def connection(raw):
     if len(raw)!=4160:raise ValueError('Wrong connection history length')
     w=struct.unpack('<520Q',raw)

@@ -429,7 +429,7 @@ bool ItlIwx::dma5Select()
     if (selection) selection->release();
     if (!resolved) { boot5Mark(10, "device DMA policy unresolved; attach refused", 2); return false; }
     pci.pa_tag->setProperty("KGP_ZC5_DMA_MODE", mapped ? "mapped RX/TX" : "original Dexter RX/TX");
-    pci.pa_tag->setProperty("KGP_RX_EXPERIMENT", "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P6");
+    pci.pa_tag->setProperty("KGP_RX_EXPERIMENT", "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P7");
     boot5Mark(11, mapped ? "DMA routing completed: mapped" : "DMA routing completed: original Dexter");
     return true;
 }
@@ -2306,7 +2306,7 @@ bool ItlIwx::attach(IOPCIDevice *device)
     fBzDevice = device->configRead16(kIOPCIConfigVendorID)==0x8086 &&
         device->configRead16(kIOPCIConfigDeviceID)==0x272b;
     if(fBzDevice) { com.sc_device_family=IWX_DEVICE_FAMILY_BZ;
-        device->setProperty("KGP_BE200_CANDIDATE","BE200-GL92-PRIVATE-P6"); }
+        device->setProperty("KGP_BE200_CANDIDATE","BE200-GL92-PRIVATE-P7"); }
     pci.pa_tag = device;
     pci.workloop = getMainWorkLoop();
     const bool attached2G = iwx_attach(&com, &pci);
@@ -4616,7 +4616,7 @@ iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
     }
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 &&
         !pci.pa_tag->setProperty("KGP_RX_EXPERIMENT",
-            "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P6")) {
+            "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P7")) {
         err = ENOMEM; goto fail;
     }
     return 0;
@@ -8882,6 +8882,11 @@ iwx_send_cmd(struct iwx_softc *sc, struct iwx_host_cmd *hcmd)
             },this,sc,hcmd);
     }
 
+    if (bzDevice() && !bzCommandReady(sc)) {
+        hcmd->resp_pkt=nullptr;
+        bzConnectionEvent(14,hcmd->id,sc->sc_flags,fBzHardwareOwned);
+        return ENXIO; // no command doorbell/response claim into stopped firmware
+    }
     struct iwx_tx_ring *ring = &sc->txq[IWX_DQA_CMD_QUEUE];
     struct iwx_tfh_tfd *desc;
     struct iwx_tx_data *txdata;
@@ -12453,11 +12458,17 @@ iwx_newstate_task(void *psc)
     struct ieee80211com *ic = &sc->sc_ic;
     enum ieee80211_state nstate = sc->ns_nstate;
     enum ieee80211_state ostate = ic->ic_state;
+    const int generation=sc->sc_generation;
+    const uint32_t resetEpoch=bzt->bzDevice()?bzt->fPc1ResetEpoch:0;
     int arg = sc->ns_arg;
     int err = 0, s = splnet();
     ItlIwx *that = container_of(sc, ItlIwx, com);
     
     XYLog("%s sc->sc_flags & IWX_FLAG_SHUTDOWN %s\n", __FUNCTION__, sc->sc_flags & IWX_FLAG_SHUTDOWN ? "true" : "false");
+    if (that->bzDevice() && !that->bzStateCurrent(sc,generation,resetEpoch)) {
+        that->bzConnectionEvent(12,1,generation,resetEpoch);
+        splx(s);return;
+    }
     if (sc->sc_flags & IWX_FLAG_SHUTDOWN) {
         /* iwx_stop() is waiting for us. */
         //        refcnt_rele_wake(&sc->task_refs);
@@ -12477,12 +12488,21 @@ iwx_newstate_task(void *psc)
         }
     }
     
-    if(that->bzDevice() && nstate<=IEEE80211_S_AUTH && ostate>=IEEE80211_S_ASSOC)
+    if(that->bzDevice() && nstate<=IEEE80211_S_AUTH && ostate>=IEEE80211_S_ASSOC) {
         that->iwx_mld_send_leave(sc,ostate);
+        if (!that->bzStateCurrent(sc,generation,resetEpoch)) {
+            that->bzConnectionEvent(12,2,generation,resetEpoch);
+            splx(s);return; // OFF/ON may have reset firmware while leave waited.
+        }
+    }
     if (nstate <= ostate) {
         switch (ostate) {
             case IEEE80211_S_RUN:
                 err = that->iwx_run_stop(sc);
+                if (that->bzDevice() && !that->bzStateCurrent(sc,generation,resetEpoch)) {
+                    that->bzConnectionEvent(12,3,generation,resetEpoch);
+                    splx(s);return;
+                }
                 if (err)
                     goto out;
                 /* FALLTHROUGH */
@@ -12490,6 +12510,10 @@ iwx_newstate_task(void *psc)
             case IEEE80211_S_AUTH:
                 if (nstate <= IEEE80211_S_AUTH) {
                     err = that->iwx_deauth(sc);
+                    if (that->bzDevice() && !that->bzStateCurrent(sc,generation,resetEpoch)) {
+                        that->bzConnectionEvent(12,4,generation,resetEpoch);
+                        splx(s);return;
+                    }
                     if (err)
                         goto out;
                 }
@@ -12539,6 +12563,10 @@ iwx_newstate_task(void *psc)
     }
     
 out:
+    if (that->bzDevice() && !that->bzStateCurrent(sc,generation,resetEpoch)) {
+        that->bzConnectionEvent(12,5,generation,resetEpoch);
+        splx(s);return; // do not requeue init or publish an obsolete result
+    }
     if ((sc->sc_flags & IWX_FLAG_SHUTDOWN) == 0) {
         if (err)
             task_add(systq, &sc->init_task);
@@ -13086,6 +13114,14 @@ IOReturn ItlIwx::zc16PublishRun(OSObject *owner, void *generation, void *epoch,
 int ItlIwx::
 iwx_init(struct _ifnet *ifp)
 {
+    if (bzDevice() && !getMainWorkLoop()->inGate()) {
+        return getMainCommandGate()->runAction(
+            [](OSObject *,void *owner,void *ifnet,void *,void *)->IOReturn {
+                return static_cast<ItlIwx *>(owner)->iwx_init(static_cast<_ifnet *>(ifnet));
+            },this,ifp);
+    }
+    if (bzDevice() && !(ifp->if_flags & IFF_UP)) return ENXIO;
+
     const uint32_t drainEpoch2M = drain2MPause();
     XYLog("%s\n", __FUNCTION__);
     struct iwx_softc *sc = (struct iwx_softc *)ifp->if_softc;
@@ -13101,6 +13137,8 @@ iwx_init(struct _ifnet *ifp)
     //    rw_assert_wrlock(&sc->ioctl_rwl);
     
     generation = ++sc->sc_generation;
+    const uint32_t bzInitEpoch=bzDevice()?fPc1ResetEpoch:0;
+    if (bzDevice()) fBzScanStarted=false;
     flow2J(8, generation, ifp->if_flags, sc->sc_flags);
     
     //    KASSERT(sc->task_refs.refs == 0);
@@ -13141,6 +13179,13 @@ iwx_init(struct _ifnet *ifp)
      * ieee80211_begin_scan() ends up scheduling iwx_newstate_task().
      * Wait until the transition to SCAN state has completed.
      */
+    if (bzDevice()) {
+        err=bzWaitForScan(sc,generation,bzInitEpoch);
+        if (err && generation==sc->sc_generation && bzInitEpoch==fPc1ResetEpoch)
+            iwx_stop(ifp,2);
+        flow2J(9,err?3:4,generation,sc->sc_generation,0,err);flow2JPublish();
+        return err;
+    }
     do {
         err = tsleep_nsec(&ic->ic_state, PCATCH, "iwxinit",
             SEC_TO_NSEC(1));
@@ -13299,6 +13344,18 @@ iwx_start(struct _ifnet *ifp)
 void ItlIwx::
 iwx_stop(struct _ifnet *ifp, unsigned origin2J)
 {
+    if (bzDevice() && !getMainWorkLoop()->inGate()) {
+        const IOReturn result=getMainCommandGate()->runAction(
+            [](OSObject *,void *owner,void *ifnet,void *origin,void *)->IOReturn {
+                static_cast<ItlIwx *>(owner)->iwx_stop(static_cast<_ifnet *>(ifnet),unsigned(uintptr_t(origin)));
+                return kIOReturnSuccess;
+            },this,ifp,reinterpret_cast<void *>(uintptr_t(origin2J)));
+        if (result!=kIOReturnSuccess) {
+            __atomic_store_n(&fTx2IBlocked,1U,__ATOMIC_RELEASE);
+            __atomic_store_n(&fPc1Fault,1U,__ATOMIC_RELEASE);
+        }
+        return;
+    }
     drain2MPause();
     const bool stopped2J = tx2IStop(0x100U + origin2J);
     flow2J(4, origin2J, com.sc_generation, com.sc_ic.ic_if.if_flags, com.sc_flags);
@@ -13310,6 +13367,14 @@ iwx_stop(struct _ifnet *ifp, unsigned origin2J)
     //    rw_assert_wrlock(&sc->ioctl_rwl);
     
     sc->sc_flags |= IWX_FLAG_SHUTDOWN; /* Disallow new tasks. */
+    if (bzDevice()) {
+        // Invalidate sleeping state/command continuations BEFORE reset begins.
+        ++sc->sc_generation;
+        fBzScanStarted=false;
+        bzConnectionEvent(11,origin2J,sc->sc_flags,fBzHardwareOwned);
+        getMainCommandGate()->commandWakeup(&ic->ic_state);
+        getMainCommandGate()->commandWakeup(&sc->sc_flags);
+    }
     
     /* Cancel scheduled tasks and let any stale tasks finish up. */
     task_del(systq, &sc->init_task);
@@ -13324,7 +13389,7 @@ iwx_stop(struct _ifnet *ifp, unsigned origin2J)
     
     /* Reset soft state. */
     
-    sc->sc_generation++;
+    if (!bzDevice()) sc->sc_generation++;
     for (i = 0; i < nitems(sc->sc_cmd_resp_pkt); i++) {
         ::free(sc->sc_cmd_resp_pkt[i]);
         sc->sc_cmd_resp_pkt[i] = NULL;
@@ -13346,7 +13411,7 @@ iwx_stop(struct _ifnet *ifp, unsigned origin2J)
     sc->sc_flags &= ~IWX_FLAG_STA_ACTIVE;
     sc->sc_flags &= ~IWX_FLAG_TE_ACTIVE;
     sc->sc_flags &= ~IWX_FLAG_HW_ERR;
-    sc->sc_flags &= ~IWX_FLAG_SHUTDOWN;
+    if (!bzDevice()) sc->sc_flags &= ~IWX_FLAG_SHUTDOWN;
     sc->sc_flags &= ~IWX_FLAG_TXFLUSH;
 
     sc->sc_rx_ba_sessions = 0;
@@ -13365,6 +13430,7 @@ iwx_stop(struct _ifnet *ifp, unsigned origin2J)
     
     ifp->if_timer = sc->sc_tx_timer = 0;
     
+    if (bzDevice()) sc->sc_flags &= ~IWX_FLAG_SHUTDOWN;
     splx(s);
     flow2J(5, origin2J, sc->sc_generation, ifp->if_flags, sc->sc_flags);
     tx2JStopEnd(stopped2J, 0x100U + origin2J);

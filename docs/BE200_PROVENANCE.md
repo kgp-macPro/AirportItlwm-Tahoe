@@ -346,3 +346,12 @@ Host tests extract actual old/new frontend functions, use explicitly reconstruct
 framework mocks and saved hardware properties separately. No physical performance
 or sleep/wake claim. Targeted collector only checks chosen parameters, rejects bad
 binding and excludes AWDL/P2P; auto-discovery draft is not a build prerequisite.
+
+
+## P7 BZ OFF/ON lifetime recovery
+
+See docs/private-be200/P7_RECOVERY.md. Selected contracts adapted from pinned
+HuajiFruit/AirportBZ0ccab1627764406861fb9eb0a06ca36e31b4440f iwx_newstate_task,
+iwx_init,iwx_stop;KGP independently integrated with retained ZC28/P6 DMA/PC1
+terminal proofs. Existing upstream/AirportBZ per-file notices/licenses preserved.
+No nativeWCL/frontend/allocator import,firmwarepair/SDK change or publicaction.

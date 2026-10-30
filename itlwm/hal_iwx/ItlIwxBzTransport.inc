@@ -26,6 +26,37 @@ kgp_bz::ReplyRoute ItlIwx::bzRouteReply(struct iwx_softc *sc,unsigned qid,unsign
     }
     return R::Command;
 }
+// P7: transport can own boot DMA before IFF_RUNNING/PC1 recovery. Thus do
+// not conflate transport command admission with ordinary packet admission.
+bool ItlIwx::bzCommandReady(struct iwx_softc *sc)
+{
+    return getMainWorkLoop() && getMainWorkLoop()->inGate() &&
+        fBzHardwareOwned && !fBzFault && !(sc->sc_flags & IWX_FLAG_SHUTDOWN);
+}
+bool ItlIwx::bzStateCurrent(struct iwx_softc *sc,int generation,uint32_t epoch)
+{
+    return generation==sc->sc_generation && epoch==fPc1ResetEpoch &&
+        getMainWorkLoop() && getMainWorkLoop()->inGate() && fBzHardwareOwned &&
+        !(sc->sc_flags & IWX_FLAG_SHUTDOWN) && (sc->sc_ic.ic_if.if_flags & IFF_UP);
+}
+int ItlIwx::bzWaitForScan(struct iwx_softc *sc,int generation,uint32_t epoch)
+{
+    // Predicate and sleep share the recursive gate. A wake is only a hint:
+    // success is a scan submission in THIS lifetime, even if AUTH/RUN followed.
+    uint32_t budget=2000; // existing 1000ms host command budget + 1000ms task margin
+    for (;;) {
+        if (!bzStateCurrent(sc,generation,epoch)) return ENXIO;
+        if (fBzFault) return fBzError ? int(fBzError) : EIO;
+        if (fBzScanStarted && fBzScanGeneration==unsigned(generation) &&
+            fBzScanEpoch==epoch) return 0;
+        const int err=iwx_gate_sleep(sc,&sc->sc_ic.ic_state,&budget,IWX_GATE_WAIT_INIT_SCAN);
+        if (!bzStateCurrent(sc,generation,epoch)) return ENXIO;
+        if (fBzFault) return fBzError ? int(fBzError) : EIO;
+        if (fBzScanStarted && fBzScanGeneration==unsigned(generation) &&
+            fBzScanEpoch==epoch) return 0;
+        if (err) return err;
+    }
+}
 void ItlIwx::bzObserveMgmt(const void *bytes,size_t length)
 {
     // CPU-owned, already synchronized/validated host frame. No addresses/keys.
@@ -132,6 +163,12 @@ void ItlIwx::bzStoppedCleanup(struct iwx_softc *sc)
     }
     fBzStats[15]=fBzFault;fBzStats[16]=fBzError;
     fBzQueueOwned=0;fBzCommands.reset(true);fBzPnvm.reset(true);
+    // Positive terminal proof above: firmware no longer owns these MLD objects.
+    // Do not carry a management-queue/key presence claim into the next boot.
+    sc->sc_flags &= ~IWX_FLAG_MLD_TXQ_ACTIVE;
+    sc->sc_mld_txq_pending=sc->sc_mld_txq_failed=0;
+    memset(sc->sc_mld_key_flags,0,sizeof(sc->sc_mld_key_flags));
+    fBzScanStarted=false;
     for(unsigned i=0;i<IWX_CMD_QUEUE_SIZE_GEN3;++i) sc->txq[0].data[i].flags &= ~IWX_TXDATA_FLAG_CMD_PENDING;
     fBzFault=fBzError=0; // ONLY positive stop under gate permits a new BZ generation.
 

@@ -749,6 +749,12 @@ public:
     uint32_t fBzFault = 0, fBzError = 0;
     bool fBzHardwareOwned = false;
     uint32_t fBzQueueOwned=0;
+    // Gate-owned control predicates; these are NOT DMA ownership/completion proofs.
+    bool fBzScanStarted=false;
+    uint32_t fBzScanGeneration=0,fBzScanEpoch=0;
+    bool bzCommandReady(struct iwx_softc *);
+    bool bzStateCurrent(struct iwx_softc *,int,uint32_t);
+    int bzWaitForScan(struct iwx_softc *,int,uint32_t);
     kgp_bz::ConnectionTrace fBzConnection;
     uint64_t fBzConnectionWire[kgp_bz::ConnectionTrace::Words]={};
     uint32_t fBzScanBeacons=0,fBzScanProbes=0;

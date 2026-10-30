@@ -5,7 +5,7 @@ umask 077
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 PARENT="${BE200_OUTPUT_PARENT:-$HOME/Desktop/AirportItlwm/EVIDENCE/BE200_JOIN}"
 mkdir -p "$PARENT" || exit 1
-OUT="$(mktemp -d "$PARENT/P6_JOIN_$(date +%Y%m%d_%H%M%S)_XXXXXX")" || exit 1
+OUT="$(mktemp -d "$PARENT/P7_JOIN_$(date +%Y%m%d_%H%M%S)_XXXXXX")" || exit 1
 LOG_PID=''
 PCAP_PID=''
 if [ -z "${WIFI_IFACE:-}" ] || [ -z "${IOREG_WIFI_SERVICE:-}" ]; then

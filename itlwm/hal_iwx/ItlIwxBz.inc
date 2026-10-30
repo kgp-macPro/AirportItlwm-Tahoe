@@ -4355,6 +4355,8 @@ iwx_bz_port_scan(struct iwx_softc *sc)
     struct ieee80211com *ic = &sc->sc_ic;
     struct _ifnet *ifp = IC2IFP(ic);
     int err;
+    const int generation=sc->sc_generation;
+    const uint32_t epoch=fPc1ResetEpoch;
 
     /* Diagnostics: net80211 reached the driver scan path. */
     fBzScanBeacons=fBzScanProbes=0;
@@ -4373,6 +4375,7 @@ iwx_bz_port_scan(struct iwx_softc *sc)
         }
     }
 
+    if (!bzStateCurrent(sc,generation,epoch)) return ENXIO;
     err = iwx_umac_scan(sc, 0);
     if (err) {
         sc->sc_pcitag->setProperty("ItlwmScanError",
@@ -4380,6 +4383,8 @@ iwx_bz_port_scan(struct iwx_softc *sc)
         XYLog("%s: could not initiate scan\n", DEVNAME(sc));
         return err;
     }
+
+    if (!bzStateCurrent(sc,generation,epoch)) return ENXIO;
 
     /*
      * The current mode might have been fixed during association.
@@ -4398,6 +4403,8 @@ iwx_bz_port_scan(struct iwx_softc *sc)
         ieee80211_node_cleanup(ic, ic->ic_bss);
     }
     ic->ic_state = IEEE80211_S_SCAN;
+    fBzScanGeneration=unsigned(generation);fBzScanEpoch=epoch;fBzScanStarted=true;
+    bzConnectionEvent(13,generation,epoch,sc->sc_scan_builds);
     getMainCommandGate()->commandWakeup(&ic->ic_state); /* wake iwx_init() */
 
     return 0;
