@@ -18,6 +18,8 @@ def body(s,n):
  return s[x.start():s.index(';',b)+1]
 src=(R/'itlwm/hal_iwx/ItlIwx.cpp').read_text();inc=(R/'itlwm/hal_iwx/ItlIwxBz.inc').read_text();trans=(R/'itlwm/hal_iwx/ItlIwxBzTransport.inc').read_text();reg=(R/'itlwm/hal_iwx/if_iwxreg.h').read_text()+(R/'itlwm/hal_iwx/if_iwxvar.h').read_text()
 functions='\n'.join(fn(trans,n)for n in ['bzConnectionEvent','bzRouteReply','bzObserveMgmt'])+'\n'+'\n'.join(fn(src,n)for n in ['iwx_rx_tx_cmd','iwx_rx_tx_ba_notif','iwx_ampdu_txq_advance','iwx_rx_tx_cmd_single'])+'\n'+'\n'.join(fn(inc,n)for n in ['iwx_mld_probe','iwx_mld_auth'])
+oldp8=subprocess.check_output([G,'show','f7f045de0865bca6c74d71ea1d9fd2998d622036:itlwm/hal_iwx/ItlIwx.cpp'],cwd=R,text=True)
+functions+='\n'+fn(oldp8,'iwx_rx_tx_cmd').replace('iwx_rx_tx_cmd(', 'oldP8_iwx_rx_tx_cmd(',1)
 skip={'IWX_AGG_SSN_TO_TXQ_IDX','IWX_FC'};constants='';done=set();pending=set(re.findall(r'\bIWX_[A-Z0-9_]+',functions))-skip
 while pending:
  n=pending.pop()
@@ -84,7 +86,7 @@ struct ItlIwx {iwx_softc com;Gate gate;unsigned fPc1ResetEpoch=1,fPc1Suspended=0
  int iwx_cmd_groupid(int code){return (code>>8)&0xff;}int iwx_cmd_opcode(int code){return code&0xff;}
  void bzConnectionEvent(unsigned,uint64_t,uint64_t,uint64_t);void bzObserveMgmt(const void*,size_t);kgp_bz::ReplyRoute bzRouteReply(iwx_softc*,unsigned,unsigned,int*,unsigned);
  void iwx_rx_tx_ba_notif(iwx_softc*,iwx_rx_packet*,iwx_rx_data*);void dexterOriginal_iwx_rx_tx_ba_notif(iwx_softc*,iwx_rx_packet*,iwx_rx_data*){assert(false);}
- void iwx_rx_tx_cmd(iwx_softc*,iwx_rx_packet*,iwx_rx_data*);void iwx_rx_tx_cmd_single(iwx_softc*,iwx_rx_packet*,iwx_tx_data*);void iwx_ampdu_txq_advance(iwx_softc*,iwx_tx_ring*,int,bool);
+ void oldP8_iwx_rx_tx_cmd(iwx_softc*,iwx_rx_packet*,iwx_rx_data*); void iwx_rx_tx_cmd(iwx_softc*,iwx_rx_packet*,iwx_rx_data*);void iwx_rx_tx_cmd_single(iwx_softc*,iwx_rx_packet*,iwx_tx_data*);void iwx_ampdu_txq_advance(iwx_softc*,iwx_tx_ring*,int,bool);
  void dexterOriginal_iwx_rx_tx_cmd(iwx_softc*,iwx_rx_packet*,iwx_rx_data*){assert(false);}void dexterOriginal_iwx_ampdu_txq_advance(iwx_softc*,iwx_tx_ring*,int){assert(false);}
  void zc28Aggregate(iwx_rx_packet*){assert(false);}void zc28Note(unsigned,unsigned,unsigned,unsigned){}
  void iwx_toggle_tx_ant(iwx_softc*,unsigned*){++antenna;}void iwx_clear_oactive(iwx_softc*,iwx_tx_ring*){++starts;if(onWake){auto f=onWake;onWake={};f();}}
@@ -119,8 +121,42 @@ int main(){unsigned cases=0;using R=kgp_bz::ReplyRoute;
  iwx_rx_packet p{};p.hdr={IWX_TX_CMD,0,3,255};p.length=sizeof(iwx_tx_resp)+4;auto*t=(iwx_tx_resp*)p.data;t->frame_count=1;t->tx_queue=3;t->status.status=which==1?0x82:1;uint32_t ssn=256;std::memcpy(&t->status+1,&ssn,4);
  if(which==2)p.length=3;if(which==3)t->tx_queue=0;if(which==4)x.fBzQueueOwned=0;if(which==5)t->frame_count=0;if(which==6){ssn=258;std::memcpy(&t->status+1,&ssn,4);}if(which==7)r.queued=0;if(which==8){ssn=255;std::memcpy(&t->status+1,&ssn,4);}
  x.iwx_rx_tx_cmd(s,&p,&d);
- if(which<=1){assert(!x.fBzFault&&r.tail==0&&!r.queued&&x.retired==1&&x.freed==1&&x.cleared==1&&x.fBzStats[17]==1);assert(s->sc_ic.ic_if.stats.outputErrors==which);assert(x.fBzConnection.total==1);}else assert(x.fBzFault==23&&!x.retired&&!x.freed);
+ if(which<=1){assert(!x.fBzFault&&r.tail==0&&!r.queued&&x.retired==1&&x.freed==1&&x.cleared==1&&x.fBzStats[17]==1);assert(s->sc_ic.ic_if.stats.outputErrors==which);assert(x.fBzConnection.total==1);}else if(which==8)assert(!x.fBzFault&&!x.retired&&!x.freed&&!x.cleared&&!x.starts&&x.fBzStats[13]==1);else assert(x.fBzFault==23&&!x.retired&&!x.freed);
  ++cases;}
+
+ // Reference-contract simulations, NOT recovered rejected hardware packets.
+ // Actual frozen P8 rejects an equal boundary; new code preserves all backing.
+ for(unsigned tail:{0U,1U,127U,255U})for(unsigned queued:{0U,1U,7U}){
+  auto storage=std::make_unique<ItlIwx>();auto&x=*storage;auto*s=&x.com;iwx_rx_data d;
+  s->sc_device_family=IWX_DEVICE_FAMILY_AX210;s->sc_ic.ic_state=IEEE80211_S_RUN;
+  auto&r=s->txq[3];r.qid=3;r.tail=tail;r.queued=queued;x.fBzQueueOwned=1U<<3;
+  for(unsigned i=0;i<queued;++i)r.data[(tail+i)&255].m=&x;
+  iwx_rx_packet p{};p.length=sizeof(iwx_tx_resp)+4;auto*t=(iwx_tx_resp*)p.data;t->frame_count=1;t->tx_queue=3;t->status.status=1;
+  uint32_t ssn=tail;std::memcpy(&t->status+1,&ssn,4);x.oldP8_iwx_rx_tx_cmd(s,&p,&d);
+  assert(x.fBzFault==23&&!x.retired&&!x.freed);x.fBzFault=x.fBzError=0;
+  x.iwx_rx_tx_cmd(s,&p,&d);x.iwx_rx_tx_cmd(s,&p,&d);
+  assert(!x.fBzFault&&x.fBzStats[13]==2&&r.tail==tail&&r.queued==queued&&!x.retired&&!x.freed&&!x.starts&&!x.fBzConnection.total);
+  if(queued){ssn=(tail+1)&255;std::memcpy(&t->status+1,&ssn,4);x.iwx_rx_tx_cmd(s,&p,&d);assert(!x.fBzFault&&x.retired==1&&x.freed==1&&r.queued==queued-1&&r.tail==ssn&&x.starts==1);}
+  ++cases;
+ }
+ // Compressed BA completes a real owned slot, followed by duplicate TX status.
+ // Never re-read/free idx-1 or block the following valid data completion.
+ {auto storage=std::make_unique<ItlIwx>();auto&x=*storage;auto*s=&x.com;iwx_rx_data d;
+  s->sc_device_family=IWX_DEVICE_FAMILY_AX210;s->sc_ic.ic_state=IEEE80211_S_RUN;s->sc_tid_data[0].qid=3;x.fBzQueueOwned=1U<<3;
+  auto&r=s->txq[3];r.qid=3;r.tail=255;r.queued=2;r.data[255].m=&x;r.data[0].m=&x;
+  iwx_rx_packet ba{};ba.length=sizeof(iwx_compressed_ba_notif)+sizeof(iwx_compressed_ba_tfd);auto*b=(iwx_compressed_ba_notif*)ba.data;b->sta_id=IWX_STATION_ID;b->tfd_cnt=1;b->tfd[0].q_num=3;b->tfd[0].tid=0;b->tfd[0].tfd_index=256;
+  x.iwx_rx_tx_ba_notif(s,&ba,&d);assert(r.tail==0&&r.queued==1&&x.retired==1&&!x.fBzFault);
+  iwx_rx_packet p{};p.length=sizeof(iwx_tx_resp)+4;auto*t=(iwx_tx_resp*)p.data;t->frame_count=1;t->tx_queue=3;uint32_t ssn=256;std::memcpy(&t->status+1,&ssn,4);x.iwx_rx_tx_cmd(s,&p,&d);
+  assert(!x.fBzFault&&x.fBzStats[13]==1&&x.retired==1&&r.data[0].m&&r.queued==1);
+  ssn=257;std::memcpy(&t->status+1,&ssn,4);x.iwx_rx_tx_cmd(s,&p,&d);assert(!x.fBzFault&&x.retired==2&&!r.queued);++cases;
+ }
+ // Positive modulo progress beyond queued is still rejected, with bounded
+ // exact reason/qid/index/tail/queued; no unsafe source pointers or bytes.
+ {auto storage=std::make_unique<ItlIwx>();auto&x=*storage;auto*s=&x.com;iwx_rx_data d;s->sc_device_family=IWX_DEVICE_FAMILY_AX210;auto&r=s->txq[3];r.qid=3;r.tail=4;r.queued=1;r.data[4].m=&x;x.fBzQueueOwned=1U<<3;
+  iwx_rx_packet p{};p.length=sizeof(iwx_tx_resp)+4;auto*t=(iwx_tx_resp*)p.data;t->frame_count=1;t->tx_queue=3;uint32_t ssn=6;std::memcpy(&t->status+1,&ssn,4);x.iwx_rx_tx_cmd(s,&p,&d);
+  uint64_t w[kgp_bz::ConnectionTrace::Words];x.fBzConnection.snapshot(w);
+  assert(x.fBzFault==23&&!x.retired&&!x.freed&&r.data[4].m&&r.queued==1&&w[3]==1&&w[12]==15&&w[13]==4&&w[14]==((3ULL<<32)|6)&&w[15]==((4ULL<<32)|1));++cases;
+ }
  {auto storage=std::make_unique<ItlIwx>();auto &x=*storage;iwx_node n;assert(!x.iwx_mld_auth(&x.com,&n));assert(x.sequence==std::vector<unsigned>({1,2,3,4,5,6,7,8,9}));assert(x.com.p.v["ItlwmMldAssocStep"]==7&&x.com.p.v["ItlwmMldAssocErr"]==0);assert(x.com.sc_flags&IWX_FLAG_MLD_TXQ_ACTIVE);++cases;}
  for(unsigned failure:{1U,3U,4U,6U,7U,8U,9U}){auto storage=std::make_unique<ItlIwx>();auto &x=*storage;iwx_node n;x.failAt=failure;assert(x.iwx_mld_auth(&x.com,&n)==EIO);assert(x.com.p.v["ItlwmMldAssocStep"]!=7&&x.com.p.v["ItlwmMldAssocErr"]==EIO);++cases;}
  {auto storage=std::make_unique<ItlIwx>();auto &x=*storage;uint8_t frame[30]={};frame[0]=0x80;x.bzObserveMgmt(frame,24);frame[0]=0x50;x.bzObserveMgmt(frame,24);assert(x.fBzScanBeacons==1&&x.fBzScanProbes==1&&!x.fBzConnection.total);
@@ -154,3 +190,7 @@ with tempfile.TemporaryDirectory(prefix='be200-connect-')as d:
  cmd=[C,'-isysroot',SDK,'-std=gnu++17','-O1','-g','-fsanitize='+san,'-I'+str(R),str(p/'test.cpp'),'-o',str(p/'test')]
  print('COMMAND',repr(cmd),flush=True);subprocess.run(cmd,check=True);subprocess.run([str(p/'test')],check=True,timeout=90)
 print('PASS saved P4 watchdog/properties: fault3/100,46packet publications/zero TX retirements,PNVM0x50001 accepted. Not rejected-packet bytes.')
+
+p8=json.loads((R/'tools/host_tests/fixtures/BE200_P8_FAULT23.json').read_text());w=struct.unpack('<48Q',bytes.fromhex(p8['transport_hex']));assert w[8:10]==(23,100) and w[5]==2 and w[16+20]>0 and w[16+18]>0
+assert p8['rejected_tx_response_bytes'].startswith('UNAVAILABLE')
+print('PASS real P8 property fixture: region23/EPROTO, Mode2, QoS/BA progress; rejected guard/wire bytes unavailable, no invented fixture.')

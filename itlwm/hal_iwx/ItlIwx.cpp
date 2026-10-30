@@ -430,7 +430,7 @@ bool ItlIwx::dma5Select()
     if (!resolved) { boot5Mark(10, "device DMA policy unresolved; attach refused", 2); return false; }
     pci.pa_tag->setProperty("KGP_ZC5_DMA_MODE", mapped ? "mapped RX/TX" : "original Dexter RX/TX");
     pci.pa_tag->setProperty("KGP_RX_EXPERIMENT", bzDevice() ?
-        "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P8" : "AirportItlwm-Tahoe-B1-ZC29-PERF");
+        "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P8R1" : "AirportItlwm-Tahoe-B1-ZC30-PERF");
     boot5Mark(11, mapped ? "DMA routing completed: mapped" : "DMA routing completed: original Dexter");
     return true;
 }
@@ -2307,7 +2307,7 @@ bool ItlIwx::attach(IOPCIDevice *device)
     fBzDevice = device->configRead16(kIOPCIConfigVendorID)==0x8086 &&
         device->configRead16(kIOPCIConfigDeviceID)==0x272b;
     if(fBzDevice) { com.sc_device_family=IWX_DEVICE_FAMILY_BZ;
-        device->setProperty("KGP_BE200_CANDIDATE","BE200-GL92-PRIVATE-P8"); }
+        device->setProperty("KGP_BE200_CANDIDATE","BE200-GL92-PRIVATE-P8R1"); }
     pci.pa_tag = device;
     pci.workloop = getMainWorkLoop();
     const bool attached2G = iwx_attach(&com, &pci);
@@ -4617,7 +4617,7 @@ iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
     }
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 &&
         !pci.pa_tag->setProperty("KGP_RX_EXPERIMENT", bzDevice() ?
-            "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P8" : "AirportItlwm-Tahoe-B1-ZC29-PERF")) {
+            "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P8R1" : "AirportItlwm-Tahoe-B1-ZC30-PERF")) {
         err = ENOMEM; goto fail;
     }
     return 0;
@@ -8545,9 +8545,15 @@ iwx_rx_tx_cmd(struct iwx_softc *sc, struct iwx_rx_packet *pkt,
     int idx;
     int tid;
     struct iwx_tx_resp *tx_resp = (struct iwx_tx_resp *)pkt->data;
-    if(bzDevice() && iwx_rx_packet_payload_len(pkt)<sizeof(*tx_resp)+sizeof(uint32_t)) {bzFail(23,EPROTO);return;}
+    if(bzDevice() && iwx_rx_packet_payload_len(pkt)<sizeof(*tx_resp)+sizeof(uint32_t)) {
+        bzConnectionEvent(15,1,iwx_rx_packet_payload_len(pkt),0);
+        bzFail(23,EPROTO);return;
+    }
     int qid = le16toh(tx_resp->tx_queue);
-    if(bzDevice() && (qid<=IWX_DQA_CMD_QUEUE || qid>=nitems(sc->txq) || qid>=32 || !(fBzQueueOwned&(1U<<qid)) || !sc->txq[qid].ring_count)) {bzFail(23,EPROTO);return;}
+    if(bzDevice() && (qid<=IWX_DQA_CMD_QUEUE || qid>=nitems(sc->txq) || qid>=32 || !(fBzQueueOwned&(1U<<qid)) || !sc->txq[qid].ring_count)) {
+        bzConnectionEvent(15,2,uint64_t(uint32_t(qid)),fBzQueueOwned);
+        bzFail(23,EPROTO);return;
+    }
     struct iwx_tx_ring *ring = &sc->txq[qid];
     struct iwx_tx_data *txd;
 
@@ -8558,7 +8564,10 @@ iwx_rx_tx_cmd(struct iwx_softc *sc, struct iwx_rx_packet *pkt,
 
     if(bzDevice() && (!tx_resp->frame_count ||
         offsetof(iwx_tx_resp,status)+size_t(tx_resp->frame_count)*sizeof(tx_resp->status)+sizeof(ssn)>
-        iwx_rx_packet_payload_len(pkt))) {bzFail(23,EPROTO);return;}
+        iwx_rx_packet_payload_len(pkt))) {
+        bzConnectionEvent(15,3,uint64_t(tx_resp->frame_count),iwx_rx_packet_payload_len(pkt));
+        bzFail(23,EPROTO);return;
+    }
     if (tx_resp->frame_count > 1) {
         zc28Aggregate(pkt); // No per-frame Release formatting/output.
     } else {
@@ -8566,7 +8575,20 @@ iwx_rx_tx_cmd(struct iwx_softc *sc, struct iwx_rx_packet *pkt,
         memcpy(&ssn, &tx_resp->status + tx_resp->frame_count, sizeof(ssn));
         ssn = le32toh(ssn) & 0xfff;
         idx = IWX_AGG_SSN_TO_TXQ_IDX(ssn, ring->ring_count);
-        if(bzDevice() && (idx==ring->tail || !itlTxCompletionValid(ring->tail,ring->queued,idx,ring->ring_count))) {bzFail(23,EPROTO);return;}
+        if(bzDevice()) {
+            if (!itlTxCompletionValid(ring->tail,ring->queued,idx,ring->ring_count)) {
+                // Bounded rare failure context, never a pointer/payload or
+                // per-packet console/registry operation. Preserve backing.
+                bzConnectionEvent(15,4,(uint64_t(uint32_t(qid))<<32)|uint32_t(idx),
+                    (uint64_t(ring->tail)<<32)|uint32_t(ring->queued));
+                bzFail(23,EPROTO);return;
+            }
+            // P8R1: TX status and compressed BA can report an already reached
+            // scheduler boundary. Linux mvm/tx.c reclaims up to SSN, allowing
+            // an empty list. Equal boundary proves NO new completion: do not
+            // read idx-1, retire/free backing, wake output or freeze transport.
+            if (idx==ring->tail) {++fBzStats[13];return;}
+        }
         txd = &ring->data[bzDevice()?((idx-1)&(ring->ring_count-1)):idx];
         if(bzDevice() && sc->sc_ic.ic_state!=IEEE80211_S_RUN)
             bzConnectionEvent(5,uint32_t(le16toh(tx_resp->status.status))|(uint32_t(qid)<<16),ssn,

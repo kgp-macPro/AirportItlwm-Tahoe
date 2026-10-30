@@ -23,6 +23,9 @@ assert m.decode([{'children':[node]}])['snapshots'][0]['raw_hex']==raw.hex();ass
 assert 'reserved20' in m.decode(node)['snapshots'][0]['counters']
 node_p8=dict(node,KGP_BE200_CANDIDATE='BE200-GL92-PRIVATE-P8')
 assert 'tx_qos_data' in m.decode(node_p8)['snapshots'][0]['counters'] and 'reserved20' not in m.decode(node_p8)['snapshots'][0]['counters']
+node_p8r1=dict(node,KGP_BE200_CANDIDATE='BE200-GL92-PRIVATE-P8R1')
+assert 'tx_no_progress_status' in m.decode(node_p8r1)['snapshots'][0]['counters']
+assert 'reserved13' in m.decode(node_p8)['snapshots'][0]['counters']
 boot=m.decode({'IORegistryEntryName':'ARPT','vendor-id':bytes.fromhex('86800000'),'device-id':bytes.fromhex('2b270000'),'KGP_BE200_CANDIDATE':'BE200-GL92-PRIVATE-P2','KGP_BE200_STAGE':'hal:firmware-context','KGP_BE200_ERROR':5,'KGP_BE200_BOOT_SYNC_RESULT':0xe00002c2,'ItlwmPnvmName':'iwlwifi-gl-c0-fm-c0-.pnvm','ItlwmPnvmFailStep':2,'ItlwmPnvmReadError':22})
 assert boot['providers'][0]['properties']['KGP_BE200_BOOT_SYNC_RESULT']==0xe00002c2 and boot['providers'][0]['pci_identity']['device-id']=='0x272b'
 assert boot['providers'][0]['properties']['ItlwmPnvmReadError']==22 and boot['providers'][0]['properties']['ItlwmPnvmFailStep']==2
