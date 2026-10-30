@@ -51,7 +51,7 @@ for entry in subprocess.check_output(['git','-C',str(R),'ls-tree','-rz',BASE]).s
 # Exact fence primitive still emits a hardware memory-ordering instruction.
 with tempfile.TemporaryDirectory(prefix='zc22-fence-') as td:
  p=Path(td);(p/'f.cpp').write_text(fn(s,'iwx_dma_publish_barrier')+'\nvoid publish(volatile unsigned*p,unsigned*d){*d=42;iwx_dma_publish_barrier();*p=1;}\n')
- subprocess.run(['/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++','-target','x86_64-apple-macos','-O2','-S',str(p/'f.cpp'),'-o',str(p/'f.s')],check=True)
+ subprocess.run([subprocess.check_output(['/usr/bin/xcrun','--find','clang++'],text=True).strip(),'-target','x86_64-apple-macos','-O2','-S',str(p/'f.cpp'),'-o',str(p/'f.s')],check=True)
  assert 'mfence' in (p/'f.s').read_text() or 'lock' in (p/'f.s').read_text()
 runner=(R/'tools/ZC22_3x14_PORTABLE_IP_PROMPT.sh').read_text();assert not re.search(r'^\s*(?:/usr/sbin/)?system_profiler\s',runner,re.M)
 subprocess.run(['/bin/bash','-n',str(R/'tools/ZC22_3x14_PORTABLE_IP_PROMPT.sh')],check=True)

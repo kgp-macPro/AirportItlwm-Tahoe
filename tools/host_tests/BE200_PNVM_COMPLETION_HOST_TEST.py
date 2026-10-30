@@ -4,9 +4,9 @@ Opaque status semantics follow pinned Linux callback; no hardware proof.
 """
 from pathlib import Path
 import re,subprocess,tempfile,sys,hashlib,json
-R=Path(__file__).resolve().parents[2];G='/Applications/Xcode.app/Contents/Developer/usr/bin/git'
-C='/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++'
-SDK='/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk'
+R=Path(__file__).resolve().parents[2];G=subprocess.check_output(['/usr/bin/xcrun','--find','git'],text=True).strip()
+C=subprocess.check_output(['/usr/bin/xcrun','--find','clang++'],text=True).strip()
+SDK=subprocess.check_output(['/usr/bin/xcrun','--sdk','macosx','--show-sdk-path'],text=True).strip()
 def fn(s,n):
  m=re.sub(r'//[^\n]*|/\*.*?\*/|"(?:\\.|[^"\\])*"',lambda x:' '*len(x[0]),s,flags=re.S)
  x=re.search(r'(?:static\s+)?(?:void|int|bool)\s+'+re.escape(n).replace('::',r'::\s*')+r'\(',m);assert x,n
@@ -87,7 +87,7 @@ san=sys.argv[1]if len(sys.argv)>1 else'address,undefined'
 with tempfile.TemporaryDirectory(prefix='be200-pnvm-completion-')as d:
  d=Path(d)
  # Execute the pinned Linux callback itself to establish the reference contract.
- linux=Path('/Users/kgp/Desktop/AirportItlwm/EVIDENCE/2026-10-29_BE200_SOURCE_BINARY_AUDIT/sources/linux-a38297e3fb01/fw/pnvm.c').read_text()
+ linux=(R/'tools/host_tests/reference/be200/sources/linux-a38297e3fb01/fw/pnvm.c').read_text()
  callback=fn(linux,'iwl_pnvm_complete_fn')
  lin='#include <assert.h>\n#include <stdint.h>\n#include <stdbool.h>\n#include <stddef.h>\nstruct iwl_notif_wait_data{int unused;};struct iwl_trans{int unused;};struct iwl_rx_packet{uint32_t data[1];};struct iwl_pnvm_init_complete_ntfy{uint32_t status;};\n#define IWL_DEBUG_FW(...) ((void)0)\n#define le32_to_cpu(x) (x)\n'+callback+'\nint main(void){struct iwl_trans t;uint32_t values[]={0,0x50001,1,0xffffffff};for(unsigned i=0;i<4;++i){struct iwl_rx_packet p={{values[i]}};assert(iwl_pnvm_complete_fn(NULL,&p,&t));}}\n'
  (d/'reference.c').write_text(lin)

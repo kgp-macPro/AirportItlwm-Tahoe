@@ -2,7 +2,7 @@
 """Extract IWX production reorder functions. Fake time/KPI/mbufs, not a throughput test."""
 from pathlib import Path
 import re,subprocess,tempfile,sys
-R=Path(__file__).resolve().parents[2];G='/Applications/Xcode.app/Contents/Developer/usr/bin/git'
+R=Path(__file__).resolve().parents[2];G=subprocess.check_output(['/usr/bin/xcrun','--find','git'],text=True).strip()
 SRC=R/'itlwm/hal_iwx/ItlIwx.cpp'
 def extract(s,n):
  m=re.sub(r'//[^\n]*|/\*.*?\*/|"(?:\\.|[^"\\])*"',lambda x:' '*len(x[0]),s,flags=re.S)
@@ -106,5 +106,5 @@ with tempfile.TemporaryDirectory(prefix='zc16-reorder-') as t:
   src=subprocess.check_output([G,'-C',str(R),'show','f2a02dcd7cd0f44c8ec2804428103beccca4d2b0:itlwm/hal_iwx/ItlIwx.cpp']).decode() if baseline else SRC.read_text()
   body=mock+'\n'.join(extract(src,n) for n in names+([] if baseline else ['zc16ArmReorder']))+test
   f=p/('old.cpp' if baseline else 'current.cpp');f.write_text(body)
-  cmd=['/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++','-isysroot','/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk','-std=c++17','-O1','-g','-fsanitize='+san]+(['-DBASELINE'] if baseline else [])+[str(f),'-o',str(p/'run')]
+  cmd=[subprocess.check_output(['/usr/bin/xcrun','--find','clang++'],text=True).strip(),'-isysroot',subprocess.check_output(['/usr/bin/xcrun','--sdk','macosx','--show-sdk-path'],text=True).strip(),'-std=c++17','-O1','-g','-fsanitize='+san]+(['-DBASELINE'] if baseline else [])+[str(f),'-o',str(p/'run')]
   print('COMMAND',cmd,flush=True);subprocess.run(cmd,check=True);subprocess.run([str(p/'run')],check=True,timeout=60)

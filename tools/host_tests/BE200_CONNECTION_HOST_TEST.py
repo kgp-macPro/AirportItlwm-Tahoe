@@ -4,8 +4,8 @@ Hardware fixtures are saved properties, never invented rejected wire packets.
 """
 from pathlib import Path
 import re,json,subprocess,tempfile,sys,struct
-R=Path(__file__).resolve().parents[2];G='/Applications/Xcode.app/Contents/Developer/usr/bin/git'
-C='/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++';SDK='/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk'
+R=Path(__file__).resolve().parents[2];G=subprocess.check_output(['/usr/bin/xcrun','--find','git'],text=True).strip()
+C=subprocess.check_output(['/usr/bin/xcrun','--find','clang++'],text=True).strip();SDK=subprocess.check_output(['/usr/bin/xcrun','--sdk','macosx','--show-sdk-path'],text=True).strip()
 def fn(s,n):
  m=re.sub(r'//[^\n]*|/\*.*?\*/|"(?:\\.|[^"\\])*"',lambda x:' '*len(x[0]),s,flags=re.S)
  x=re.search(r'(?:void|int|bool|kgp_bz::ReplyRoute)\s+ItlIwx::\s*'+n+r'\(',m);assert x,n

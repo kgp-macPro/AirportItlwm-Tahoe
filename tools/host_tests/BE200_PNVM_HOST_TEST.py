@@ -4,9 +4,9 @@ Allocation/DMA/sync/MMIO/wait mocked. Does not prove FW acceptance or runtime DM
 """
 from pathlib import Path
 import re,subprocess,tempfile,sys,struct,zlib
-R=Path(__file__).resolve().parents[2];G='/Applications/Xcode.app/Contents/Developer/usr/bin/git'
-C='/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++'
-SDK='/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk'
+R=Path(__file__).resolve().parents[2];G=subprocess.check_output(['/usr/bin/xcrun','--find','git'],text=True).strip()
+C=subprocess.check_output(['/usr/bin/xcrun','--find','clang++'],text=True).strip()
+SDK=subprocess.check_output(['/usr/bin/xcrun','--sdk','macosx','--show-sdk-path'],text=True).strip()
 def fn(s,name):
  m=re.sub(r'//[^\n]*|/\*.*?\*/|"(?:\\.|[^"\\])*"',lambda x:' '*len(x[0]),s,flags=re.S)
  x=re.search(r'(?:static inline\s+)?(?:const char \*|int|void|bool|OSData \*)\s*'+re.escape(name).replace('::',r'::\s*')+r'\(',m);assert x,name

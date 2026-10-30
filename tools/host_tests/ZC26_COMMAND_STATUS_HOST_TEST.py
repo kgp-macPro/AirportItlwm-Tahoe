@@ -103,5 +103,5 @@ sta_tail='int ItlIwx::iwx_add_sta_status_tail(struct iwx_softc *sc)\n{\n    int 
 san=sys.argv[1] if len(sys.argv)>1 else 'address,undefined'
 with tempfile.TemporaryDirectory(prefix='zc26-status-') as td:
     p=Path(td);(p/'test.cpp').write_text(mock+'\n'+extract('iwx_free_resp')+'\n'+extract('iwx_send_cmd_status')+'\n'+extract('iwx_send_cmd_pdu_status')+'\n'+sta_tail+'\n'+extract('iwx_add_aux_sta')+'\n'+test)
-    c=['/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++','-isysroot','/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk','-std=c++17','-O1','-g','-pthread','-fsanitize='+san,str(p/'test.cpp'),'-o',str(p/'test')]
+    c=[subprocess.check_output(['/usr/bin/xcrun','--find','clang++'],text=True).strip(),'-isysroot',subprocess.check_output(['/usr/bin/xcrun','--sdk','macosx','--show-sdk-path'],text=True).strip(),'-std=c++17','-O1','-g','-pthread','-fsanitize='+san,str(p/'test.cpp'),'-o',str(p/'test')]
     print('SOURCE',R,flush=True);print('COMMAND',c,flush=True);subprocess.run(c,check=True);subprocess.run([str(p/'test')],check=True,timeout=60)

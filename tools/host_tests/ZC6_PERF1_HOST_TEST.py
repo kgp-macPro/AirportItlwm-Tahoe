@@ -118,5 +118,5 @@ int main(){
 san=sys.argv[1] if len(sys.argv)>1 else 'address,undefined'
 with tempfile.TemporaryDirectory(prefix='zc6-perf1-') as td:
  p=Path(td);(p/'test.cpp').write_text(code)
- cmd=['/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++','-isysroot','/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk','-I'+str(W/'include/HAL'),'-std=c++17','-O1','-g','-pthread','-fno-omit-frame-pointer','-fsanitize='+san,str(p/'test.cpp'),'-o',str(p/'test')]
+ cmd=[subprocess.check_output(['/usr/bin/xcrun','--find','clang++'],text=True).strip(),'-isysroot',subprocess.check_output(['/usr/bin/xcrun','--sdk','macosx','--show-sdk-path'],text=True).strip(),'-I'+str(W/'include/HAL'),'-std=c++17','-O1','-g','-pthread','-fno-omit-frame-pointer','-fsanitize='+san,str(p/'test.cpp'),'-o',str(p/'test')]
  print('HOST COMMAND:',' '.join(cmd),flush=True);subprocess.run(cmd,check=True);subprocess.run([str(p/'test')],check=True,timeout=120)

@@ -64,7 +64,7 @@ assert fn(s,'iwx_free_tx_ring').index('tx5RingReleasable')<fn(s,'iwx_free_tx_rin
 # Publication fence remains real x86 ordering, not empty SDK OSSynchronizeIO.
 with tempfile.TemporaryDirectory(prefix='zc25-fence-') as td:
  p=Path(td);(p/'f.cpp').write_text(fn(s,'iwx_dma_publish_barrier')+'\nvoid publish(volatile unsigned*p,unsigned*d){*d=42;iwx_dma_publish_barrier();*p=1;}\n')
- subprocess.run(['/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++','-target','x86_64-apple-macos','-O2','-S',str(p/'f.cpp'),'-o',str(p/'f.s')],check=True)
+ subprocess.run([subprocess.check_output(['/usr/bin/xcrun','--find','clang++'],text=True).strip(),'-target','x86_64-apple-macos','-O2','-S',str(p/'f.cpp'),'-o',str(p/'f.s')],check=True)
  assert 'mfence' in (p/'f.s').read_text() or 'lock' in (p/'f.s').read_text()
 # Both firmware command and key lifetime functions retain exact ZC22 implementations.
 for n in ['iwx_send_cmd','iwx_send_cmd_pdu','rxZcArm','rxZcSync','rxZcFree','rxZcReplace','rxZcTerminal','iwx_ampdu_txq_advance']:

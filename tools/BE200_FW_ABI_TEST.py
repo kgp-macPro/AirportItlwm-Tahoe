@@ -4,10 +4,10 @@ Read-only references; output is explicit evidence, never old audit mutation.
 """
 from pathlib import Path
 import re,json,hashlib,subprocess,tempfile,struct,zlib,sys
-R=Path(__file__).resolve().parents[1];A=Path('/Users/kgp/Desktop/AirportItlwm/EVIDENCE/2026-10-29_BE200_SOURCE_BINARY_AUDIT')
+R=Path(__file__).resolve().parents[1];A=R/'tools/host_tests/reference/be200'
 O=Path(sys.argv[1]);O.mkdir(parents=True,exist_ok=True)
-G='/Applications/Xcode.app/Contents/Developer/usr/bin/git';C='/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++'
-SDK='/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk'
+G=subprocess.check_output(['/usr/bin/xcrun','--find','git'],text=True).strip();C=subprocess.check_output(['/usr/bin/xcrun','--find','clang++'],text=True).strip()
+SDK=subprocess.check_output(['/usr/bin/xcrun','--sdk','macosx','--show-sdk-path'],text=True).strip()
 reg=(R/'itlwm/hal_iwx/if_iwxreg.h').read_text();cpp=(R/'itlwm/hal_iwx/ItlIwx.cpp').read_text();extra=(R/'itlwm/hal_iwx/ItlIwxBzTransport.inc').read_text()
 def sha(b):return hashlib.sha256(b).hexdigest()
 def extract(s,n):

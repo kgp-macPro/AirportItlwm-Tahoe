@@ -60,5 +60,5 @@ int main(){run(true,0);run(false,0);run(true,1);run(false,1);run(true,2);run(fal
 san=sys.argv[1] if len(sys.argv)>1 else 'address,undefined'
 with tempfile.TemporaryDirectory(prefix='zc7-amsdu-') as t:
  p=Path(t);(p/'test.cpp').write_text(mock+body+test)
- cmd=['/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++','-isysroot','/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk','-std=c++17','-O1','-g','-fsanitize='+san,str(p/'test.cpp'),'-o',str(p/'test')]
+ cmd=[subprocess.check_output(['/usr/bin/xcrun','--find','clang++'],text=True).strip(),'-isysroot',subprocess.check_output(['/usr/bin/xcrun','--sdk','macosx','--show-sdk-path'],text=True).strip(),'-std=c++17','-O1','-g','-fsanitize='+san,str(p/'test.cpp'),'-o',str(p/'test')]
  print('COMMAND',repr(cmd),flush=True);subprocess.run(cmd,check=True);subprocess.run([str(p/'test')],check=True,timeout=120);print('PASS',san)

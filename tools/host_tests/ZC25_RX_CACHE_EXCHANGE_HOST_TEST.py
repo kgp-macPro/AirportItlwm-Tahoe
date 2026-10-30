@@ -6,7 +6,7 @@ from pathlib import Path
 import ast,subprocess,tempfile,sys
 R=Path(__file__).resolve().parents[2]
 base='9d6942e8dedc482a56b0ba248e778735c4dd2999'
-git='/Applications/Xcode.app/Contents/Developer/usr/bin/git'
+git=subprocess.check_output(['/usr/bin/xcrun','--find','git'],text=True).strip()
 harness=ast.parse((R/'tools/host_tests/ZC25_RX_POOL_HOST_TEST.py').read_text())
 mock=next(ast.literal_eval(n.value) for n in harness.body if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='mock' for t in n.targets))
 mock=mock[:mock.index('int main(){')]
@@ -75,6 +75,6 @@ for label,src,expected in [('ZC13-control',subprocess.check_output([git,'--no-op
  text=mock.replace('STORAGE',storage).replace('HEADER',header).replace('METHODS',methods)
  with tempfile.TemporaryDirectory(prefix='zc15-cache-'+label+'-') as td:
   p=Path(td);(p/'test.cpp').write_text('#define EXPECT_EXCHANGE '+str(expected)+'\n'+text+test)
-  cmd=['/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++','-isysroot','/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk','-std=c++17','-O1','-g','-fsanitize='+san,str(p/'test.cpp'),'-o',str(p/'test')]
+  cmd=[subprocess.check_output(['/usr/bin/xcrun','--find','clang++'],text=True).strip(),'-isysroot',subprocess.check_output(['/usr/bin/xcrun','--sdk','macosx','--show-sdk-path'],text=True).strip(),'-std=c++17','-O1','-g','-fsanitize='+san,str(p/'test.cpp'),'-o',str(p/'test')]
   print('COMMAND',cmd,flush=True);subprocess.run(cmd,check=True);subprocess.run([str(p/'test')],check=True,timeout=60)
 print('PASS actual-source before/after ownership comparison',san)

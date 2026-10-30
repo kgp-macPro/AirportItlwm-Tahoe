@@ -1,0 +1,128 @@
+[
+  {
+    "struct": "iwx_mac_client_data",
+    "path": "sources/AirportBZ-0ccab1627764/AirportBZ-0ccab1627764406861fb9eb0a06ca36e31b4440f/itlwm/hal_iwx/if_iwxreg.h",
+    "line": 4865,
+    "sha256": "e1508100714cebeb2113cc9c4b3f7b219ba2a059e1433243614cbfe7a1957877"
+  },
+  {
+    "struct": "iwx_mac_config_cmd",
+    "path": "sources/AirportBZ-0ccab1627764/AirportBZ-0ccab1627764406861fb9eb0a06ca36e31b4440f/itlwm/hal_iwx/if_iwxreg.h",
+    "line": 4889,
+    "sha256": "e1508100714cebeb2113cc9c4b3f7b219ba2a059e1433243614cbfe7a1957877"
+  },
+  {
+    "struct": "iwl_mac_client_data",
+    "path": "sources/linux-0c3836482481/fw/api/mac-cfg.h",
+    "line": 255,
+    "sha256": "cd5d7381d261ee0e656f8189eccfad5fffe751a1b362ce18ab74c919d8092a7e"
+  },
+  {
+    "struct": "iwl_mac_p2p_dev_data",
+    "path": "sources/linux-0c3836482481/fw/api/mac-cfg.h",
+    "line": 277,
+    "sha256": "cd5d7381d261ee0e656f8189eccfad5fffe751a1b362ce18ab74c919d8092a7e"
+  },
+  {
+    "struct": "iwl_mac_config_cmd",
+    "path": "sources/linux-0c3836482481/fw/api/mac-cfg.h",
+    "line": 322,
+    "sha256": "cd5d7381d261ee0e656f8189eccfad5fffe751a1b362ce18ab74c919d8092a7e"
+  },
+  {
+    "struct": "iwx_ac_qos",
+    "path": "sources/AirportBZ-0ccab1627764/AirportBZ-0ccab1627764406861fb9eb0a06ca36e31b4440f/itlwm/hal_iwx/if_iwxreg.h",
+    "line": 4823,
+    "sha256": "e1508100714cebeb2113cc9c4b3f7b219ba2a059e1433243614cbfe7a1957877"
+  },
+  {
+    "struct": "iwx_he_backoff_conf",
+    "path": "sources/AirportBZ-0ccab1627764/AirportBZ-0ccab1627764406861fb9eb0a06ca36e31b4440f/itlwm/hal_iwx/if_iwxreg.h",
+    "line": 3014,
+    "sha256": "e1508100714cebeb2113cc9c4b3f7b219ba2a059e1433243614cbfe7a1957877"
+  },
+  {
+    "struct": "iwx_link_config_cmd",
+    "path": "sources/AirportBZ-0ccab1627764/AirportBZ-0ccab1627764406861fb9eb0a06ca36e31b4440f/itlwm/hal_iwx/if_iwxreg.h",
+    "line": 4932,
+    "sha256": "e1508100714cebeb2113cc9c4b3f7b219ba2a059e1433243614cbfe7a1957877"
+  },
+  {
+    "struct": "iwl_ac_qos",
+    "path": "sources/linux-0c3836482481/fw/api/mac.h",
+    "line": 286,
+    "sha256": "ff34975581ca3f1336692a59d07ff472cc784c13a09645febc09286f2cf912a9"
+  },
+  {
+    "struct": "iwl_he_backoff_conf",
+    "path": "sources/linux-0c3836482481/fw/api/mac.h",
+    "line": 404,
+    "sha256": "ff34975581ca3f1336692a59d07ff472cc784c13a09645febc09286f2cf912a9"
+  },
+  {
+    "struct": "iwl_link_config_cmd",
+    "path": "sources/linux-0c3836482481/fw/api/mac-cfg.h",
+    "line": 480,
+    "sha256": "cd5d7381d261ee0e656f8189eccfad5fffe751a1b362ce18ab74c919d8092a7e"
+  },
+  {
+    "struct": "iwx_sta_cfg_cmd",
+    "path": "sources/AirportBZ-0ccab1627764/AirportBZ-0ccab1627764406861fb9eb0a06ca36e31b4440f/itlwm/hal_iwx/if_iwxreg.h",
+    "line": 4994,
+    "sha256": "e1508100714cebeb2113cc9c4b3f7b219ba2a059e1433243614cbfe7a1957877"
+  },
+  {
+    "struct": "iwl_he_pkt_ext_v2",
+    "path": "sources/linux-0c3836482481/fw/api/mac.h",
+    "line": 482,
+    "sha256": "ff34975581ca3f1336692a59d07ff472cc784c13a09645febc09286f2cf912a9"
+  },
+  {
+    "struct": "iwl_mvm_sta_cfg_cmd",
+    "path": "sources/linux-0c3836482481/fw/api/mac-cfg.h",
+    "line": 582,
+    "sha256": "cd5d7381d261ee0e656f8189eccfad5fffe751a1b362ce18ab74c919d8092a7e"
+  },
+  {
+    "struct": "iwx_sta_remove_cmd",
+    "path": "sources/AirportBZ-0ccab1627764/AirportBZ-0ccab1627764406861fb9eb0a06ca36e31b4440f/itlwm/hal_iwx/if_iwxreg.h",
+    "line": 5020,
+    "sha256": "e1508100714cebeb2113cc9c4b3f7b219ba2a059e1433243614cbfe7a1957877"
+  },
+  {
+    "struct": "iwl_mvm_remove_sta_cmd",
+    "path": "sources/linux-0c3836482481/fw/api/mac-cfg.h",
+    "line": 629,
+    "sha256": "cd5d7381d261ee0e656f8189eccfad5fffe751a1b362ce18ab74c919d8092a7e"
+  },
+  {
+    "struct": "iwx_sec_key_cmd",
+    "path": "sources/AirportBZ-0ccab1627764/AirportBZ-0ccab1627764406861fb9eb0a06ca36e31b4440f/itlwm/hal_iwx/if_iwxreg.h",
+    "line": 5075,
+    "sha256": "e1508100714cebeb2113cc9c4b3f7b219ba2a059e1433243614cbfe7a1957877"
+  },
+  {
+    "struct": "iwl_sec_key_cmd",
+    "path": "sources/linux-0c3836482481/fw/api/datapath.h",
+    "line": 653,
+    "sha256": "cc6a73b8b43dd42ddddfbe60f21f7112cb46bcb8b8f2c555a7799b0712af2578"
+  },
+  {
+    "struct": "iwx_scd_queue_cfg_cmd",
+    "path": "sources/AirportBZ-0ccab1627764/AirportBZ-0ccab1627764406861fb9eb0a06ca36e31b4440f/itlwm/hal_iwx/if_iwxreg.h",
+    "line": 5033,
+    "sha256": "e1508100714cebeb2113cc9c4b3f7b219ba2a059e1433243614cbfe7a1957877"
+  },
+  {
+    "struct": "iwl_scd_queue_cfg_cmd",
+    "path": "sources/linux-0c3836482481/fw/api/datapath.h",
+    "line": 582,
+    "sha256": "cc6a73b8b43dd42ddddfbe60f21f7112cb46bcb8b8f2c555a7799b0712af2578"
+  },
+  {
+    "struct": "iwx_rx_completion_desc_bz",
+    "path": "sources/AirportBZ-0ccab1627764/AirportBZ-0ccab1627764406861fb9eb0a06ca36e31b4440f/itlwm/hal_iwx/if_iwxreg.h",
+    "line": 1706,
+    "sha256": "e1508100714cebeb2113cc9c4b3f7b219ba2a059e1433243614cbfe7a1957877"
+  }
+]

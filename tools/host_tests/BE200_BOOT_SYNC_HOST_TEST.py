@@ -5,9 +5,9 @@ Mocked allocation, walkAll, MMIO, gate and provider. No hardware simulation/proo
 from pathlib import Path
 import subprocess,re,tempfile,sys,hashlib
 R=Path(__file__).resolve().parents[2]
-G='/Applications/Xcode.app/Contents/Developer/usr/bin/git'
-C='/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++'
-SDK='/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk'
+G=subprocess.check_output(['/usr/bin/xcrun','--find','git'],text=True).strip()
+C=subprocess.check_output(['/usr/bin/xcrun','--find','clang++'],text=True).strip()
+SDK=subprocess.check_output(['/usr/bin/xcrun','--sdk','macosx','--show-sdk-path'],text=True).strip()
 def function(s,qualified):
  mask=re.sub(r'//[^\n]*|/\*.*?\*/|"(?:\\.|[^"\\])*"',lambda m:' '*len(m[0]),s,flags=re.S)
  pat=r'(?:int|IOReturn)\s+'+qualified.replace('::',r'::\s*')+r'\('

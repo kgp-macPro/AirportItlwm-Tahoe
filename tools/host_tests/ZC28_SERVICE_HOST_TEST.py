@@ -115,7 +115,7 @@ identity={name:hashlib.sha256(text.encode()).hexdigest() for name,text in [('que
 print('ACTUAL_SOURCE',root,identity,flush=True)
 with tempfile.TemporaryDirectory(prefix='zc28-service-') as td:
  p=Path(td);(p/'test.cpp').write_text(mock+qbody+front+clear+conventional+route+start+batch+tests)
- cmd=['/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++','-isysroot','/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk','-D__PRIVATE_SPI__','-DAIRPORT','-DNBPFILTER=0','-std=c++17','-O1','-g','-pthread','-fsanitize='+san,str(p/'test.cpp'),'-o',str(p/'test')]
+ cmd=[subprocess.check_output(['/usr/bin/xcrun','--find','clang++'],text=True).strip(),'-isysroot',subprocess.check_output(['/usr/bin/xcrun','--sdk','macosx','--show-sdk-path'],text=True).strip(),'-D__PRIVATE_SPI__','-DAIRPORT','-DNBPFILTER=0','-std=c++17','-O1','-g','-pthread','-fsanitize='+san,str(p/'test.cpp'),'-o',str(p/'test')]
  print('COMMAND',repr(cmd),flush=True)
  try:subprocess.run(cmd,check=True)
  except subprocess.CalledProcessError:

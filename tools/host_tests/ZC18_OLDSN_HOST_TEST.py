@@ -108,5 +108,5 @@ with tempfile.TemporaryDirectory(prefix='zc18-oldsn-') as tmp:
  for old in [True,False]:
   s=subprocess.check_output(['git','-C',str(R),'show',BASE+':itlwm/hal_iwx/ItlIwx.cpp']).decode() if old else (R/'itlwm/hal_iwx/ItlIwx.cpp').read_text()
   (p/'test.cpp').write_text(mock+'\n'.join(extract(s,n) for n in ['iwx_init_reorder_buffer','iwx_oldsn_workaround'])+tests)
-  cmd=['/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++','-isysroot','/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk','-std=c++17','-O1','-g','-pthread','-fsanitize='+san]+(['-DBASELINE'] if old else [])+[str(p/'test.cpp'),'-o',str(p/'test')]
+  cmd=[subprocess.check_output(['/usr/bin/xcrun','--find','clang++'],text=True).strip(),'-isysroot',subprocess.check_output(['/usr/bin/xcrun','--sdk','macosx','--show-sdk-path'],text=True).strip(),'-std=c++17','-O1','-g','-pthread','-fsanitize='+san]+(['-DBASELINE'] if old else [])+[str(p/'test.cpp'),'-o',str(p/'test')]
   print('COMMAND',cmd,flush=True);subprocess.run(cmd,check=True);subprocess.run([str(p/'test')],check=True,timeout=120)

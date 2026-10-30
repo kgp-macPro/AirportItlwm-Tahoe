@@ -170,6 +170,6 @@ proof={'test_script_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdiges
 print(json.dumps(proof,sort_keys=True),flush=True)
 with tempfile.TemporaryDirectory(prefix='zc27-rate-') as td:
  p=Path(td);(p/'model.cpp').write_text(model)
- cmd=['/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++','-isysroot','/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk','-std=c++17','-O1','-g','-fsanitize='+a.sanitizer,str(p/'model.cpp'),'-o',str(p/'model')]
+ cmd=[subprocess.check_output(['/usr/bin/xcrun','--find','clang++'],text=True).strip(),'-isysroot',subprocess.check_output(['/usr/bin/xcrun','--sdk','macosx','--show-sdk-path'],text=True).strip(),'-std=c++17','-O1','-g','-fsanitize='+a.sanitizer,str(p/'model.cpp'),'-o',str(p/'model')]
  print('COMMAND '+repr(cmd),flush=True);subprocess.run(cmd,check=True);subprocess.run([str(p/'model')],check=True,timeout=120)
 print('PASS '+a.sanitizer,flush=True)

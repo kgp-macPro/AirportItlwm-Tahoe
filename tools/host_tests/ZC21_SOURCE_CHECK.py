@@ -33,7 +33,7 @@ print('PASS ZC8 actual RX/notification/credit/completion/service bodies and owne
 # Compile the exact fence function under production optimization and inspect emitted asm.
 with tempfile.TemporaryDirectory(prefix='zc19-source-') as t:
  p=Path(t);(p/'f.cpp').write_text(fn(s,'iwx_dma_publish_barrier')+'\nvoid publish(volatile unsigned*p,unsigned*d){*d=42;iwx_dma_publish_barrier();*p=1;}\n')
- subprocess.run(['/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++','-target','x86_64-apple-macos','-O2','-S',str(p/'f.cpp'),'-o',str(p/'f.s')],check=True)
+ subprocess.run([subprocess.check_output(['/usr/bin/xcrun','--find','clang++'],text=True).strip(),'-target','x86_64-apple-macos','-O2','-S',str(p/'f.cpp'),'-o',str(p/'f.s')],check=True)
  a=(p/'f.s').read_text();assert 'mfence' in a or 'lock' in a;print('PASS actual fence emits x86_64 hardware ordering')
  runner=(R/'tools/ZC21_3x14_PORTABLE_IP_PROMPT.sh').read_text();assert not re.search(r'^\s*(?:/usr/sbin/)?system_profiler\s',runner,re.M)
  subprocess.run(['/bin/bash','-n',str(R/'tools/ZC21_3x14_PORTABLE_IP_PROMPT.sh')],check=True)

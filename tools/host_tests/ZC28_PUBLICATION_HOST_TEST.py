@@ -153,5 +153,5 @@ san=sys.argv[1] if len(sys.argv)>1 else 'address,undefined'
 with tempfile.TemporaryDirectory(prefix='zc26-publication-') as td:
  p=Path(td);types='\n'.join(typ(n) for n in ['iwx_tfh_tb','iwx_tfh_tfd','iwx_device_cmd','iwx_agn_scd_bc_tbl','iwx_gen3_bc_tbl'])
  (p/'test.cpp').write_text(pre+types+mid+fn('iwx_tx_publish_control')+fn('iwx_clear_tx_desc')+fn('iwx_tx_update_byte_tbl')+transfer_decl+test)
- cmd=['/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++','-isysroot','/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk','-std=c++17','-O1','-g','-pthread','-fsanitize='+san,str(p/'test.cpp'),'-o',str(p/'test')]
+ cmd=[subprocess.check_output(['/usr/bin/xcrun','--find','clang++'],text=True).strip(),'-isysroot',subprocess.check_output(['/usr/bin/xcrun','--sdk','macosx','--show-sdk-path'],text=True).strip(),'-std=c++17','-O1','-g','-pthread','-fsanitize='+san,str(p/'test.cpp'),'-o',str(p/'test')]
  print(cmd,flush=True);subprocess.run(cmd,check=True);subprocess.run([str(p/'test')],check=True,timeout=120)

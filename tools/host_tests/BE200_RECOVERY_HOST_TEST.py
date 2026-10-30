@@ -4,7 +4,7 @@ Gate/firmware callbacks are mocks; saved P6 hardware history is checked separate
 """
 from pathlib import Path
 import re,subprocess,tempfile,sys,json
-R=Path(__file__).resolve().parents[2];G='/Applications/Xcode.app/Contents/Developer/usr/bin/git'
+R=Path(__file__).resolve().parents[2];G=subprocess.check_output(['/usr/bin/xcrun','--find','git'],text=True).strip()
 def fn(s,n):
  m=re.sub(r'//[^\n]*|/\*.*?\*/|"(?:\\.|[^"\\])*"',lambda x:' '*len(x[0]),s,flags=re.S);x=re.search(r'(?:void|int|bool|IOReturn)\s+ItlIwx::\s*'+n+r'\(',m);assert x,n;a=m.index('{',x.end());b=a+1;d=1
  while d:d+=(m[b]=='{')-(m[b]=='}');b+=1
@@ -133,6 +133,6 @@ int main(){
 san=sys.argv[1]if len(sys.argv)>1 else'address,undefined'
 with tempfile.TemporaryDirectory(prefix='be200-recovery-')as tmp:
  t=Path(tmp);p=t/'test.cpp';p.write_text(pre+functions+'\n'+oldfn+'\n'+tests)
- cmd=['/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++','-isysroot','/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk','-std=c++17','-O1','-g','-fsanitize='+san,str(p),'-o',str(t/'test')]
+ cmd=[subprocess.check_output(['/usr/bin/xcrun','--find','clang++'],text=True).strip(),'-isysroot',subprocess.check_output(['/usr/bin/xcrun','--sdk','macosx','--show-sdk-path'],text=True).strip(),'-std=c++17','-O1','-g','-fsanitize='+san,str(p),'-o',str(t/'test')]
  subprocess.run(cmd,check=True);subprocess.run([str(t/'test')],check=True,timeout=60)
 print('Saved P6 hardware trace independently checked: first fault30/35,TXPATH_FLUSH0x11e/8bytes. Mock interleaving is not a recovered live call stack.')

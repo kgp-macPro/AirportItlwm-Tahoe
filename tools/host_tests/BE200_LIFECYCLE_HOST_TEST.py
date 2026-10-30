@@ -50,5 +50,5 @@ int main(){
 san=sys.argv[1]if len(sys.argv)>1 else 'address,undefined'
 with tempfile.TemporaryDirectory(prefix='be200-life-') as d:
  p=Path(d);(p/'t.cpp').write_text(pre+extract((R/'itlwm/hal_iwx/ItlIwxBzTransport.inc').read_text(),'bzStoppedCleanup')+extract((R/'itlwm/hal_iwx/ItlIwxBz.inc').read_text(),'iwx_gate_sleep')+test)
- cmd=['/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++','-isysroot','/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk','-std=c++17','-O1','-g','-fsanitize='+san,'-I'+str(R),str(p/'t.cpp'),'-o',str(p/'t')]
+ cmd=[subprocess.check_output(['/usr/bin/xcrun','--find','clang++'],text=True).strip(),'-isysroot',subprocess.check_output(['/usr/bin/xcrun','--sdk','macosx','--show-sdk-path'],text=True).strip(),'-std=c++17','-O1','-g','-fsanitize='+san,'-I'+str(R),str(p/'t.cpp'),'-o',str(p/'t')]
  print('COMMAND',repr(cmd),flush=True);subprocess.run(cmd,check=True);subprocess.run([str(p/'t')],check=True,timeout=60)

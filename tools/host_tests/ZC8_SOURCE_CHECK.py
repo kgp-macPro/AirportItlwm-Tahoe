@@ -2,7 +2,7 @@
 """Focused source conservation and ABI/build-input checks for ZC8."""
 from pathlib import Path
 import subprocess,re,hashlib,json
-r=Path(__file__).resolve().parents[2];G='/Applications/Xcode.app/Contents/Developer/usr/bin/git';BASE='31987089018a192b0f32b89b3955ae82dd581574'
+r=Path(__file__).resolve().parents[2];G=subprocess.check_output(['/usr/bin/xcrun','--find','git'],text=True).strip();BASE='31987089018a192b0f32b89b3955ae82dd581574'
 def git(*args):return subprocess.check_output([G,'--no-optional-locks','-C',str(r),*args])
 def old(f):return git('show',BASE+':'+f)
 def mask(t):return re.sub(r'//[^\n]*|/\*.*?\*/|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'',lambda m:' '*len(m[0]),t,flags=re.S)

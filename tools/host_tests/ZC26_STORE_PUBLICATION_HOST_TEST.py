@@ -44,8 +44,8 @@ unsafe_without=[x for x in orders if x[-1]!='D']
 assert len(with_fence)==24 and len(unsafe_without)==96
 assert all(all(x.index(k)<x.index('D') for k in 'PCTB') for x in with_fence)
 print('SIMULATION abstract store-visibility litmus: 24 safe full-fence-allowed orders, 96 premature-doorbell orders excluded; not measured DMA.',flush=True)
-clang='/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++'
-sdk='/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk'
+clang=subprocess.check_output(['/usr/bin/xcrun','--find','clang++'],text=True).strip()
+sdk=subprocess.check_output(['/usr/bin/xcrun','--sdk','macosx','--show-sdk-path'],text=True).strip()
 san=sys.argv[1] if len(sys.argv)>1 else 'address,undefined'
 mock=r'''
 #include <atomic>

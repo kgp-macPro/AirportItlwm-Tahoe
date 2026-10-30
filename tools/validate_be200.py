@@ -45,7 +45,7 @@ for which in range(5):
  else:raise AssertionError('Malformed connection trace accepted')
 results.append({'test':'both collector syntax / actual decoder unknown,truncated,wrap,overwrite,missing-event,epoch fixtures','exit':0})
 # Source/data preservation boundaries, not a regex substitute for transport tests.
-G='/Applications/Xcode.app/Contents/Developer/usr/bin/git'
+G=subprocess.check_output(['/usr/bin/xcrun','--find','git'],text=True).strip()
 unchanged=['itl80211/openbsd/sys/_ifq.cpp','itl80211/openbsd/sys/_ifq.h','tools/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh']
 for name in unchanged:assert (R/name).read_bytes()==subprocess.check_output([G,'show','483940988c502379fb6d3dcde885dca83f00b7aa:'+name],cwd=R)
 # Only the audited link handoff + explicit initialization may differ in legacy frontend.

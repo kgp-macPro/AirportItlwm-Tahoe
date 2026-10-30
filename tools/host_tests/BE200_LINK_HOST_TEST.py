@@ -6,8 +6,8 @@ No IORegistry, physical driver, DHCP, settings or network operation is executed.
 from pathlib import Path
 import re,json,subprocess,tempfile,sys
 R=Path(__file__).resolve().parents[2]
-G='/Applications/Xcode.app/Contents/Developer/usr/bin/git'
-C='/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++'
+G=subprocess.check_output(['/usr/bin/xcrun','--find','git'],text=True).strip()
+C=subprocess.check_output(['/usr/bin/xcrun','--find','clang++'],text=True).strip()
 def fn(s,n):
  m=re.sub(r'//[^\n]*|/\*.*?\*/|"(?:\\.|[^"\\])*"',lambda x:' '*len(x[0]),s,flags=re.S)
  x=re.search(r'(?:bool|IOReturn)\s+AirportItlwm::\s*'+n+r'\(',m);assert x,n
@@ -127,6 +127,6 @@ san=sys.argv[1]if len(sys.argv)>1 else'address,undefined'
 with tempfile.TemporaryDirectory(prefix='be200-link-host-')as tmp:
  t=Path(tmp);src=t/'test.cpp';src.write_text(pre+classes+new+'\n'+old+'\n'+tests)
  for private in [False,True]:
-  exe=t/('test-private'if private else'test-public');cmd=[C,'-isysroot','/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk','-std=c++17','-O1','-g','-fno-omit-frame-pointer','-fsanitize='+san,'-Werror=return-type',str(src),'-o',str(exe)]+(['-D__PRIVATE_SPI__=1']if private else[])
+  exe=t/('test-private'if private else'test-public');cmd=[C,'-isysroot',subprocess.check_output(['/usr/bin/xcrun','--sdk','macosx','--show-sdk-path'],text=True).strip(),'-std=c++17','-O1','-g','-fno-omit-frame-pointer','-fsanitize='+san,'-Werror=return-type',str(src),'-o',str(exe)]+(['-D__PRIVATE_SPI__=1']if private else[])
   subprocess.run(cmd,check=True);subprocess.run([str(exe)],check=True)
 print('Saved P5 hardware fixture: RUN_READY16/RSNdone/4 TX retires, configd LinkActive=false, no IP. Not a mock-generated hardware result.')

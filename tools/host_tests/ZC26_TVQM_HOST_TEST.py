@@ -199,5 +199,5 @@ print('SOURCE_CPP_SHA256='+hashlib.sha256(s.encode()).hexdigest(),flush=True)
 san=sys.argv[1] if len(sys.argv)>1 else 'address,undefined'
 with tempfile.TemporaryDirectory(prefix='zc26-tvqm-') as td:
  p=Path(td);(p/'test.cpp').write_text(mock+fn('iwx_alloc_tx_ring')+fn('iwx_tvqm_enable_txq')+fn('iwx_tvqm_alloc_txq')+fn('iwx_ba_task')+fn('iwx_reset_tx_ring')+fn('iwx_free_tx_ring')+fn('iwx_ampdu_txq_advance')+fn('dexterOriginal_iwx_ampdu_txq_advance')+test)
- cmd=['/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++','-isysroot','/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk','-std=c++17','-O1','-g','-pthread','-fsanitize='+san,str(p/'test.cpp'),'-o',str(p/'test')]
+ cmd=[subprocess.check_output(['/usr/bin/xcrun','--find','clang++'],text=True).strip(),'-isysroot',subprocess.check_output(['/usr/bin/xcrun','--sdk','macosx','--show-sdk-path'],text=True).strip(),'-std=c++17','-O1','-g','-pthread','-fsanitize='+san,str(p/'test.cpp'),'-o',str(p/'test')]
  print(cmd,flush=True);subprocess.run(cmd,check=True);subprocess.run([str(p/'test')],check=True,timeout=60)

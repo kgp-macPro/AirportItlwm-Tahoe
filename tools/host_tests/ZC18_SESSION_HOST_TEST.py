@@ -96,5 +96,5 @@ with tempfile.TemporaryDirectory(prefix='zc18-session-') as tmp:
   decl=h[h.index('struct iwx_rxba_data {'):];typ=re.search(r'(uint\d+_t)\s+timeout;',decl)[1]
   start=s.index('        rxba->sta_id = IWX_STATION_ID;');end=s.index('\n    } else {',start);setup=s[start:end]
   (p/'test.cpp').write_text(mock.replace('TIMEOUT_TYPE',typ).replace('SETUP',setup)+extract(s,'iwx_rx_ba_session_expired')+tests)
-  cmd=['/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++','-isysroot','/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk','-std=c++17','-O1','-g','-pthread','-fsanitize='+san]+(['-DBASELINE'] if old else [])+[str(p/'test.cpp'),'-o',str(p/'test')]
+  cmd=[subprocess.check_output(['/usr/bin/xcrun','--find','clang++'],text=True).strip(),'-isysroot',subprocess.check_output(['/usr/bin/xcrun','--sdk','macosx','--show-sdk-path'],text=True).strip(),'-std=c++17','-O1','-g','-pthread','-fsanitize='+san]+(['-DBASELINE'] if old else [])+[str(p/'test.cpp'),'-o',str(p/'test')]
   print('COMMAND',cmd,flush=True);subprocess.run(cmd,check=True);subprocess.run([str(p/'test')],check=True,timeout=120)

@@ -280,8 +280,8 @@ int main(){
 }
 '''
 text=mock.replace('STORAGE',storage).replace('HEADER',header).replace('METHODS',methods)
-clang='/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++'
-sdk='/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk'
+clang=subprocess.check_output(['/usr/bin/xcrun','--find','clang++'],text=True).strip()
+sdk=subprocess.check_output(['/usr/bin/xcrun','--sdk','macosx','--show-sdk-path'],text=True).strip()
 san=sys.argv[1] if len(sys.argv)>1 else 'address,undefined'
 with tempfile.TemporaryDirectory(prefix='zc5-host-') as tmp:
  p=Path(tmp);(p/'test.cpp').write_text(text)
