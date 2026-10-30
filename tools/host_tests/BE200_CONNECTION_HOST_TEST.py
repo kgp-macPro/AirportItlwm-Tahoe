@@ -17,13 +17,16 @@ def body(s,n):
  while d:d+=(s[b]=='{')-(s[b]=='}');b+=1
  return s[x.start():s.index(';',b)+1]
 src=(R/'itlwm/hal_iwx/ItlIwx.cpp').read_text();inc=(R/'itlwm/hal_iwx/ItlIwxBz.inc').read_text();trans=(R/'itlwm/hal_iwx/ItlIwxBzTransport.inc').read_text();reg=(R/'itlwm/hal_iwx/if_iwxreg.h').read_text()+(R/'itlwm/hal_iwx/if_iwxvar.h').read_text()
-functions='\n'.join(fn(trans,n)for n in ['bzConnectionEvent','bzRouteReply','bzObserveMgmt'])+'\n'+'\n'.join(fn(src,n)for n in ['iwx_rx_tx_cmd','iwx_ampdu_txq_advance','iwx_rx_tx_cmd_single'])+'\n'+'\n'.join(fn(inc,n)for n in ['iwx_mld_probe','iwx_mld_auth'])
+functions='\n'.join(fn(trans,n)for n in ['bzConnectionEvent','bzRouteReply','bzObserveMgmt'])+'\n'+'\n'.join(fn(src,n)for n in ['iwx_rx_tx_cmd','iwx_rx_tx_ba_notif','iwx_ampdu_txq_advance','iwx_rx_tx_cmd_single'])+'\n'+'\n'.join(fn(inc,n)for n in ['iwx_mld_probe','iwx_mld_auth'])
 skip={'IWX_AGG_SSN_TO_TXQ_IDX','IWX_FC'};constants='';done=set();pending=set(re.findall(r'\bIWX_[A-Z0-9_]+',functions))-skip
 while pending:
  n=pending.pop()
  if n in done:continue
- x=re.search(r'^#define\s+'+n+r'\s+([^\n]+)',reg,re.M);assert x,n;done.add(n);constants+='#define '+n+' '+x[1]+'\n';pending|=set(re.findall(r'\bIWX_[A-Z0-9_]+',x[1]))-done-skip
-wire='\n'.join(body(reg,n)for n in ['iwx_agg_tx_status','iwx_tx_resp'])
+ x=re.search(r'^#define\s+'+n+r'\s+([^\n]+)',reg,re.M) or re.search(r'\b'+n+r'\s*=\s*([^,\n]+)',reg);
+ if n in ['IWX_BA_RESP_TX_AGG','IWX_BA_RESP_TX_BAR']:
+  constants+='#define '+n+' '+str({'IWX_BA_RESP_TX_AGG':0,'IWX_BA_RESP_TX_BAR':1}[n])+'\n';done.add(n);continue
+ assert x,n;done.add(n);constants+='#define '+n+' '+x[1]+'\n';pending|=set(re.findall(r'\bIWX_[A-Z0-9_]+',x[1]))-done-skip
+wire='\n'.join(body(reg,n)for n in ['iwx_agg_tx_status','iwx_tx_resp','iwx_compressed_ba_ratid','iwx_compressed_ba_tfd','iwx_compressed_ba_notif'])
 fixture=json.loads((R/'tools/host_tests/fixtures/BE200_P4_INTERFACE.json').read_text());q=struct.unpack('<48Q',bytes.fromhex(fixture['transport_hex']));assert q[8:10]==(3,100)and q[16+11]==46 and q[16+17]==0;assert fixture['properties']['ItlwmPnvmNotifySeen']==1 and fixture['properties']['ItlwmPnvmNotifyStatus']==0x50001
 oldcpp=subprocess.check_output([G,'show','a3ff3547f4e9d89a2c2530ef5ced9c26d1a9e0ad:itlwm/hal_iwx/ItlIwx.cpp'],cwd=R,text=True)
 a=oldcpp.index('        if (bzDevice() && !(qid & 0x80) && (qid != IWX_DQA_CMD_QUEUE')
@@ -40,6 +43,8 @@ pre=r'''
 #include <memory>
 #include <string>
 #include <iostream>
+#include <functional>
+using u8=uint8_t;using __le16=uint16_t;using __le32=uint32_t;
 #include "itlwm/hal_iwx/ItlIwxBzContracts.hpp"
 #include "include/HAL/ItlBzTxReference.hpp"
 #define __packed __attribute__((packed))
@@ -64,7 +69,7 @@ struct ieee80211com {int ic_state=2;_ifnet ic_if;};
 struct Node {Channel*ni_chan=nullptr;unsigned ni_intval=100;};struct iwx_node {Node in_ni;};
 struct iwx_softc {int sc_generation=1;unsigned sc_device_family=0,sc_flags=0,sc_mgmt_last_antenna_idx=0,sc_tx_timer=0;ieee80211com sc_ic;
  Provider p;Provider*sc_pcitag=&p;struct Commandiwx_tx_ring:iwx_tx_ring {struct{unsigned flags=0;}data[512];}cmdring;
- iwx_tx_ring txq[512];void*sc_dmat=nullptr;};
+ iwx_tx_ring txq[512];struct{int qid=255;}sc_tid_data[8];int first_data_qid=1;void*sc_dmat=nullptr;};
 struct iwx_rx_data {void*map=nullptr;};struct Header{uint8_t cmd,group_id,qid,idx;};struct iwx_rx_packet {uint32_t length;Header hdr;uint8_t data[256];};
 static unsigned iwx_rx_packet_payload_len(iwx_rx_packet*p){return p->length;}
 static void bus_dmamap_sync(void*,void*,unsigned,unsigned,int){} // production compatibility routine is also a no-op; BZ RX sync occurs earlier.
@@ -73,15 +78,16 @@ struct Gate {bool held=true;bool inGate(){return held;}};
 static uint64_t time2GNow(){static uint64_t ns=0;return ++ns;}
 struct ItlIwx {iwx_softc com;Gate gate;unsigned fPc1ResetEpoch=1,fPc1Suspended=0,fPc1DroppedCompletion=0,fBzQueueOwned=0,fBzFault=0,fBzError=0,fTx2JAdmission=0,fTx2IBlocked=0;
  static constexpr unsigned kTx2JClosed=1;kgp_bz::ConnectionTrace fBzConnection;kgp_bz::CommandLedger fBzCommands;
- unsigned fBzScanBeacons=0,fBzScanProbes=0;uint64_t fBzStats[32]={};unsigned retired=0,freed=0,cleared=0,starts=0,antenna=0,failAt=0,calls=0;std::vector<unsigned>sequence;
+ unsigned fBzScanBeacons=0,fBzScanProbes=0;uint64_t fBzStats[32]={};std::function<void()> onWake;unsigned retired=0,freed=0,cleared=0,starts=0,antenna=0,failAt=0,calls=0;std::vector<unsigned>sequence;
  Gate*getMainWorkLoop(){return &gate;}bool bzDevice(){return true;}bool dma5Leased(){return true;}
  void bzFail(unsigned r,int e){if(!fBzFault){fBzFault=r;fBzError=e;}}
  int iwx_cmd_groupid(int code){return (code>>8)&0xff;}int iwx_cmd_opcode(int code){return code&0xff;}
  void bzConnectionEvent(unsigned,uint64_t,uint64_t,uint64_t);void bzObserveMgmt(const void*,size_t);kgp_bz::ReplyRoute bzRouteReply(iwx_softc*,unsigned,unsigned,int*,unsigned);
+ void iwx_rx_tx_ba_notif(iwx_softc*,iwx_rx_packet*,iwx_rx_data*);void dexterOriginal_iwx_rx_tx_ba_notif(iwx_softc*,iwx_rx_packet*,iwx_rx_data*){assert(false);}
  void iwx_rx_tx_cmd(iwx_softc*,iwx_rx_packet*,iwx_rx_data*);void iwx_rx_tx_cmd_single(iwx_softc*,iwx_rx_packet*,iwx_tx_data*);void iwx_ampdu_txq_advance(iwx_softc*,iwx_tx_ring*,int,bool);
  void dexterOriginal_iwx_rx_tx_cmd(iwx_softc*,iwx_rx_packet*,iwx_rx_data*){assert(false);}void dexterOriginal_iwx_ampdu_txq_advance(iwx_softc*,iwx_tx_ring*,int){assert(false);}
  void zc28Aggregate(iwx_rx_packet*){assert(false);}void zc28Note(unsigned,unsigned,unsigned,unsigned){}
- void iwx_toggle_tx_ant(iwx_softc*,unsigned*){++antenna;}void iwx_clear_oactive(iwx_softc*,iwx_tx_ring*){++starts;}
+ void iwx_toggle_tx_ant(iwx_softc*,unsigned*){++antenna;}void iwx_clear_oactive(iwx_softc*,iwx_tx_ring*){++starts;if(onWake){auto f=onWake;onWake={};f();}}
  void tx2IRetire(iwx_tx_data*,bool positive){assert(positive);++retired;}void iwx_txd_done(iwx_softc*,iwx_tx_data*d){assert(d->m);d->m=nullptr;++freed;}
  void iwx_clear_tx_desc(iwx_softc*,iwx_tx_ring*,unsigned){++cleared;}
  int call(unsigned n){sequence.push_back(n);return ++calls==failAt?EIO:0;}
@@ -120,6 +126,25 @@ int main(){unsigned cases=0;using R=kgp_bz::ReplyRoute;
  {auto storage=std::make_unique<ItlIwx>();auto &x=*storage;uint8_t frame[30]={};frame[0]=0x80;x.bzObserveMgmt(frame,24);frame[0]=0x50;x.bzObserveMgmt(frame,24);assert(x.fBzScanBeacons==1&&x.fBzScanProbes==1&&!x.fBzConnection.total);
  frame[0]=0xb0;frame[26]=2;x.bzObserveMgmt(frame,30);frame[0]=0x10;frame[26]=17;x.bzObserveMgmt(frame,30);assert(x.fBzConnection.total==2);frame[1]=0x40;x.bzObserveMgmt(frame,30);x.bzObserveMgmt(frame,23);assert(x.fBzConnection.total==2);++cases;}
  {auto storage=std::make_unique<ItlIwx>();auto &x=*storage;for(unsigned i=0;i<200;++i)x.bzConnectionEvent(2,i,0,0);uint64_t wire[kgp_bz::ConnectionTrace::Words];x.fBzConnection.snapshot(wire);assert(wire[3]==200&&wire[4]==64&&wire[5]==136);x.gate.held=false;x.bzConnectionEvent(1,1,1,1);assert(x.fBzConnection.total==200);++cases;}
+
+ // GL92 compressed BA v5 (same wire body as Linux v4). Return complete
+ // queue progress, not individual over-air success, before freeing backing.
+ for(unsigned mode=0;mode<11;++mode){auto storage=std::make_unique<ItlIwx>();auto&x=*storage;auto*s=&x.com;s->sc_ic.ic_state=IEEE80211_S_RUN;s->sc_device_family=IWX_DEVICE_FAMILY_AX210;s->sc_tid_data[0].qid=3;x.fBzQueueOwned=1U<<3;auto&r=s->txq[3];r.qid=3;r.tail=254;r.queued=6;
+  for(unsigned j=0;j<6;++j)r.data[(254+j)&255].m=&x;
+  iwx_rx_packet p{};iwx_rx_data d;p.length=sizeof(iwx_compressed_ba_notif)+sizeof(iwx_compressed_ba_tfd);auto*b=(iwx_compressed_ba_notif*)p.data;b->sta_id=IWX_STATION_ID;b->tfd_cnt=1;b->tfd[0].q_num=3;b->tfd[0].tid=0;b->tfd[0].tfd_index=260;
+  if(mode==1)p.length=3;if(mode==2)p.length--;if(mode==3)x.fBzQueueOwned=0;if(mode==4)b->sta_id++;if(mode==5)b->tfd[0].tid=1;if(mode==6)b->tfd[0].tfd_index=261;if(mode==7)b->tfd[0].q_num=32;if(mode==8)s->sc_flags|=IWX_FLAG_SHUTDOWN;if(mode==9)x.fPc1Suspended=1;
+  if(mode==10){b->tfd[0].tid=IWX_MGMT_TID;b->tfd[0].q_num=s->first_data_qid;x.fBzQueueOwned=1U<<s->first_data_qid;auto&mr=s->txq[s->first_data_qid];mr.qid=s->first_data_qid;mr.tail=254;mr.queued=6;for(unsigned j=0;j<6;++j)mr.data[(254+j)&255].m=&x;}
+  x.iwx_rx_tx_ba_notif(s,&p,&d);
+  if(mode==0||mode==10)assert(!x.fBzFault&&x.retired==6&&x.freed==6&&x.fBzStats[18]==1&&x.starts==1);
+  else if(mode==8||mode==9)assert(!x.retired&&!x.freed&&!x.fBzFault);
+  else assert(x.fBzFault==24&&!x.retired&&!x.freed);
+  ++cases;
+ }
+ // A wake/reset between two TFD updates must not retire the second queue.
+ for(unsigned transition=0;transition<3;++transition){auto storage=std::make_unique<ItlIwx>();auto&x=*storage;auto*s=&x.com;s->sc_ic.ic_state=IEEE80211_S_RUN;s->sc_device_family=IWX_DEVICE_FAMILY_AX210;x.fBzQueueOwned=(1U<<3)|(1U<<4);iwx_rx_packet p{};iwx_rx_data d;p.length=sizeof(iwx_compressed_ba_notif)+2*sizeof(iwx_compressed_ba_tfd);auto*b=(iwx_compressed_ba_notif*)p.data;b->sta_id=IWX_STATION_ID;b->tfd_cnt=2;
+  for(unsigned i=0;i<2;++i){unsigned q=i+3;s->sc_tid_data[i].qid=q;auto&r=s->txq[q];r.qid=q;r.tail=0;r.queued=1;r.data[0].m=&x;b->tfd[i].q_num=q;b->tfd[i].tid=i;b->tfd[i].tfd_index=1;}
+  x.onWake=[&]{if(transition==0)++s->sc_generation;else if(transition==1)++x.fPc1ResetEpoch;else s->sc_flags|=IWX_FLAG_SHUTDOWN;};x.iwx_rx_tx_ba_notif(s,&p,&d);assert(!x.fBzFault&&x.retired==1&&s->txq[4].queued==1&&s->txq[4].data[0].m);++cases;
+ }
  std::cout<<"PASS "<<cases<<" production routing/TX-reclaim/auth/observer cases. Synthetic RX packets per pinned reference contract; saved P4 fixture separately verified. Mock hardware/KPIs,not association proof.\n";
 }
 '''

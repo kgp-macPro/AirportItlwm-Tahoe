@@ -44,8 +44,8 @@ struct ItlIwx;
 struct iwx_softc {ItlIwx*owner=nullptr;uint32_t sc_fh_mask=~0U,sc_hw_mask=~0U,sc_flags=0;unsigned init_task=0;unsigned sc_generation=1;iwx_rx_ring rxq;struct{unsigned deliveries=0;}sc_ic;};
 struct KgpRxZcPool {enum State {Posted,Complete};struct Entry {State state=Posted;Command*command=nullptr;void*memory=nullptr;uint64_t address=0;}entry[512];};
 void *systq=nullptr;static void task_add(void*,unsigned*p){++*p;}
-static std::function<void()> onInput;
-static void if_input(void *p,mbuf_list*m){if(onInput){auto f=onInput;onInput={};f();}m->count=0;}
+static std::function<void()> onInput;static std::vector<unsigned> inputSizes;
+static void if_input(void *p,mbuf_list*m){inputSizes.push_back(m->count);if(onInput){auto f=onInput;onInput={};f();}m->count=0;}
 struct Loop {bool held=true;bool inGate(){return held;}};
 struct ItlIwx;using OSObject=ItlIwx;struct IOFilterInterruptEventSource{};
 struct ItlIwx {
@@ -73,7 +73,7 @@ struct ItlIwx {
  void iwx_rx_pkt(iwx_softc*,Data*d,mbuf_list*m){++accesses;received.push_back(d->slot);++m->count;}
  bool rxZcRepost(unsigned){return replace;}
  bool bzMasterStop(iwx_softc*);void bzResetRx(iwx_softc*);void bzUpdateRxDesc(iwx_softc*,iwx_rx_ring*,unsigned,unsigned);
- void bzPublishRx(iwx_softc*);void bzNotif(iwx_softc*);
+ void bzPublishRx(iwx_softc*,bool force=false);void bzNotif(iwx_softc*);
  ItlIwx(){com.owner=this;auto&r=com.rxq;r.free_desc_dma={descriptors,sizeof(descriptors),&commands[512]};
   r.used_desc_dma={completions,sizeof(completions),&commands[513]};r.stat_dma={&producer,sizeof(producer),&commands[514]};r.stat=&producer;
   for(unsigned i=0;i<512;++i){r.data[i].slot=i;fRxZcSlot[i]=i;commands[i].backing=&commands[i];pool.entry[i]={KgpRxZcPool::Posted,&commands[i],&commands[i],uint64_t(0x100000+i*4096)};}
@@ -117,8 +117,8 @@ int main(){unsigned tests=0;
  {ItlIwx t;t.initial();t.fPc1ResetEpoch++;t.completions[0]={1,0,0};t.producer=1;t.bzNotif(&t.com);assert(!t.accesses&&t.doorbells==1);++tests;}
  {ItlIwx t;t.initial();t.commands[513].status=EIO;t.producer=1;t.bzNotif(&t.com);assert(t.fBzFault&&!t.accesses&&t.doorbells==1);++tests;}
  {ItlIwx t;t.initial();t.replace=false;t.completions[0]={1,0,0};t.producer=1;t.bzNotif(&t.com);assert(t.fBzFault&&t.accesses==1&&t.doorbells==1);++tests;}
- {ItlIwx t;t.initial();t.completions[0]={1,0,0};t.producer=1;onInput=[&]{++t.fPc1ResetEpoch;t.fBzRx.close();};
-  t.bzNotif(&t.com);assert(t.accesses==1&&t.doorbells==1);++tests;}
+ {ItlIwx t;t.initial();t.completions[0]={1,0,0};t.producer=1;onInput=[&]{assert(t.doorbells==2);++t.fPc1ResetEpoch;t.fBzRx.close();};
+  t.bzNotif(&t.com);assert(t.accesses==1&&t.doorbells==2);++tests;}
  {ItlIwx t;t.initial();auto cookie=t.fBzRx.begin(1,1);assert(cookie);t.bzNotif(&t.com);assert(!t.accesses);t.fBzRx.end(cookie);
   t.bzResetRx(&t.com);assert(t.fBzFault&&t.fBzHardwareOwned);++tests;}
  {kgp_bz::RxLedger l;assert(l.reset(1,1,false));for(unsigned i=0;i<511;++i)assert(l.prepare(i,1,1));unsigned db;
@@ -146,7 +146,7 @@ int main(){unsigned tests=0;
    ++t.com.sc_generation;++t.fPc1ResetEpoch;t.fRxZcGeneration=t.com.sc_generation;t.fRxZcEpoch=t.fPc1ResetEpoch;
    t.bzResetRx(&t.com);for(unsigned i=0;i<511;++i)t.bzUpdateRxDesc(&t.com,&t.com.rxq,i,i);
    t.fBzHardwareOwned=true;t.bzPublishRx(&t.com);};
-  t.bzNotif(&t.com);assert(!t.fBzFault&&t.doorbells==2);assert(t.com.rxq.cur==0);++tests;
+  t.bzNotif(&t.com);assert(!t.fBzFault&&t.doorbells==3);assert(t.com.rxq.cur==0);++tests;
  }
 
  {ItlIwx t;t.bzResetRx(&t.com);for(unsigned i=0;i<511;++i)t.bzUpdateRxDesc(&t.com,&t.com.rxq,i,i);t.fBzHardwareOwned=true;
@@ -161,6 +161,32 @@ int main(){unsigned tests=0;
  {ItlIwx t;t.fBzAdmitted=t.fDma5Selected=false;assert(ItlIwx::intrFilter(&t,nullptr));
   assert(!t.writes&&!t.nativeFilters&&t.fBzStats[0]==1);t.bzInterrupt(&t.com);assert(!t.readIndex&&!t.writes);++tests;}
  {ItlIwx t;t.isBz=false;t.fBzAdmitted=t.fDma5Selected=false;assert(!ItlIwx::intrFilter(&t,nullptr));assert(t.nativeFilters==1&&!t.writes);++tests;}
+
+ // Delivering into a delayed/reentrant stack is independent of the device's
+ // ready replacement credits. Observe the ACTUAL MMIO order at stack entry.
+ {ItlIwx t;t.initial();inputSizes.clear();for(unsigned i=0;i<128;++i)t.completions[i]={uint16_t(i+1),0,0};t.producer=128;
+  onInput=[&]{assert(t.accesses==32&&t.fBzRx.published==24&&t.doorbells==2);assert(t.fBzRx.state[0]==kgp_bz::RxLedger::Posted);t.bzNotif(&t.com);assert(t.fBzStats[5]==1);};
+  t.bzNotif(&t.com);assert(!t.fBzFault&&t.accesses==128&&t.com.rxq.cur==128&&t.fBzRx.published==120);
+  assert(inputSizes==std::vector<unsigned>({32,32,32,32,0}));assert(t.doorbells==5);++tests;}
+ // A reset at the FIRST bounded batch must prevent touching the remaining CQ
+ // entries from the old snapshot; ready credits before reset are not late DMA.
+ {ItlIwx t;t.initial();for(unsigned i=0;i<128;++i)t.completions[i]={uint16_t(i+1),0,0};t.producer=128;
+  onInput=[&]{assert(t.accesses==32&&t.doorbells==2);++t.fPc1ResetEpoch;t.fBzRx.close();};t.bzNotif(&t.com);
+  assert(t.accesses==32&&t.com.rxq.cur==32&&t.doorbells==2&&!t.fBzRx.servicing);++tests;}
+ // A descriptor sync failure before handoff cannot publish prepared credits.
+ {ItlIwx t;t.initial();t.completions[0]={1,0,0};t.producer=1;t.commands[512].status=EIO;
+  t.bzNotif(&t.com);assert(t.fBzFault&&t.accesses==1&&t.doorbells==1);++tests;}
+ // No-progress interrupts leave ownership and MMIO unchanged.
+ {ItlIwx t;t.initial();t.bzNotif(&t.com);assert(!t.fBzFault&&t.doorbells==1);++tests;}
+
+ for(size_t payload:{0U,1U,63U,64U,65U,4096U})for(size_t len:{0U,1U,24U,26U,4032U,4096U}){
+  assert(kgp_bz::mpduFits(payload,64,len)==(payload>=64&&len<=payload-64));++tests;}
+ assert(!kgp_bz::mpduFits(3,SIZE_MAX,0));assert(!kgp_bz::mpduFits(SIZE_MAX,64,SIZE_MAX));tests+=2;
+
+ // RFH-ready ALIVE is a mandatory rewrite even when the software credit
+ // coordinate is unchanged from a pre-ready write; preserve P4/P7 boot.
+ {ItlIwx t;t.initial();t.reads={0,IWX_MSIX_HW_INT_CAUSES_REG_ALIVE};auto old=t.lastDoorbell;t.bzInterrupt(&t.com);assert(!t.fBzFault&&t.doorbells==2&&t.lastDoorbell==old&&t.rearms==1);++tests;}
+ {ItlIwx t;t.initial();t.reads={IWX_MSIX_FH_INT_CAUSES_Q0,IWX_MSIX_HW_INT_CAUSES_REG_ALIVE};t.completions[0]={1,0,0};t.producer=1;t.bzInterrupt(&t.com);assert(!t.fBzFault&&t.accesses==1&&t.doorbells==3&&t.rearms==1);++tests;}
  std::cout<<"PASS "<<tests<<" production-contract/transport scenarios; 8 nonsequential hardware IDs plus 40000 wrapped ledger returns. Mock DMA/MMIO; NOT hardware qualification.\n";
 }
 '''

@@ -202,10 +202,13 @@ void ItlIwx::bzUpdateRxDesc(struct iwx_softc *sc,struct iwx_rx_ring *r,unsigned 
     memset(&d[slot],0,sizeof(d[slot]));d[slot].addr=htole64(entry.address);
     d[slot].rbid=htole16(dataIndex+1);r->write=fBzRx.write;
 }
-void ItlIwx::bzPublishRx(struct iwx_softc *sc)
+void ItlIwx::bzPublishRx(struct iwx_softc *sc,bool force)
 {
     if(fBzFault || !fBzHardwareOwned || !fRxZcRunning ||
        fRxZcGeneration!=unsigned(sc->sc_generation) || fRxZcEpoch!=fPc1ResetEpoch) return;
+    // Skip redundant ordinary service writes, but RFH-ready ALIVE must
+    // restore initial credits even if an earlier pre-ready write was issued.
+    if (!force && fBzRx.issued && (fBzRx.write & ~7U)==fBzRx.published) return;
     unsigned credits=0;
     if(!sc->rxq.free_desc_dma.cmd ||
         sc->rxq.free_desc_dma.cmd->synchronize(kIODirectionOut)!=kIOReturnSuccess ||
@@ -244,11 +247,26 @@ void ItlIwx::bzNotif(struct iwx_softc *sc)
         bzUpdateRxDesc(sc,r,fBzRx.write,dataIndex);
         if(fBzFault) break;
         r->cur=(r->cur+1)&(kgp_bz::RxCount-1);
+        // P8: return only synchronized, replacement-backed credits BEFORE
+        // upper-stack delivery. A stack callback must not hold the device's
+        // replenishment hostage. Bound each delivery batch to 32 completions;
+        // all messages in the already-completed backing remain parsed first.
+        if ((processed & 31U)==0) {
+            bzPublishRx(sc);
+            if_input(&sc->sc_ic.ic_if,&ml);
+            // if_input can stop/reset/reenter the controller. Never inspect
+            // another completion or publish old credits after that transition.
+            if(fBzFault || generation!=unsigned(sc->sc_generation) ||
+               epoch!=fPc1ResetEpoch ||
+               !fBzRx.serviceCurrent(cookie,generation,epoch)) {
+                fBzRx.end(cookie);return;
+            }
+        }
     }
-    // Upper stack can reenter/reset: recheck lifetime before publishing credits.
-    if_input(&sc->sc_ic.ic_if,&ml);
     if(!fBzFault && generation==unsigned(sc->sc_generation) && epoch==fPc1ResetEpoch &&
         fBzRx.serviceCurrent(cookie,generation,epoch)) bzPublishRx(sc);
+    if_input(&sc->sc_ic.ic_if,&ml);
+    // No old-generation DMA publication after the final stack callback.
     fBzRx.end(cookie);
 }
 void ItlIwx::bzCapture()
@@ -278,11 +296,13 @@ int ItlIwx::bzValidateFirmware()
         {IWX_DATA_PATH_GROUP,IWX_TLC_MNG_UPDATE_NOTIF,3,true,false},
         {IWX_LONG_GROUP,IWX_TX_CMD,10,false,false},
         {IWX_LONG_GROUP,IWX_TX_CMD,7,true,false},
+        {IWX_LEGACY_GROUP,IWX_BA_NOTIF,5,true,false},
         {IWX_DATA_PATH_GROUP,IWX_RX_BAID_ALLOCATION_CONFIG_CMD,2,false,false},
         {IWX_REGULATORY_AND_NVM_GROUP,IWX_NVM_GET_INFO,4,true,false},
         {IWX_REGULATORY_AND_NVM_GROUP,IWX_PNVM_INIT_COMPLETE_NTFY,1,true,false},
     };
-    if(!isset(s->sc_enabled_capa,IWX_UCODE_TLV_CAPA_MLD_API_SUPPORT)) return EPROTONOSUPPORT;
+    if(!isset(s->sc_enabled_capa,IWX_UCODE_TLV_CAPA_MLD_API_SUPPORT) ||
+       !isset(s->sc_enabled_capa,IWX_UCODE_TLV_CAPA_TLC_OFFLOAD)) return EPROTONOSUPPORT;
     for(const auto &v:versions) {
         const unsigned found=v.notification?iwx_lookup_notif_ver(s,v.group,v.id):iwx_lookup_cmd_ver(s,v.group,v.id);
         if(!kgp_bz::version(found,v.version,v.implicit)) {bzFail(15,EPROTONOSUPPORT);return EPROTONOSUPPORT;}
@@ -310,7 +330,7 @@ int ItlIwx::bzInterrupt(struct iwx_softc *sc)
     // A coalesced hardware ALIVE/RX interrupt must publish initial credits
     // before validating returned tags. ALIVE is the RFH-ready handshake,
     // not the parsed firmware ALIVE notification or a DMA completion proof.
-    if(hw & IWX_MSIX_HW_INT_CAUSES_REG_ALIVE) bzPublishRx(sc);
+    if(hw & IWX_MSIX_HW_INT_CAUSES_REG_ALIVE) bzPublishRx(sc,true);
     if(fh & (IWX_MSIX_FH_INT_CAUSES_Q0|IWX_MSIX_FH_INT_CAUSES_Q1)) bzNotif(sc);
     if(hw & IWX_MSIX_HW_INT_CAUSES_REG_RF_KILL) {
         iwx_check_rfkill(sc);if(!(sc->sc_flags & IWX_FLAG_SHUTDOWN))task_add(systq,&sc->init_task);

@@ -2,7 +2,7 @@
 """Resolve a SAVED IOService tree, never touches the system or guesses names."""
 import argparse,json,plistlib,re,sys
 from pathlib import Path
-EXPECTED='BE200-GL92-PRIVATE-P7'
+EXPECTED='BE200-GL92-PRIVATE-P8'
 def pci(n,k):
  v=n.get(k)
  if isinstance(v,bytes)and 0<len(v)<=8:return int.from_bytes(v,'little')

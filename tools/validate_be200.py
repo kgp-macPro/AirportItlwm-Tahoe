@@ -3,7 +3,7 @@
 from pathlib import Path
 import sys,subprocess,concurrent.futures,json,hashlib,os,datetime,importlib.util,plistlib,struct
 R=Path(__file__).resolve().parents[1];O=Path(sys.argv[1]);O.mkdir(parents=True,exist_ok=False)
-checks=[('BE200_RECOVERY_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_LINK_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_CONNECTION_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_PNVM_COMPLETION_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_PNVM_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_BOOT_SYNC_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_TRANSPORT_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_LIFECYCLE_HOST_TEST',s)for s in ['address,undefined','thread']]
+checks=[('AX_RX_CREDIT_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_QOS_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_RECOVERY_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_LINK_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_CONNECTION_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_PNVM_COMPLETION_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_PNVM_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_BOOT_SYNC_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_TRANSPORT_HOST_TEST',s)for s in ['address,undefined','thread']]+[('BE200_LIFECYCLE_HOST_TEST',s)for s in ['address,undefined','thread']]
 checks +=[(n,'address,undefined') for n in ['ZC16_COMMAND_HOST_TEST','ZC16_REORDER_HOST_TEST','ZC28_BATCH_HOST_TEST','ZC7_ADMISSION_HOST_TEST','ZC28_SERVICE_OBSERVER_HOST_TEST','ZC28_DRAIN_HOST_TEST','ZC16_LIFECYCLE_HOST_TEST','ZC28_RATE_UPDATE_HOST_TEST']]+[('ZC28_RX_DECODER_TEST',None),('BE200_JOIN_TOOL_TEST',None)]
 def run(v):
  n,san=v;cmd=[sys.executable,'-B',str(R/'tools/host_tests'/(n+'.py'))]+([san]if san else[]);p=O/(n+'-'+(san or 'python').replace(',','-')+'.log');env=dict(os.environ);env['PYTHONDONTWRITEBYTECODE']='1';env['ASAN_OPTIONS']='halt_on_error=1';env['UBSAN_OPTIONS']='halt_on_error=1'
@@ -20,6 +20,9 @@ subprocess.run(['/bin/bash','-n',str(R/'docs/private-be200/COLLECT_BE200.sh')],c
 spec=importlib.util.spec_from_file_location('bzdecode',R/'docs/private-be200/decode_be200.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 w=[200,1,384]+list(range(45));raw=struct.pack('<48Q',*w);node={'IORegistryEntryName':'ARPT','KGP_BE200_TRANSPORT':raw}
 assert m.decode([{'children':[node]}])['snapshots'][0]['raw_hex']==raw.hex();assert m.decode([])['status']=='NO_BZ_WATCHDOG_RECORD'
+assert 'reserved20' in m.decode(node)['snapshots'][0]['counters']
+node_p8=dict(node,KGP_BE200_CANDIDATE='BE200-GL92-PRIVATE-P8')
+assert 'tx_qos_data' in m.decode(node_p8)['snapshots'][0]['counters'] and 'reserved20' not in m.decode(node_p8)['snapshots'][0]['counters']
 boot=m.decode({'IORegistryEntryName':'ARPT','vendor-id':bytes.fromhex('86800000'),'device-id':bytes.fromhex('2b270000'),'KGP_BE200_CANDIDATE':'BE200-GL92-PRIVATE-P2','KGP_BE200_STAGE':'hal:firmware-context','KGP_BE200_ERROR':5,'KGP_BE200_BOOT_SYNC_RESULT':0xe00002c2,'ItlwmPnvmName':'iwlwifi-gl-c0-fm-c0-.pnvm','ItlwmPnvmFailStep':2,'ItlwmPnvmReadError':22})
 assert boot['providers'][0]['properties']['KGP_BE200_BOOT_SYNC_RESULT']==0xe00002c2 and boot['providers'][0]['pci_identity']['device-id']=='0x272b'
 assert boot['providers'][0]['properties']['ItlwmPnvmReadError']==22 and boot['providers'][0]['properties']['ItlwmPnvmFailStep']==2

@@ -40,7 +40,7 @@ def decode(data):
                 if len(raw)!=384:raise ValueError('Wrong BE200 snapshot length')
                 w=struct.unpack('<48Q',raw)
                 if w[:3]!=(200,1,384):raise ValueError('Unknown BE200 schema')
-                found.append({'node':n.get('IORegistryEntryName'),'record':dict(zip(NAMES,w[:16])),'counters':dict(zip(STATS,w[16:])),'raw_hex':raw.hex(),'raw_qwords':list(w),'limits':'Saved boundary capture only; source counters, not over-air or end-to-end completion proof.'})
+                found.append({'node':n.get('IORegistryEntryName'),'record':dict(zip(NAMES,w[:16])),'counters':dict(zip(STATS[:20]+['tx_qos_data','tx_nonqos_data','tx_data_on_management','tx_data_on_tid_queue','rx_hwdecrypt_drop','rx_duplicate_drop','rx_reorder_consumed_buffered_or_dropped','rx_direct_before_stack','rx_reorder_drop','rx_reorder_buffered','rx_crc_or_overrun_drop','rx_envelope_drop'] if candidate=='BE200-GL92-PRIVATE-P8' else STATS,w[16:])),'raw_hex':raw.hex(),'raw_qwords':list(w),'limits':'Saved boundary capture only; source counters, not over-air or end-to-end completion proof.'})
             for v in n.values():walk(v)
         elif isinstance(n,list):
             for v in n:walk(v)

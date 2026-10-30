@@ -175,5 +175,9 @@ struct RxLedger {
  * notifications. It never dispatches a partial boot/key/command response as
  * complete. No discard-and-success policy; no unbounded fragment allocation. */
 inline bool completeMessage(unsigned flags) {return !(flags&1U);}
+// Use the completed notification's payload length, not spare DMA-buffer space.
+inline bool mpduFits(size_t payload,size_t descriptor,size_t mpdu) {
+    return payload>=descriptor && mpdu<=payload-descriptor;
+}
 }
 #endif

@@ -429,7 +429,8 @@ bool ItlIwx::dma5Select()
     if (selection) selection->release();
     if (!resolved) { boot5Mark(10, "device DMA policy unresolved; attach refused", 2); return false; }
     pci.pa_tag->setProperty("KGP_ZC5_DMA_MODE", mapped ? "mapped RX/TX" : "original Dexter RX/TX");
-    pci.pa_tag->setProperty("KGP_RX_EXPERIMENT", "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P7");
+    pci.pa_tag->setProperty("KGP_RX_EXPERIMENT", bzDevice() ?
+        "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P8" : "AirportItlwm-Tahoe-B1-ZC29-PERF");
     boot5Mark(11, mapped ? "DMA routing completed: mapped" : "DMA routing completed: original Dexter");
     return true;
 }
@@ -2306,7 +2307,7 @@ bool ItlIwx::attach(IOPCIDevice *device)
     fBzDevice = device->configRead16(kIOPCIConfigVendorID)==0x8086 &&
         device->configRead16(kIOPCIConfigDeviceID)==0x272b;
     if(fBzDevice) { com.sc_device_family=IWX_DEVICE_FAMILY_BZ;
-        device->setProperty("KGP_BE200_CANDIDATE","BE200-GL92-PRIVATE-P7"); }
+        device->setProperty("KGP_BE200_CANDIDATE","BE200-GL92-PRIVATE-P8"); }
     pci.pa_tag = device;
     pci.workloop = getMainWorkLoop();
     const bool attached2G = iwx_attach(&com, &pci);
@@ -4615,8 +4616,8 @@ iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
             goto fail;
     }
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 &&
-        !pci.pa_tag->setProperty("KGP_RX_EXPERIMENT",
-            "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P7")) {
+        !pci.pa_tag->setProperty("KGP_RX_EXPERIMENT", bzDevice() ?
+            "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P8" : "AirportItlwm-Tahoe-B1-ZC29-PERF")) {
         err = ENOMEM; goto fail;
     }
     return 0;
@@ -8150,6 +8151,7 @@ iwx_rx_reorder(struct iwx_softc *sc, mbuf_t m, int chanidx,
     /* put in reorder buffer */
     ml_enqueue(&entries[index].frames, m);
     buffer->num_stored++;
+    if (bzDevice()) ++fBzStats[29];
     getmicrouptime(&entries[index].reorder_time);
 
     if (is_amsdu) {
@@ -8175,6 +8177,7 @@ iwx_rx_reorder(struct iwx_softc *sc, mbuf_t m, int chanidx,
     return 1;
 
 drop:
+    if (bzDevice()) ++fBzStats[28];
     mbuf_freem(m);
     ieee80211_release_node(ic, ni);
     return 1;
@@ -8466,14 +8469,27 @@ iwx_rx_tx_ba_notif(struct iwx_softc *sc, struct iwx_rx_packet *pkt, struct iwx_r
     if (!le16toh(ba_res->tfd_cnt))
         return;
 
+    const unsigned baGeneration = unsigned(sc->sc_generation);
+    const unsigned baEpoch = fPc1ResetEpoch;
     /* Free per TID */
     for (i = 0; i < le16toh(ba_res->tfd_cnt); i++) {
+        // A completion wake can reenter lifecycle work. No second queue may
+        // be reclaimed using a notification from a terminated BZ lifetime.
+        if (bzDevice() && (fBzFault || baGeneration!=unsigned(sc->sc_generation) ||
+            baEpoch!=fPc1ResetEpoch || (sc->sc_flags & IWX_FLAG_SHUTDOWN))) return;
         struct iwx_compressed_ba_tfd *ba_tfd = &ba_res->tfd[i];
 
         tid = ba_tfd->tid;
 
         qid = le16toh(ba_tfd->q_num);
-        if(bzDevice() && (qid<=IWX_DQA_CMD_QUEUE || qid>=nitems(sc->txq) || tid>=IWX_MAX_TID_COUNT ||
+        // P8: positive BA progress belongs to this AP and this TID's
+        // currently owned queue. Linux also permits the management TID;
+        // it maps only to our explicit management queue, never a data TID.
+        if(bzDevice() && (ba_res->sta_id != IWX_STATION_ID ||
+           qid<=IWX_DQA_CMD_QUEUE || qid>=nitems(sc->txq) || qid>=32 ||
+           !(fBzQueueOwned & (1U << qid)) ||
+           !((tid<IWX_MAX_TID_COUNT && sc->sc_tid_data[tid].qid==qid) ||
+             (tid==IWX_MGMT_TID && qid==sc->first_data_qid)) ||
            !sc->txq[qid].ring_count || !itlTxCompletionValid(sc->txq[qid].tail,sc->txq[qid].queued,
            IWX_AGG_SSN_TO_TXQ_IDX(le16toh(ba_tfd->tfd_index),sc->txq[qid].ring_count),sc->txq[qid].ring_count))) {
             bzFail(24,EPROTO);return;
@@ -9428,7 +9444,8 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
         uint8_t tid = qos & IEEE80211_QOS_TID;
 
         ba = &ni->ni_tx_ba[tid];
-        if (!IEEE80211_IS_MULTICAST(wh->i_addr1) &&
+        if (tid < IWX_MAX_TID_COUNT &&
+            !IEEE80211_IS_MULTICAST(wh->i_addr1) &&
             type == IEEE80211_FC0_TYPE_DATA &&
             subtype != IEEE80211_FC0_SUBTYPE_NODATA &&
             sc->sc_tid_data[tid].qid != 0 &&
@@ -9442,6 +9459,7 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
         if(ieee80211_has_qos(wh) && type==IEEE80211_FC0_TYPE_DATA &&
            subtype!=IEEE80211_FC0_SUBTYPE_NODATA && !IEEE80211_IS_MULTICAST(wh->i_addr1)) {
             unsigned t=ieee80211_get_qos(wh)&IEEE80211_QOS_TID;
+            if (t>=IWX_MAX_TID_COUNT) {mbuf_freem(m);return EINVAL;}
             qid=sc->first_data_qid; // EAPOL/preauthorization uses management queue.
             if(ni->ni_port_valid && t<IWX_MAX_TID_COUNT && sc->sc_tid_data[t].qid>0 &&
                 sc->sc_tid_data[t].qid!=IWX_INVALID_QUEUE) qid=sc->sc_tid_data[t].qid;
@@ -9632,6 +9650,15 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
             bzFail(22,EIO);tx2IRetire(data,false);mbuf_freem(m);return EIO;
         }
         ++fBzStats[11];
+        // Gate-serialized, bounded counters only; no printing/registry work.
+        if (type==IEEE80211_FC0_TYPE_DATA) {
+            const auto *published_header = reinterpret_cast<const ieee80211_frame *>(
+                cmd->data + sizeof(iwx_tx_cmd_gen3));
+            if (ieee80211_has_qos(published_header)) ++fBzStats[20];
+            else ++fBzStats[21];
+            if (qid==sc->first_data_qid) ++fBzStats[22];
+            else ++fBzStats[23];
+        }
     }
     data->m = m;
     data->in = in;
@@ -13917,7 +13944,8 @@ iwx_rx_pkt(struct iwx_softc *sc, struct iwx_rx_data *data, struct mbuf_list *ml)
                 
             case IWX_REPLY_RX_MPDU_CMD: {
                 if(bzDevice())++fBzStats[19];
-                size_t maxlen = IWX_RBUF_SIZE - offset - minsz;
+                size_t maxlen = bzDevice() ? iwx_rx_packet_payload_len(pkt) :
+                    IWX_RBUF_SIZE - offset - minsz;
                 nextoff = offset +
                 roundup(len, IWX_FH_RSCSR_FRAME_ALIGN);
                 nextpkt = (struct iwx_rx_packet *)
@@ -14321,6 +14349,8 @@ iwx_notif_intr(struct iwx_softc *sc)
     if (dma5Leased()) ++fRxZcNotif;
     if (sc->sc_device_family>=IWX_DEVICE_FAMILY_AX210 && __atomic_load_n(&fPc1Fault,__ATOMIC_ACQUIRE)) return;
     alive2FEvent(4);
+    const unsigned generation = unsigned(sc->sc_generation);
+    const unsigned epoch = fPc1ResetEpoch;
     struct mbuf_list ml = MBUF_LIST_INITIALIZER();
     uint16_t hw;
     
@@ -14338,6 +14368,24 @@ iwx_notif_intr(struct iwx_softc *sc)
         (!fRxZcRunning || rxZcFailed() || __atomic_load_n(&fPc1Fault, __ATOMIC_ACQUIRE))) {
         rxZcReport(0); return;
     }
+    // P8: replacement backing has passed rxZcRepost before any credit is
+    // returned. Never postpone ready credits until after upper-stack callbacks,
+    // which may stop/reset this controller. Keep the exact AX RFH index rule.
+    const auto current = [&]() {
+        return getMainWorkLoop()->inGate() &&
+            !__atomic_load_n(&fRxZcClosing,__ATOMIC_ACQUIRE) &&
+            fRxZcRunning && !rxZcFailed() &&
+            !__atomic_load_n(&fPc1Fault,__ATOMIC_ACQUIRE) &&
+            generation==unsigned(sc->sc_generation) && epoch==fPc1ResetEpoch &&
+            fRxZcGeneration==generation && fRxZcEpoch==epoch;
+    };
+    const auto publish = [&]() {
+        if (!current()) return;
+        const unsigned cur = sc->rxq.cur;
+        const unsigned credits = (cur==0 ? IWX_RX_MQ_RING_COUNT-1 : cur-1) & ~7U;
+        iwx_dma_queue_publish_barrier();
+        IWX_WRITE(sc,IWX_RFH_Q0_FRBDCB_WIDX_TRG,credits);
+    };
     while (sc->rxq.cur != hw) {
         struct iwx_rx_data *data = &sc->rxq.data[sc->rxq.cur];
         if (dma5Leased()) fRxZcBatchQueued = ml_len(&ml);
@@ -14353,14 +14401,10 @@ iwx_notif_intr(struct iwx_softc *sc)
         fRxZcBatchQueued = ml_len(&ml);
         if (fRxZcBatchQueued > fRxZcBatchMax) fRxZcBatchMax = fRxZcBatchQueued;
     }
+    // Publish BEFORE the final handoff too; no old-generation DMA write may
+    // follow a stack-triggered reset, detach or shutdown.
+    publish();
     if_input(&sc->sc_ic.ic_if, &ml);
-    
-    /*
-     * Tell the firmware what we have processed.
-     * Seems like the hardware gets upset unless we align the write by 8??
-     */
-    hw = (hw == 0) ? IWX_RX_MQ_RING_COUNT - 1 : hw - 1;
-    IWX_WRITE(sc, IWX_RFH_Q0_FRBDCB_WIDX_TRG, hw & ~7);
     if (dma5Leased()) rxZcReport(0);
     dma5Report();
 }
@@ -16319,6 +16363,9 @@ iwx_attach(struct iwx_softc *sc, struct pci_attach_args *pa)
         goto fail5;
     }
     boot5Mark(51, "firmware preinit completed");
+    // P8: full firmware BA ownership is distinct from the legacy host-BA
+    // callback capability. GL92/TLC/API validation has succeeded at this point.
+    if (bzDevice()) ic->ic_caps |= IEEE80211_C_TX_BA_OFFLOAD;
     boot5Mark(60, "TX payload initialization entered");
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 && !tx2IAllocate())
         goto fail5;
@@ -17010,6 +17057,7 @@ dexterOriginal_iwx_rx_pkt(struct iwx_softc *sc, struct iwx_rx_data *data, struct
 void ItlIwx::
 dexterOriginal_iwx_notif_intr(struct iwx_softc *sc)
 {
+    const unsigned generation=unsigned(sc->sc_generation),epoch=fPc1ResetEpoch;
     struct mbuf_list ml = MBUF_LIST_INITIALIZER();
     uint16_t hw;
     
@@ -17025,16 +17073,22 @@ dexterOriginal_iwx_notif_intr(struct iwx_softc *sc)
     while (sc->rxq.cur != hw) {
         struct iwx_rx_data *data = &sc->rxq.data[sc->rxq.cur];
         iwx_rx_pkt(sc, data, &ml);
+        if (generation!=unsigned(sc->sc_generation) || epoch!=fPc1ResetEpoch ||
+            (sc->sc_flags & IWX_FLAG_SHUTDOWN)) {
+            if_input(&sc->sc_ic.ic_if,&ml);return;
+        }
         sc->rxq.cur = (sc->rxq.cur + 1) % IWX_RX_MQ_RING_COUNT;
     }
+    // P8: conventional/native IWX follows the same callback lifetime rule as
+    // the mapped path. Keep RFH geometry, backing and final-reference handling.
+    // No old-generation RX credit may follow upper-stack reset/reentry.
+    if (generation==unsigned(sc->sc_generation) && epoch==fPc1ResetEpoch &&
+        !(sc->sc_flags & IWX_FLAG_SHUTDOWN) && getMainWorkLoop()->inGate()) {
+        hw = (hw == 0) ? IWX_RX_MQ_RING_COUNT - 1 : hw - 1;
+        iwx_dma_queue_publish_barrier();
+        IWX_WRITE(sc, IWX_RFH_Q0_FRBDCB_WIDX_TRG, hw & ~7);
+    }
     if_input(&sc->sc_ic.ic_if, &ml);
-    
-    /*
-     * Tell the firmware what we have processed.
-     * Seems like the hardware gets upset unless we align the write by 8??
-     */
-    hw = (hw == 0) ? IWX_RX_MQ_RING_COUNT - 1 : hw - 1;
-    IWX_WRITE(sc, IWX_RFH_Q0_FRBDCB_WIDX_TRG, hw & ~7);
 }
 
 int ItlIwx::
@@ -17086,7 +17140,8 @@ dexterOriginal_iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni,
         uint8_t tid = qos & IEEE80211_QOS_TID;
 
         ba = &ni->ni_tx_ba[tid];
-        if (!IEEE80211_IS_MULTICAST(wh->i_addr1) &&
+        if (tid < IWX_MAX_TID_COUNT &&
+            !IEEE80211_IS_MULTICAST(wh->i_addr1) &&
             type == IEEE80211_FC0_TYPE_DATA &&
             subtype != IEEE80211_FC0_SUBTYPE_NODATA &&
             sc->sc_tid_data[tid].qid != 0 &&

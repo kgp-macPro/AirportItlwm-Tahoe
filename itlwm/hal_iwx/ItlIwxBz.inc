@@ -3023,14 +3023,19 @@ iwx_bz_port_rx_mpdu_mq(struct iwx_softc *sc, mbuf_t m, void *pktdata,
     uint16_t phy_info;
     size_t desc_size;
 
-    desc = (struct iwx_rx_mpdu_desc *)pktdata;
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210)
         desc_size = sizeof(struct iwx_rx_mpdu_desc);
     else
         desc_size = IWX_RX_DESC_SIZE_V1;
+    if (!kgp_bz::mpduFits(maxlen,desc_size,0)) {
+        ++fBzStats[31];IC2IFP(ic)->netStat->inputErrors++;
+        mbuf_freem(m);return;
+    }
+    desc = (struct iwx_rx_mpdu_desc *)pktdata;
 
     if (!(desc->status & htole16(IWX_RX_MPDU_RES_STATUS_CRC_OK)) ||
         !(desc->status & htole16(IWX_RX_MPDU_RES_STATUS_OVERRUN_OK))) {
+        ++fBzStats[30];
         mbuf_freem(m);
         return; /* drop */
     }
@@ -3050,7 +3055,8 @@ iwx_bz_port_rx_mpdu_mq(struct iwx_softc *sc, mbuf_t m, void *pktdata,
         mbuf_freem(m);
         return;
     }
-    if (len > maxlen - desc_size) {
+    if (!kgp_bz::mpduFits(maxlen,desc_size,len)) {
+        ++fBzStats[31];
         IC2IFP(ic)->netStat->inputErrors++;
         mbuf_freem(m);
         return;
@@ -3122,6 +3128,10 @@ iwx_bz_port_rx_mpdu_mq(struct iwx_softc *sc, mbuf_t m, void *pktdata,
             hdrlen += IEEE80211_CCMP_HDRLEN;
         }
 
+        if (hdrlen > len || len-hdrlen < 2) {
+            ++fBzStats[31];IC2IFP(ic)->netStat->inputErrors++;
+            mbuf_freem(m);return;
+        }
         //        memmove(m->m_data + 2, m->m_data, hdrlen);
         memmove((uint8_t*)mbuf_data(m) + 2, mbuf_data(m), hdrlen);
         mbuf_adj(m, 2);
@@ -3167,11 +3177,13 @@ iwx_bz_port_rx_mpdu_mq(struct iwx_softc *sc, mbuf_t m, void *pktdata,
      * verified as part of the CCMP nonce.
      */
     if (iwx_rx_hwdecrypt(sc, m, le16toh(desc->status), &rxi)) {
+        ++fBzStats[24];
         mbuf_freem(m);
         return;
     }
 
     if (iwx_detect_duplicate(sc, m, desc, &rxi)) {
+        ++fBzStats[25];
         mbuf_freem(m);
         return;
     }
@@ -3198,9 +3210,12 @@ iwx_bz_port_rx_mpdu_mq(struct iwx_softc *sc, mbuf_t m, void *pktdata,
 
     if (iwx_rx_reorder(sc, m, chanidx, desc,
                        (phy_info & IWX_RX_MPDU_PHY_SHORT_PREAMBLE),
-                       rate_n_flags, device_timestamp, &rxi, ml))
+                       rate_n_flags, device_timestamp, &rxi, ml)) {
+        ++fBzStats[26]; // Consumed: buffered OR dropped, not a loss counter.
         return;
+    }
 
+    ++fBzStats[27]; // Direct path, before final decrypt/upper-stack acceptance.
     iwx_rx_frame(sc, m, chanidx, le16toh(desc->status),
                  (phy_info & IWX_RX_MPDU_PHY_SHORT_PREAMBLE),
                  rate_n_flags, device_timestamp, &rxi, ml);

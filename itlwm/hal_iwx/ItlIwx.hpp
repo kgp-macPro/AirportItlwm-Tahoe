@@ -780,7 +780,7 @@ public:
     void bzUpdateRxDesc(struct iwx_softc *, struct iwx_rx_ring *, unsigned, unsigned);
     void bzNotif(struct iwx_softc *);
     void bzResetRx(struct iwx_softc *);
-    void bzPublishRx(struct iwx_softc *);
+    void bzPublishRx(struct iwx_softc *,bool force=false);
     void bzCapture();
     bool  iwx_has_new_station_api(struct iwx_softc *sc);
     bool  iwx_use_mld_api(struct iwx_softc *sc);
