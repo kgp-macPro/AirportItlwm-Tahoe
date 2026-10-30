@@ -1,0 +1,116 @@
+{
+  "publication_consent": "KGP explicitly accepted visible MAC/BSSID/private IP and withdrew redaction; all copies unchanged",
+  "first_nine": "User-confirmed earlier test screenshots; not newly captured evidence of the final four OFF/ON cycles",
+  "images": [
+    {
+      "order": 1,
+      "original": "/Users/kgp/Desktop/AirportItlwm/EVIDENCE/2026-10-30_BE200_P6_OFFON_P7/screenshots/local-desktop-originals/Screenshot 2026-10-30 at 00.05.20.png",
+      "original_desktop": "/Users/kgp/Desktop/Screenshot 2026-10-30 at 00.05.20.png",
+      "public": "Assets/BE200-Alpha/01-applevtd.png",
+      "sha256": "812acee959c63c19b8239875bf38c530f21d3960d50a8103e87b6e3dc118050b",
+      "bytes": 138997,
+      "unchanged_pixels_and_bytes": true,
+      "caption": "AppleVTD visible in IORegistryExplorer.",
+      "publication_consent": "KGP explicitly accepts visible MAC/BSSID/private IP; redaction instruction withdrawn"
+    },
+    {
+      "order": 2,
+      "original": "/Users/kgp/Desktop/AirportItlwm/EVIDENCE/2026-10-30_BE200_P6_OFFON_P7/screenshots/local-desktop-originals/Screenshot 2026-10-30 at 00.03.11.png",
+      "original_desktop": "/Users/kgp/Desktop/Screenshot 2026-10-30 at 00.03.11.png",
+      "public": "Assets/BE200-Alpha/02-hardware.png",
+      "sha256": "83b7695e19a3ce6ce2fec3161e425d4b91ffde47320d430fa5ae79d4300ab189",
+      "bytes": 193352,
+      "unchanged_pixels_and_bytes": true,
+      "caption": "PCI device 8086:272B bound to AirportItlwm.",
+      "publication_consent": "KGP explicitly accepts visible MAC/BSSID/private IP; redaction instruction withdrawn"
+    },
+    {
+      "order": 3,
+      "original": "/Users/kgp/Desktop/AirportItlwm/EVIDENCE/2026-10-30_BE200_P6_OFFON_P7/screenshots/local-desktop-originals/Screenshot 2026-10-30 at 00.01.25.png",
+      "original_desktop": "/Users/kgp/Desktop/Screenshot 2026-10-30 at 00.01.25.png",
+      "public": "Assets/BE200-Alpha/03-wifi-menu.png",
+      "sha256": "9eb9f784d2cf8122047273526ff833afde74f69f9af6989193b00ec56a60875c",
+      "bytes": 85602,
+      "unchanged_pixels_and_bytes": true,
+      "caption": "Wi-Fi menu showing the selected network.",
+      "publication_consent": "KGP explicitly accepts visible MAC/BSSID/private IP; redaction instruction withdrawn"
+    },
+    {
+      "order": 4,
+      "original": "/Users/kgp/Desktop/AirportItlwm/EVIDENCE/2026-10-30_BE200_P6_OFFON_P7/screenshots/local-desktop-originals/Screenshot 2026-10-30 at 00.01.12.png",
+      "original_desktop": "/Users/kgp/Desktop/Screenshot 2026-10-30 at 00.01.12.png",
+      "public": "Assets/BE200-Alpha/04-connected.png",
+      "sha256": "6dec315eb6b509658f32d5960034d528ba36dedc2827f1e6a18e1600707669c0",
+      "bytes": 76127,
+      "unchanged_pixels_and_bytes": true,
+      "caption": "Wi-Fi settings showing Connected.",
+      "publication_consent": "KGP explicitly accepts visible MAC/BSSID/private IP; redaction instruction withdrawn"
+    },
+    {
+      "order": 5,
+      "original": "/Users/kgp/Desktop/AirportItlwm/EVIDENCE/2026-10-30_BE200_P6_OFFON_P7/screenshots/local-desktop-originals/Screenshot 2026-10-30 at 00.01.50.png",
+      "original_desktop": "/Users/kgp/Desktop/Screenshot 2026-10-30 at 00.01.50.png",
+      "public": "Assets/BE200-Alpha/05-dhcp.png",
+      "sha256": "ecdf3b071c51031158730883938d504690f6f8f35c38148822d2eee27e9b762a",
+      "bytes": 70942,
+      "unchanged_pixels_and_bytes": true,
+      "caption": "DHCP configuration with an IPv4 address and router.",
+      "publication_consent": "KGP explicitly accepts visible MAC/BSSID/private IP; redaction instruction withdrawn"
+    },
+    {
+      "order": 6,
+      "original": "/Users/kgp/Desktop/AirportItlwm/EVIDENCE/2026-10-30_BE200_P6_OFFON_P7/screenshots/local-desktop-originals/Screenshot 2026-10-30 at 00.02.11.png",
+      "original_desktop": "/Users/kgp/Desktop/Screenshot 2026-10-30 at 00.02.11.png",
+      "public": "Assets/BE200-Alpha/06-firmware.png",
+      "sha256": "9b99d4f3d955a7ada2af2a42b7980d1e35b893352dfaffe256df3e6010faeee5",
+      "bytes": 237443,
+      "unchanged_pixels_and_bytes": true,
+      "caption": "Firmware 92.67ce4588.0 and an 802.11ac connection on 5 GHz / 80 MHz. The displayed 867 Mbps is the PHY rate, not measured payload throughput.",
+      "publication_consent": "KGP explicitly accepts visible MAC/BSSID/private IP; redaction instruction withdrawn"
+    },
+    {
+      "order": 7,
+      "original": "/Users/kgp/Desktop/AirportItlwm/EVIDENCE/2026-10-30_BE200_P6_OFFON_P7/screenshots/local-desktop-originals/Screenshot 2026-10-30 at 00.06.45.png",
+      "original_desktop": "/Users/kgp/Desktop/Screenshot 2026-10-30 at 00.06.45.png",
+      "public": "Assets/BE200-Alpha/07-interface.png",
+      "sha256": "de2251186ab067d757844fbfb5d906a92d10fee29651ca14f7a91fd050c4f5bf",
+      "bytes": 342031,
+      "unchanged_pixels_and_bytes": true,
+      "caption": "AirportItlwm infrastructure interface in IORegistryExplorer.",
+      "publication_consent": "KGP explicitly accepts visible MAC/BSSID/private IP; redaction instruction withdrawn"
+    },
+    {
+      "order": 8,
+      "original": "/Users/kgp/Desktop/AirportItlwm/EVIDENCE/2026-10-30_BE200_P6_OFFON_P7/screenshots/local-desktop-originals/Screenshot 2026-10-29 at 23.37.24.png",
+      "original_desktop": "/Users/kgp/Desktop/Screenshot 2026-10-29 at 23.37.24.png",
+      "public": "Assets/BE200-Alpha/08-internet-speedtest.png",
+      "sha256": "1148c7c0f5fa07525cdc1fc65cab92c75bb56a85c31d00cff7098d880d171e4d",
+      "bytes": 60808,
+      "unchanged_pixels_and_bytes": true,
+      "caption": "Internet Speedtest: 79.5 Mbps download and 28.5 Mbps upload, ping 8 ms, jitter 1 ms. Packet loss is not reported in this result.",
+      "publication_consent": "KGP explicitly accepts visible MAC/BSSID/private IP; redaction instruction withdrawn"
+    },
+    {
+      "order": 9,
+      "original": "/Users/kgp/Desktop/AirportItlwm/EVIDENCE/2026-10-30_BE200_P6_OFFON_P7/screenshots/local-desktop-originals/Screenshot 2026-10-30 at 00.37.06.png",
+      "original_desktop": "/Users/kgp/Desktop/Screenshot 2026-10-30 at 00.37.06.png",
+      "public": "Assets/BE200-Alpha/09-bluetooth.png",
+      "sha256": "9343c6b7ec76bd958b4d4c57280b41a45d88ae7f780652b5be86cbcc1bffb57b",
+      "bytes": 58621,
+      "unchanged_pixels_and_bytes": true,
+      "caption": "Magic Keyboard and Magic Mouse connected using BlueToolFixup.kext v2.7.2 by acidanthera and IntelBluetoothFirmware v2.5.1 from lshbluesky; Intel USB Bluetooth controller 8087:0036.",
+      "publication_consent": "KGP explicitly accepts visible MAC/BSSID/private IP; redaction instruction withdrawn"
+    },
+    {
+      "order": 10,
+      "original": "/Users/kgp/Desktop/AirportItlwm/EVIDENCE/2026-10-30_BE200_P6_OFFON_P7/screenshots/local-desktop-originals/Screenshot 2026-10-30 at 01.21.58.png",
+      "original_desktop": "/Users/kgp/Desktop/Screenshot 2026-10-30 at 01.21.58.png",
+      "public": "Assets/BE200-Alpha/10-macos-version.png",
+      "sha256": "f4c2c727ba686e9dea4e9f2d8a9e7e6623a194060c6364bed3901a6dffbb01a5",
+      "bytes": 395944,
+      "unchanged_pixels_and_bytes": true,
+      "caption": "macOS Tahoe 26.7.2 (build 25G332), the operating system used during these BE200 tests.",
+      "publication_consent": "KGP explicitly accepts visible MAC/BSSID/private IP; redaction instruction withdrawn"
+    }
+  ]
+}
