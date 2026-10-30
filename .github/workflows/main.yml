@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   validate:
-    name: Frozen P7 inputs, BE200 regressions and UNQUALIFIED CI build
+    name: Frozen P8R1 inputs, BE200 regressions and UNQUALIFIED CI build
     runs-on: macos-15-intel
     timeout-minutes: 45
     env:

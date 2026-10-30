@@ -1,37 +1,61 @@
-# AirportItlwm-Tahoe 1.2.0 BE200 Alpha 1 — installation, first checks and rollback
+# AirportItlwm-Tahoe 1.2.0 BE200 Alpha 2 — Performance Hotfix — installation and rollback
 
-**Required: Retro-OCLP-CustoMac root patching.** This BE200 alpha uses the restored Ventura legacy wireless frameworks and requires the corresponding root patches provided by [Retro-OCLP-CustoMac](https://github.com/kgp-macPro/OCLP-CustoMac). Keep the matching framework/Skywalk and AMFIPass/`-amfipassbeta` boot configuration; this is not a native, unpatched Wi-Fi driver.
+**Required: Retro-OCLP-CustoMac root patching.** This BE200 alpha uses the restored Ventura legacy wireless frameworks and requires the corresponding root patches provided by [Retro-OCLP-CustoMac](https://github.com/kgp-macPro/OCLP-CustoMac). Retain the matching Skywalk/framework and AMFIPass/`-amfipassbeta` boot configuration. This is not a native/unpatched Wi-Fi implementation.
 
-**Test environment: macOS Tahoe 26.7.2 (build 25G332), x86_64, with AppleVTD enabled.**
+**Test environment: macOS Tahoe 26.7.2 (build25G332), x86_64, with AppleVTD enabled.**
 
-**Further performance optimization is planned.** The current alpha focuses on initial functionality and recovery testing; its performance results are preliminary.
+1. Download/extract [AirportItlwm-Tahoe-1.2.0-BE200-Alpha-2.zip](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v1.2.0-be200-alpha.2/AirportItlwm-Tahoe-1.2.0-BE200-Alpha-2.zip).
+2. Back up the complete existing AirportItlwm.kext and boot configuration.
+3. Manually replace the whole bundle in its existing enabled OpenCore location
+   with the complete supplied AirportItlwm.kext. Do not merge or enable duplicate
+   variants. Preserve the required working root patches/boot environment.
+4. Reboot manually; loaded UUID must be`E4414AAB-1D58-3E40-93A5-6838D3CDCD20`.
+   The internal1.0.0version alone is not identification.
 
-**Bluetooth setup used during these BE200 tests:** [BlueToolFixup.kext v2.7.2](https://github.com/acidanthera/BrcmPatchRAM/releases) by acidanthera, together with [IntelBluetoothFirmware v2.5.1](https://github.com/lshbluesky/IntelBluetoothFirmware/releases/tag/v2.5.1) from lshbluesky. The Intel USB Bluetooth controller was identified as **8087:0036**, and both Magic Keyboard and Magic Mouse were connected during testing.
+Record autojoin, IPv4/router and Wi-Fi-bound connectivity; simultaneous Ethernet
+can otherwise hide which interface carries Internet traffic. Determine the actual
+PCI/provider/infrastructure-interface binding; do not assume ARPT/en2 or infer
+DMA from a device label. No supplied tool installs/loads a Kext or changes
+EFI, root patches, Wi-Fi power, services or routes.
 
-## Install manually
+Optional read-only boundary collection: `COLLECT_BE200.sh` accepts a simple
+stage name and discovers PCI providers when no provider override is supplied.
+For a focused manual join failure, `COLLECT_BE200_JOIN.sh` additionally requires
+the **actual verified** `WIFI_IFACE` and `IOREG_WIFI_SERVICE` values; it stops
+on missing/mismatched/ambiguous bindings. Set those two environment variables
+before invoking it. Python3 is needed for the optional resolver/decoder.
+Do not run collection/scans/System Profiler concurrently with throughput tests.
 
-1. Download the [complete Alpha ZIP](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v1.2.0-be200-alpha.1/AirportItlwm-Tahoe-1.2.0-BE200-Alpha-1.zip) and extract it. No compilation is needed.
-2. Confirm the BE200 PCI identity and required matching restored Ventura legacy wireless/root-patch environment. Keep a known working boot method and a complete backup of the current AirportItlwm.kext and boot configuration. This ZIP does not install the root patches, AMFIPass or Bluetooth kexts.
-3. In your existing user-managed OpenCore installation, replace the complete AirportItlwm.kext at its established location with the supplied bundle. Do not merge files, keep duplicate competing copies or load it into the running system. Preserve your matching kernel entry/order and framework/boot configuration. No script here edits EFI.
-4. Reboot manually. Check the **loaded** UUID `3610B51E-B7CD-3822-94BD-61EA7C138D99` and Wi-Fi binding; an internal 1.0.0 version or a Desktop filename alone does not identify this Alpha.
-
-## Minimal first checks
-
-Record initial login autojoin, a fresh scan/join if required, DHCP address/router and actual Wi-Fi route. Determine the actual Wi-Fi interface from its AirportItlwm IORegistry binding; do not assume en2 or ARPT on another machine. Keep Ethernet routing separate. The supplied optional collector resolves the associated infrastructure interface, rejects an ambiguous mapping, and does not toggle, join or send test traffic:
+For an optional full comparison, the unchanged r10 common runner is included
+under TOOLS with its profiles. After installing/rebooting Alpha2, from the
+extracted package directory run:
 
 ```sh
-cd "$HOME/Downloads/AirportItlwm-Tahoe-1.2.0-BE200-Alpha-1"
-sudo /bin/bash ./COLLECT_BE200_JOIN.sh
+CANDIDATE_KEXT="$PWD/AirportItlwm.kext" CANDIDATE_LABEL=BE200-P8 \
+  DEVICE_LABEL=BE200 WIFI_IFACE= IOREG_WIFI_SERVICE= \
+  /bin/bash ./TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh BE200-P8 mapped
 ```
 
-Adjust the extracted directory path if your browser chose another location. A compatible Python 3 interpreter is needed only for the optional collector/decoder. Its output directory/ZIP is printed at completion. Capture one manually controlled OFF/ON cycle per attempt. If a failure occurs, preserve that state and original capture before retrying. One manual Sleep/Wake is a separate check. Avoid System Profiler queries and parallel scans during throughput work; no broad iperf matrix is required for this initial Alpha check.
+Run the existing wired peer separately with `iperf3 -s -p 5201`, its Wi-Fi
+manually off. The client prompts for its current IPv4 and verifies the actual
+Wi-Fi binding/route/loaded identity and Mode2+AppleVTD. These arguments CHECK,
+not select, boot/DMA settings. Other supported systems must select their actual
+verified mode. All original three-round14-case commands/pauses/output guards are
+unchanged. Preserve failed/slow result ZIPs too.
 
-The Internet test shown is 79.5/28.5 Mbps on a nominal 80/30 connection. It is not a LAN benchmark; local throughput remains a separate investigation. All performance results are preliminary.
+**Known limits:** Find My remains unresolved. KGP reports successful Wi-Fi OFF/ON
+and manual Sleep/Wake tests with P8R1 (USER-OBSERVED); this is not long-term or
+exhaustive recovery qualification. Alpha1's earlier observations remain historical.
+This one benchmark qualifies the BE200 environment;
+AX201/AX210/AX211 remain active shared1.2.0 development targets. Full Wi-Fi7,
+MLO,6GHz,BE201,AirDrop/AutoUnlock/fullAWDL are not claimed. More performance
+optimization is planned; UDP loss, high-rate UDP sender limits and TCP RX
+variation/retransmissions remain recorded.
 
-## Roll back
+Bluetooth is separate: the earlier demonstrated setup used
+[BlueToolFixup2.7.2](https://github.com/acidanthera/BrcmPatchRAM/releases) by
+acidanthera and [lshbluesky IntelBluetoothFirmware2.5.1](https://github.com/lshbluesky/IntelBluetoothFirmware/releases/tag/v2.5.1), IntelUSB8087:0036.
 
-Restore the complete previous AirportItlwm.kext and its matching backed-up boot configuration, then reboot manually. Merely swapping a Wi-Fi kext does not remove or restore existing root patches. If a previous framework/patch state is needed, use the corresponding project's documented manual recovery procedure; these tools never apply/remove patches automatically.
-
-## Status and limits
-
-The current candidate passed the four OFF/ON cycles and immediate login/Sleep/Wake joins reported by KGP. These scoped observations do not qualify long-term reliability, other cards/modes, Wi-Fi 7, MLO, 6 GHz, BE201 or full Continuity features. BlueToolFixup/IntelBluetoothFirmware are separate dependencies, not bundled Wi-Fi functionality. See the [Alpha campaign](https://github.com/kgp-macPro/AirportItlwm-Tahoe#current-be200-alpha-testing-campaign) and [build/source correspondence](https://github.com/kgp-macPro/AirportItlwm-Tahoe/blob/v1.2.0-be200-alpha.1/docs/be200-alpha/BUILD.md).
+Rollback: restore the complete previous known-working bundle and its matching
+boot configuration, then reboot manually. Swapping Kexts does not undo existing
+root patches. Alpha1 remains available unchanged in release history.
