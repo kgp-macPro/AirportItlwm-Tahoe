@@ -7,3 +7,5 @@ These are unchanged files from the completed source/binary audit, copied here so
 - Existing Apple synchronize test reference and its APSL notice remain in the adjacent reference directory.
 
 License texts: repository LICENSE (GPLv2), and the Linux dual-license references retain the BSD option; `LICENSES/BSD-3-Clause.txt` below. Intel redistributable firmware has its own adjacent firmware license. No license is replaced by this summary.
+
+- Exact frozen ZC15 baseline source `f2a02dcd7cd0f44c8ec2804428103beccca4d2b0:itlwm/hal_iwx/ItlIwx.cpp` is exported unchanged under legacy/. That commit is not an ancestor of this branch, so a clean public checkout must not depend on a private Git object. Its original notices are retained; only test extraction reads it.

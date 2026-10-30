@@ -6,7 +6,7 @@ This is state-equivalence validation, not a radio/throughput or DMA model.
 from pathlib import Path
 import argparse,hashlib,json,os,re,subprocess,tempfile
 BASELINE='48e9a31e68c328b5f19e5bdc81901e900d350738'
-REPO=Path('/Users/kgp/Developer/OpenIntelWireless/AirportItlwm-Tahoe-1.0.0-Experiments/TRACK-B1-ZC8-PERF')
+REPO=Path(__file__).resolve().parents[2]
 CPP='itlwm/hal_iwx/ItlIwx.cpp';REG='itlwm/hal_iwx/if_iwxreg.h';VAR='itlwm/hal_iwx/if_iwxvar.h'
 def git(path):return subprocess.check_output(['git','-C',str(REPO),'show',BASELINE+':'+path],text=True)
 def masked(t):return re.sub(r'//[^\n]*|/\*.*?\*/|"(?:\\.|[^"\\])*"',lambda m:' '*len(m[0]),t,flags=re.S)

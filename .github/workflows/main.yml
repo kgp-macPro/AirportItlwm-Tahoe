@@ -49,7 +49,8 @@ jobs:
           python3 tools/verify_be200_release_source.py
       - name: Label unqualified CI output
         run: python3 tools/package_ci.py build/tahoe/products/Release/Tahoe/AirportItlwm.kext build/ci-evidence
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - if: always() # retain failed-test logs; no validation/build condition is bypassed
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: BE200-CI-BUILD-NOT-PHYSICALLY-VALIDATED-${{ github.sha }}
           path: |

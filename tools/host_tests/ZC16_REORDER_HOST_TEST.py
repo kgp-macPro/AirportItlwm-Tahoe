@@ -103,7 +103,7 @@ san=sys.argv[1] if len(sys.argv)>1 else 'address,undefined'
 with tempfile.TemporaryDirectory(prefix='zc16-reorder-') as t:
  p=Path(t)
  for baseline in [True,False]:
-  src=subprocess.check_output([G,'-C',str(R),'show','f2a02dcd7cd0f44c8ec2804428103beccca4d2b0:itlwm/hal_iwx/ItlIwx.cpp']).decode() if baseline else SRC.read_text()
+  src=(R/'tools/host_tests/reference/be200/legacy/ZC15-f2a02dcd7cd0/ItlIwx.cpp').read_text() if baseline else SRC.read_text()
   body=mock+'\n'.join(extract(src,n) for n in names+([] if baseline else ['zc16ArmReorder']))+test
   f=p/('old.cpp' if baseline else 'current.cpp');f.write_text(body)
   cmd=[subprocess.check_output(['/usr/bin/xcrun','--find','clang++'],text=True).strip(),'-isysroot',subprocess.check_output(['/usr/bin/xcrun','--sdk','macosx','--show-sdk-path'],text=True).strip(),'-std=c++17','-O1','-g','-fsanitize='+san]+(['-DBASELINE'] if baseline else [])+[str(f),'-o',str(p/'run')]

@@ -8,7 +8,9 @@ checks +=[(n,'address,undefined') for n in ['ZC16_COMMAND_HOST_TEST','ZC16_REORD
 def run(v):
  n,san=v;cmd=[sys.executable,'-B',str(R/'tools/host_tests'/(n+'.py'))]+([san]if san else[]);p=O/(n+'-'+(san or 'python').replace(',','-')+'.log');env=dict(os.environ);env['PYTHONDONTWRITEBYTECODE']='1';env['ASAN_OPTIONS']='halt_on_error=1';env['UBSAN_OPTIONS']='halt_on_error=1'
  with p.open('w') as f:x=subprocess.run(cmd,cwd=R,stdout=f,stderr=subprocess.STDOUT,env=env,timeout=240)
- rec={'test':n,'sanitizer':san,'command':cmd,'exit':x.returncode,'log':str(p),'sha256':hashlib.sha256(p.read_bytes()).hexdigest()};print('PASS'if not x.returncode else'FAIL',n,san,flush=True);return rec
+ rec={'test':n,'sanitizer':san,'command':cmd,'exit':x.returncode,'log':str(p),'sha256':hashlib.sha256(p.read_bytes()).hexdigest()};print('PASS'if not x.returncode else'FAIL',n,san,flush=True)
+ if x.returncode:print(p.read_text(errors='replace')[-12000:],flush=True)
+ return rec
 with concurrent.futures.ThreadPoolExecutor(max_workers=2)as pool:results=list(pool.map(run,checks))
 cmd=[sys.executable,'-B',str(R/'tools/BE200_FW_ABI_TEST.py'),str(O/'firmware-abi')]
 with (O/'firmware-abi.log').open('w')as f:x=subprocess.run(cmd,cwd=R,stdout=f,stderr=subprocess.STDOUT,timeout=90)
