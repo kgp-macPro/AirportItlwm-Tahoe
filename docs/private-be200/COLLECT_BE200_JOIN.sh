@@ -46,10 +46,14 @@ if ! command -v python3 >/dev/null 2>&1 || ! snapshot BEFORE; then
   (cd "$PARENT" && /usr/bin/zip -q -r "$OUT.zip" "$(basename "$OUT")")
   printf 'STOP; preserve %s\n' "$OUT.zip" >&2; exit 2
 fi
+: > "$OUT/ATTEMPT.log"
+: > "$OUT/ATTEMPT.err"
 /usr/bin/log stream --style compact --level debug --predicate 'process == "airportd" OR process == "configd" OR subsystem CONTAINS[c] "IPConfiguration" OR subsystem CONTAINS[c] "eapol" OR (process == "kernel" AND (eventMessage CONTAINS[c] "iwx" OR eventMessage CONTAINS[c] "BE200" OR eventMessage CONTAINS[c] "itlwm"))' > "$OUT/ATTEMPT.log" 2> "$OUT/ATTEMPT.err" &
 LOG_PID=$!
 if [ "${BE200_PASSIVE_CAPTURE:-0}" = 1 ]; then
   printf 'interface=%s; passive only; snaplen=768; max_packets=128; input timeout=120s; filter=ARP/DHCP\n' "${WIFI_IFACE}" > "$OUT/PASSIVE_CAPTURE.txt"
+  : > "$OUT/TCPDUMP.out"
+  : > "$OUT/TCPDUMP.err"
   /usr/sbin/tcpdump -n -p -U -i "${WIFI_IFACE}" -s 768 -c 128 -w "$OUT/WIFI_DHCP_ARP.pcap" 'arp or (udp and (port 67 or port 68))' > "$OUT/TCPDUMP.out" 2> "$OUT/TCPDUMP.err" &
   PCAP_PID=$!
 else

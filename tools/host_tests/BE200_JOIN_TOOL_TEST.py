@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Actual binding resolver/collector with ALL system operations stubbed offline."""
 from pathlib import Path
-import json,tempfile,subprocess,shutil,plistlib,sys,zipfile,hashlib,os,copy,importlib.util
+import time,json,tempfile,subprocess,shutil,plistlib,sys,zipfile,hashlib,os,copy,importlib.util
 R=Path(__file__).resolve().parents[2];src=(R/'docs/private-be200/COLLECT_BE200_JOIN.sh').read_text()
 spec=importlib.util.spec_from_file_location('resolver',R/'docs/private-be200/resolve_be200_interface.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 hardware=plistlib.loads((R/'tools/host_tests/fixtures/BE200_P5_BINDING.plist').read_bytes())
@@ -55,7 +55,16 @@ with tempfile.TemporaryDirectory(prefix='be200-join-tools-')as tmp:
  for iface,node,inp,valid in [('en0','CNVW',b'\n',True),('en1','WIFI',b'\n',True),('en2','ARPT',b'',True),('en17','NETW',b'\n',True),('en0','WIFI',b'\n',False)]:
   plist.write_bytes(plistlib.dumps(variant(iface if valid else'en1',node)))
   env=dict(os.environ,BE200_PASSIVE_CAPTURE='1',BE200_OUTPUT_PARENT=str(out),WIFI_IFACE=iface,IOREG_WIFI_SERVICE=node,PYTHONDONTWRITEBYTECODE='1');env.pop('SUDO_UID',None);env.pop('SUDO_GID',None)
-  p=subprocess.run(['/bin/bash',str(script)],input=inp,capture_output=True,timeout=20,env=env);assert p.returncode==(0 if valid else 2),p.stderr.decode()
+  if valid and inp:
+   child=subprocess.Popen(['/bin/bash',str(script)],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,env=env)
+   existing=set(out.glob('*/TCPDUMP.err'));deadline=time.monotonic()+10
+   while time.monotonic()<deadline:
+    if any(b'SIMULATED BPF permission denied'in q.read_bytes()for q in out.glob('*/TCPDUMP.err')if q not in existing):break
+    if child.poll()is not None:break
+    time.sleep(0.01)
+   stdout,stderr=child.communicate(inp,timeout=20);p=subprocess.CompletedProcess(child.args,child.returncode,stdout,stderr)
+  else:p=subprocess.run(['/bin/bash',str(script)],input=inp,capture_output=True,timeout=20,env=env)
+  assert p.returncode==(0 if valid else 2),p.stderr.decode()
   z=max(out.glob('*.zip'),key=lambda x:x.stat().st_mtime_ns)
   with zipfile.ZipFile(z)as f:
    assert f.testzip()is None;names=f.namelist();sums=next(n for n in names if n.endswith('/SHA256SUMS.txt'));prefix=sums.rsplit('/',1)[0]+'/'
@@ -69,7 +78,13 @@ with tempfile.TemporaryDirectory(prefix='be200-join-tools-')as tmp:
     assert iface.encode()in f.read(prefix+'AFTER.ifconfig.txt')and ('getpacket '+iface).encode()in f.read(prefix+'DHCP.txt')
     assert ('/Interface/'+iface+'/Link').encode()in f.read(prefix+'BEFORE.dynamic-store.txt') or b'SIMULATED Link Active'in f.read(prefix+'BEFORE.dynamic-store.txt')
     assert ('interface='+iface).encode()in f.read(prefix+'PASSIVE_CAPTURE.txt')
-    assert b'SIMULATED BPF permission denied'in f.read(prefix+'TCPDUMP.err')
+    capture_error=f.read(prefix+'TCPDUMP.err')
+    if capture_error:assert b'SIMULATED BPF permission denied'in capture_error
+    else:
+     # Fast EOF may cancel the spawned process before its first write. Retain
+     # explicit exit status; empty error is not a successful or zero-packet trace.
+     assert f.read(prefix+'TCPDUMP.exit').strip()!=b'0'
+     assert not any(n.endswith('/WIFI_DHCP_ARP.pcap')for n in names)
     assert status==('user-finished'if inp else'input-timeout-or-interrupted')
   print('PASS SIMULATED actual collector',iface,node,status,'CRC/full-manifest')
 print('No live registry/capture/logstream,settings,traffic,EFI or driver operation executed.')
