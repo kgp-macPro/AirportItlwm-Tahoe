@@ -126,7 +126,7 @@ Extract the ZIP, back up the entire existing AirportItlwm bundle and boot config
 
 Use this **separate experimental Alpha** only for BE200 testing. The qualified **1.0.0** remains the latest stable release; the **1.1.0 Beta comparison campaign** and its frozen artifacts are unchanged. The main branch retains the 1.0.0 driver source; the experimental implementation is confined to the separate Alpha source branch.
 
-**Alpha ZIP SHA-256:** `2ccecf03d4ff7a146c85cc1b1395cf2e1de7b69301c60778e7856b37e69fced3`.
+**Alpha ZIP SHA-256:** `2bae97a54e47ced67d9891412cf4003450ea25a06d80584a8531022b6bf20afb`.
 
 ### Observed functionality and scope
 
