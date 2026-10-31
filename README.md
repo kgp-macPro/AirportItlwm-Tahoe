@@ -6,7 +6,7 @@
 
 # AirportItlwm-Tahoe
 
-[Current BE200 alpha testing campaign](#current-be200-alpha-testing-campaign) · [Current 1.1.0 Beta comparison campaign](#current-comparison-campaign-airportitlwm-tahoe-110-beta)
+[Current BE200 alpha testing campaign](#current-be200-alpha-testing-campaign) · [Optional 1.1.0 Beta reference comparisons](#optional-reference-comparisons-airportitlwm-tahoe-110-beta)
 
 ## Project overview and qualified 1.0.0 release
 
@@ -110,49 +110,11 @@ OpenIntelWireless / itlwm → pinned Dexter source → mapper-backed RX/TX/comma
 
 ## Current BE200 alpha testing campaign
 
-### AirportItlwm-Tahoe 1.2.0 BE200 Alpha 2 — Performance Hotfix
+The current 1.2.0 Alpha is our primary KGP validation candidate for **AX201, AX210, AX211 and BE200** through the restored Ventura legacy wireless frontend. BE200 (`8086:272B`) has physical results; AX201/AX210/AX211 are explicitly invited to validate this shared build, not newly qualified by the BE200 measurements. **[Retro-OCLP-CustoMac root patching](https://github.com/kgp-macPro/OCLP-CustoMac) and the matching supported framework/boot environment are required.** Further performance optimization is planned; this is not Wi-Fi 7/MLO/6 GHz or broad hardware qualification.
 
-**Required: Retro-OCLP-CustoMac root patching.** This BE200 alpha uses the restored Ventura legacy wireless frameworks and requires the corresponding root patches provided by [Retro-OCLP-CustoMac](https://github.com/kgp-macPro/OCLP-CustoMac). Keep the matching framework/Skywalk and AMFIPass/`-amfipassbeta` boot configuration; this is not a native, unpatched Wi-Fi driver.
+[Current BE200 release, downloads, exact source/build identity and known issues](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/tag/v1.2.0-be200-alpha.2) · [Shared validation testing](#validation-testing-ax201-ax210-ax211-and-be200) · [Central commands and tool setup](docs/benchmark/README.md).
 
-**Test environment: macOS Tahoe 26.7.2 (build 25G332), x86_64, with AppleVTD enabled.**
-
-**Further performance optimization is planned.** The current alpha focuses on initial functionality and recovery testing; its performance results are preliminary.
-
-**Alpha 2 performance hotfix:** One complete three-round local BE200 benchmark improved average TCP TX from approximately 29 to 480 Mbit/s and TCP RX P1 from 195 to 482 Mbit/s. UDP RX600 reached approximately 600 Mbit/s with 0.08–0.20% reported loss. **KGP also reports successful P8R1 Wi-Fi OFF/ON and manual Sleep/Wake tests (USER-OBSERVED). Find My remains unresolved.** AX201/AX210/AX211 remain part of shared 1.2.0 development; this measurement qualifies the BE200 environment. TCP retransmissions, UDP losses, remaining RX variation and long-term qualification remain open; further optimization is planned.
-
-### Download, installation and rollback
-
-[**Download AirportItlwm-Tahoe-1.2.0-BE200-Alpha-2.zip**](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v1.2.0-be200-alpha.2/AirportItlwm-Tahoe-1.2.0-BE200-Alpha-2.zip) · [Alpha prerelease](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/tag/v1.2.0-be200-alpha.2) · [Installation and first checks](https://github.com/kgp-macPro/AirportItlwm-Tahoe/blob/v1.2.0-be200-alpha.2/docs/be200-alpha/INSTALL_AND_FIRST_TEST.md)
-
-Extract the ZIP, back up the entire existing AirportItlwm bundle and boot configuration, then manually replace the existing bundle with the complete supplied `AirportItlwm.kext` without merging. Retain the required root-patched environment and reboot. To roll back, restore the complete previous bundle and its matching boot configuration and reboot. No supplied tool installs/loads a kext, changes EFI/root patches or starts traffic automatically.
-
-Use this **separate experimental Alpha** only for BE200 testing. The qualified **1.0.0** remains the latest stable release; the **1.1.0 Beta comparison campaign** and its frozen artifacts are unchanged. The main branch retains the 1.0.0 driver source; the experimental implementation is confined to the separate Alpha source branch.
-
-**Alpha ZIP SHA-256:** `4bc3ab56f754b88d9bf83087eaa1a6c5cde791c79eab373fd4008eb27cf2bcbf`.
-
-### Observed functionality and scope
-
-The following initial-functionality/recovery observations and screenshots are retained from **Alpha 1**, which remains [available unchanged](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/tag/v1.2.0-be200-alpha.1). They do not establish Alpha 2 recovery qualification.
-
-On KGP's Intel BE200 (`8086:272B`) system, initial testing reached scanning, infrastructure authentication/association, key installation, DHCP/IPv4 and bidirectional Internet traffic in **802.11ac** operation. The Alpha 1 candidate was **connected immediately after login**. KGP reports **four successful Wi-Fi OFF → ON cycles**, each with auto-join, and **immediate reconnection after one manual system Sleep/Wake**. These are **user-observed results**, not automatically repeated tests or long-term qualification.
-
-A subsequent read-only capture confirms the selected executable UUID, the BE200 → AirportItlwm → infrastructure interface binding, actual **DMA Mode 2**, active MSI-X, RUN state and zero sampled transport fault/error fields. Its bounded history does not independently reconstruct every manual cycle; zero boundary faults do not exclude all brief transients. The earlier sporadic OFF/ON failure did not recur in the four reported cycles. Longer repeated-cycle, duration and broader hardware/mode testing remain open.
-
-KGP's Internet connection is nominally **80/30 Mbps**. The illustrated Internet Speedtest reaches **79.5/28.5 Mbps**, ping 8 ms and jitter 1 ms; packet loss is not reported in that result. This is a single WAN measurement, not a stable LAN performance reference. **Local LAN throughput is being investigated separately.** A displayed **867 Mbps PHY rate is not measured data throughput**.
-
-This Alpha does not establish BE201 support, Wi-Fi 7/EHT, MLO, 6 GHz, full AWDL, AirDrop or Auto Unlock. Existing AX201/AX210/AX211 operation is not newly qualified by this BE200 test. Bluetooth is provided by the separately identified stack below, not by the Wi-Fi kext.
-
-**Bluetooth setup used during these BE200 tests:** [BlueToolFixup.kext v2.7.2](https://github.com/acidanthera/BrcmPatchRAM/releases) by acidanthera, together with [IntelBluetoothFirmware v2.5.1](https://github.com/lshbluesky/IntelBluetoothFirmware/releases/tag/v2.5.1) from lshbluesky. The Intel USB Bluetooth controller was identified as **8087:0036**, and both Magic Keyboard and Magic Mouse were connected during testing.
-
-### Frozen tested binary and corresponding source
-
-- Source used to build the tested executable: [`a10a32bf296d6b90da1b3390b3ef4459f9d207fc`](https://github.com/kgp-macPro/AirportItlwm-Tahoe/commit/a10a32bf296d6b90da1b3390b3ef4459f9d207fc).
-- Public complete source: [`be200-alpha` branch](https://github.com/kgp-macPro/AirportItlwm-Tahoe/tree/be200-alpha) / [`v1.2.0-be200-alpha.2` tag](https://github.com/kgp-macPro/AirportItlwm-Tahoe/tree/v1.2.0-be200-alpha.2), including pinned dependencies, SDK declaration change, licenses and portable validation. Publication-only tools/documentation preserve the tested production inputs; [build instructions](https://github.com/kgp-macPro/AirportItlwm-Tahoe/blob/v1.2.0-be200-alpha.2/docs/be200-alpha/BUILD.md) explain that correspondence.
-- Executable UUID: `E4414AAB-1D58-3E40-93A5-6838D3CDCD20`.
-- Executable SHA-256: `8e4a38121b06941630afa98728b245cbaeec813c14139c46715dc44723461f63`.
-- Frozen internal marker: `AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P8R1`. The original bundle name `AirportItlwm.kext`, bundle identifier and internal version `1.0.0` are unchanged; **1.2.0 BE200 Alpha 2 is the public release identity**, not rewritten binary metadata.
-
-The port selectively reuses [HuajiFruit/AirportBZ](https://github.com/HuajiFruit/AirportBZ/tree/0ccab1627764406861fb9eb0a06ca36e31b4440f) hardware/firmware implementations, with OpenIntelWireless, Dexter, laobamac, Intel firmware, MacKernelSDK and Apple reference credits/notices retained. AirportBZ's native frontend/complete DMA allocator were not transplanted. See [source and firmware provenance](https://github.com/kgp-macPro/AirportItlwm-Tahoe/blob/v1.2.0-be200-alpha.2/docs/BE200_PROVENANCE.md).
+Version-specific changes, measurements and recovery findings belong to the release notes. The main branch retains frozen 1.0.0 driver code; experimental source remains on the separate [be200-alpha branch](https://github.com/kgp-macPro/AirportItlwm-Tahoe/tree/be200-alpha). Archived [initial observations and gallery context](docs/benchmark/BE200_OBSERVATIONS_ARCHIVE.md) preserve the previous narrative. The following original screenshots are historical functionality evidence, not a new candidate or stability qualification.
 
 <details>
 <summary>BE200 screenshots — device, connection, DHCP, firmware, Internet, Bluetooth and test environment</summary>
@@ -199,134 +161,93 @@ The port selectively reuses [HuajiFruit/AirportBZ](https://github.com/HuajiFruit
 
 </details>
 
-## Current comparison campaign: AirportItlwm-Tahoe 1.1.0 Beta
+<a id="current-comparison-campaign-airportitlwm-tahoe-110-beta"></a>
 
-**Experimental comparison prerelease.** The qualified 1.0.0 release remains separate; stable 1.1.0 is not yet released.
+## Optional reference comparisons: AirportItlwm-Tahoe 1.1.0 Beta
 
-This is **one public comparison campaign** for AX201, AX210 and AX211 owners on Intel-based macOS Tahoe 26.x. **ZC28 is the starting candidate.** Frozen ZC8, ZC19, ZC22 and ZC26 are optional historical comparisons within the same campaign; unchanged **laobamac53 is a separately attributed external control**, not KGP code.
+The **current 1.2.0 Alpha is the primary KGP test candidate for AX201, AX210, AX211 and BE200**. These frozen beta/ZC builds are optional reference comparisons and fallback versions, not a mandatory matrix. Within that historical campaign ZC28 remains its original starting point; ZC8/ZC19/ZC22/ZC26 are additional controls. **laobamac44/47/53 are optional external controls for AX201/AX210/AX211 only and do not support BE200.** The [frozen beta download](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/tag/v1.1.0-beta.1), Kext bytes, source snapshots, licenses and old r7 tool remain unchanged. Use the newer shared tool setup after beta setup.
 
-### Documentation correction — AX201 testing (22 October 2026)
+[Shared validation instructions and result submission](#validation-testing-ax201-ax210-ax211-and-be200) · [Central test guide](docs/benchmark/README.md) · [Historical results below](#selected-historical-best-results--original-whole-test-measurements).
 
-The bundled `README_TESTS.txt` instructs AX201 users to select `conventional` in both AppleVTD-on and AppleVTD-off configurations. This blanket instruction is withdrawn pending verification of the reported hardware identity and actual driver DMA mode.
+Earlier AX201/AX211 reports motivated the AX210 TX/RX investigation. The [retained motivation and source-derived hardware overview](docs/beta/COMPARISON_CONTEXT.md) distinguish physical evidence from source candidates and preserved upstream paths.
 
-The runner validates the selected mode: `mapped` requires DMA Mode 2 and active AppleVTD; `conventional` requires DMA Mode 1. These arguments do not change the driver’s mode or OpenCore settings. The Wi-Fi IORegistry node must also match the system; some systems require `IOREG_WIFI_SERVICE=CNVW` instead of the default `ARPT`.
+## Validation testing: AX201, AX210, AX211 and BE200
 
-This notice supersedes the corresponding blanket AX201 DMA-mode guidance in the bundled and linked documentation. The beta ZIP and all included binaries remain unchanged. This correction does not establish general AX201 mapped-mode support.
+**[Open the central validation guide](docs/benchmark/README.md)** for all prerequisites, current profiles, complete commands, installation/rollback and return instructions. The common runner retains the original three rounds × 14 cases, 8-second TCP, 5-second UDP/1200-byte payload, 2-second gaps and final sequential networkQuality. Existing forensic/debugging capture remains separate.
 
-[Use the corrected AX201 validation commands below](#ax201-validation-commands).
+### Prerequisites and separate installation paths
+
+- **Current KGP Alpha (AX201/AX210/AX211/BE200):** [Retro-OCLP-CustoMac root patching](https://github.com/kgp-macPro/OCLP-CustoMac), restored Ventura legacy frameworks and the matching Skywalk/AMFIPass/`-amfipassbeta` boot environment.
+- **KGP ZC beta/historical controls:** OCLP-CustoMac 3.0.3, its Skywalk replacement, AMFIPass.kext with `-amfipassbeta` and matching supported framework/boot configuration.
+- **External laobamac44/47/53 (AX201/AX210/AX211 ONLY, no BE200):** native Wi-Fi implementation, without those OCLP/Skywalk/`-amfipassbeta` Wi-Fi prerequisites. A kext swap does not undo root patches. Record the ACTUAL framework/patch state for every comparison; native-capable does not mean an observed run was unpatched. See the [environment register](docs/beta/FRAMEWORK_ENVIRONMENT_REGISTER.txt).
+
+Update/restore complete Kext bundles and matching boot configurations manually, then reboot. Setup installs only tools; it never changes EFI, root patches or driver loading. Existing source/license mapping and the [ZC4 historical source offer](docs/beta/ZC4_PUBLIC_BETA_HISTORY.md) remain available. Qualified stable 1.0.0 remains the main recommendation; a future stable 1.1.0 requires independent qualification, with beta material retained in release history.
+
+### Current tools and setup
+
+[**Download shared benchmark r11 (all profiles and setup)**](https://github.com/kgp-macPro/AirportItlwm-Tahoe/raw/refs/heads/main/tools/benchmark/releases/AirportItlwm-Shared-Benchmark-r11.zip) · [ZIP SHA-256](https://github.com/kgp-macPro/AirportItlwm-Tahoe/raw/refs/heads/main/tools/benchmark/releases/AirportItlwm-Shared-Benchmark-r11.zip.sha256) · [Runner/resource identities](tools/benchmark/RUNNER_IDENTITY.json).
+
+Extract in Downloads on both Macs, then run:
+
+```bash
+/bin/bash "$HOME/Downloads/AirportItlwm-Shared-Benchmark-r11/SETUP_AirportItlwm_Benchmark.command"
+```
+
+This prepares `~/Desktop/AirportItlwm/TOOLS` and preserves differing files in timestamped BACKUPS; TESTS and unrelated files are untouched. **Run it after old beta setup**, which still installs r7. Verify `--version` reports `shared-2026-10-31-r11-public-be200`. Python 3.9+, existing iperf3 and Command Line Tools are required; no dependency is silently installed.
+
+### Server and client commands
+
+On the wired server Mac, manually turn Wi-Fi OFF, connect Ethernet and run:
+
+```bash
+/bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_IPERF3_WIRED_SERVER.sh"
+```
+
+It asks for the actual wired interface and starts `iperf3 -s -B "$ip" -p 5201` using its checked current Ethernet IPv4. The client prompts for this address. After manually installing/rebooting with the matching extracted Alpha 2 bundle:
+
+```bash
+CANDIDATE_KEXT="$HOME/Downloads/AirportItlwm-Tahoe-1.2.0-BE200-Alpha-2/AirportItlwm.kext" DEVICE_LABEL=BE200 /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" BE200-ALPHA2 mapped
+```
+
+For AX validation use the SAME current Alpha bundle, after manual installation/reboot. Example requesting actual Mode 2 (substitute `AX201-ALPHA2` or `AX211-ALPHA2` for those systems, and `conventional` for an actual Mode 1 comparison):
+
+```bash
+CANDIDATE_KEXT="$HOME/Downloads/AirportItlwm-Tahoe-1.2.0-BE200-Alpha-2/AirportItlwm.kext" /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" AX210-ALPHA2 mapped
+```
+
+**Optional laobamac control is AX201/AX210/AX211-only; these builds do not support BE200.** After its separate native-environment installation/reboot:
+
+```bash
+/bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" LAOBAMAC 53 mapped
+```
+
+The last argument in that external call records DECLARED AppleVTD configuration; numerical KGP DMA/fault/epoch telemetry is unavailable. Existing Alpha 1/P7, private P8R1, AX/ZC and numbered laobamac calls retain their checks and paths. The [full guide](docs/benchmark/README.md) has Alpha 1, historical, conventional and override examples.
 
 ### AX201 validation commands
 
-These examples target **Fulvio’s observed `CNVW@14,3` parent node and `en0` Wi-Fi interface**, with his **reported `AX201` device label**. They are not universal settings for all AX201 or AX211 systems. `DEVICE_LABEL` is user-supplied metadata and does not verify hardware identity. His refusal with `EXPECTED_MODE=conventional` establishes a mismatch against Mode 1; it does **not** establish Mode 2. Verified hardware identity and successful mapped validation have not yet been supplied in the evidence for this correction.
+The former blanket AX201-conventional-only instruction is withdrawn. **Use actual runtime identity and mode, not the retail label.** Mapped requires reported Mode 2 plus active AppleVTD; conventional requires Mode 1 without independently requiring absence of system AppleVTD. EXPECTED_MODE checks, never selects the route. Configured DisableIoMapper and captured AppleVTD are separate evidence.
 
-Run these identification commands once before testing:
+The runner discovers the actual PCI/controller/infrastructure-interface binding, excludes awdl0 and checks the server route and Wi-Fi traffic binding. `WIFI_IFACE` / `IOREG_WIFI_SERVICE` are optional checked overrides, never universal en2/ARPT/CNVW defaults. Fulvio's observed CNVW/en0 examples and all four ZC28/ZC8 mapped/conventional commands are in the [corrected command section](docs/benchmark/README.md#ax201-validation-commands). A Mode 1 mismatch alone does not prove Mode 2. This section and the guide supersede the blanket guidance in unchanged bundled documentation; failed checks must be returned, not bypassed.
 
-```bash
-ioreg -p IOService -w0 | /usr/bin/grep -i -B 6 -A 6 AirportItlwm
-```
+### Submit beta results
 
-```bash
-networksetup -listallhardwareports
-```
+Use the [ONE central GitHub results thread](https://github.com/kgp-macPro/AirportItlwm-Tahoe/issues/2), one campaign per comment, or the equivalent shared [IM](https://www.insanelymac.com/forum/topic/363194-airportitlwm-tahoe-100-%E2%80%93-intel-wi-fi-with-applevtdiommu-and-awdl-baseline-support-on-macos-tahoe/) / [TM](https://www.tonymacx86.com/threads/airportitlwm-tahoe-1-0-0-intel-wi-fi-with-applevtd-iommu-and-awdl-baseline-support-on-macos-tahoe.333361/) threads. Start with **card | candidate | AppleVTD configured/runtime | actual DMA mode (or unavailable)**. Link existing reports instead of uploading twice.
 
-Use `CNVW` when the captured tree shows AirportItlwm directly beneath `CNVW@14,3`. On other systems use the actual parent-node name and Wi-Fi interface. Do not infer the registry name or DMA mode solely from the adapter’s retail designation.
-
-Run each benchmark **separately**, after installing the matching candidate and rebooting as described below and in the existing [installation/rollback guide](README_TESTS.txt). Keep the matching supported framework/boot environment. The runner prompts for the wired server’s current IPv4 address. Keep the original test protocol, candidate order (**ZC28 first, then ZC8 for comparison**) and result handling unchanged. Report any failed validation with its original ZIP; do not remove or bypass checks.
-
-#### Mapped validation — ZC28
-
-Requires active AppleVTD and driver-reported DMA Mode 2. Install and reboot with ZC28 before running. This is a validation request, **not an already established AX201 qualification**.
-
-```bash
-IOREG_WIFI_SERVICE=CNVW EXPECTED_MODE=mapped WIFI_IFACE=en0 DEVICE_LABEL=AX201 /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC28
-```
-
-#### Mapped validation — ZC8
-
-Install and reboot with ZC8 before running. Its mode is checked independently.
-
-```bash
-IOREG_WIFI_SERVICE=CNVW EXPECTED_MODE=mapped WIFI_IFACE=en0 DEVICE_LABEL=AX201 /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC8
-```
-
-#### Conventional validation — ZC28
-
-For the intended AppleVTD-off comparison, set **Kernel → Quirks → DisableIoMapper=true in the actual boot EFI**, then reboot with ZC28 before running.
-
-```bash
-IOREG_WIFI_SERVICE=CNVW EXPECTED_MODE=conventional WIFI_IFACE=en0 DEVICE_LABEL=AX201 /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC28
-```
-
-#### Conventional validation — ZC8
-
-Install and reboot with ZC8 while retaining the same conventional boot configuration.
-
-```bash
-IOREG_WIFI_SERVICE=CNVW EXPECTED_MODE=conventional WIFI_IFACE=en0 DEVICE_LABEL=AX201 /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC8
-```
-
-`EXPECTED_MODE` checks the reported DMA mode; it does not change it. Conventional validation requires Mode 1 but does not independently require AppleVTD to be absent. Record configured `DisableIoMapper` and captured AppleVTD runtime state separately. **This correction and command section supersede the corresponding blanket AX201 guidance in the unchanged bundled and linked documentation.** These are instructions for user-controlled testing; no EFI change or physical test is performed by this documentation update.
-
-The prerelease tag is **[`v1.1.0-beta.1`](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/tag/v1.1.0-beta.1)**. Its one complete download is **`AirportItlwm-Tahoe-1.1.0-Beta.zip`**: ready bundles, exact corresponding source/dependency/license enclosures, Desktop setup, the unchanged physically used r7 runner and seven original reference ZIPs. **[Download the complete beta ZIP](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v1.1.0-beta.1/AirportItlwm-Tahoe-1.1.0-Beta.zip).**
-
-## Why this comparison beta
-
-Earlier strong reports from **AX201 tester Fulvio ([@netiave on tonymacx86](https://www.tonymacx86.com/members/netiave.1548699/) / [@Funzio on InsanelyMac](https://www.insanelymac.com/forum/profile/2547924-funzio/) / [@netiave on GitHub](https://github.com/netiave))** and **AX211 tester Luiz ([@LuizMeliga on tonymacx86](https://www.tonymacx86.com/members/luizmeliga.1658846/) / [@luizmeliga on GitHub](https://github.com/luizmeliga))** motivated the attempt to combine fast TCP TX with roughly 600 Mbps TCP RX on KGP's AX210. Their earlier reports are valuable historical evidence, **not ZC28 qualification**.
-
-TX-command/memory work brought normal AX210 TCP TX to roughly 480–490 Mbps; later work addressed publication, RX ownership, queues and lifecycle safety. A System Profiler interaction affected TX measurements, and replacing the wired M1 peer's Realtek RTL8156 adapter with ASIX AX88179B substantially changed RX results. Those cohorts stay separate; neither finding proves a universal card/adapter defect. ZC28 builds on ZC26, grouping software-capacity wakes during IWX TX service while retaining hardware-completion wakes. Useful progress and remaining slow/lossy states are both documented.
-
-This is a deliberate pause in local optimisation to gather independent system/AP/network comparisons. The [full campaign narrative](docs/beta/FORUM_IM_TM_DRAFT.txt), with [IM](docs/beta/FORUM_IM_DRAFT.txt) and [TM](docs/beta/FORUM_TM_DRAFT.txt) variants, uses selected coherent three-round campaign means. The tables below instead show historical best **individual whole-test** results; neither presentation combines different attempts into a claimed stable configuration.
-
-## Hardware coverage — qualification is narrower than source matching
-
-| Group | Current evidence and scope |
-| --- | --- |
-| AX210 / 8086:2725 | ZC28 physically tested in actual mapped Mode2 and conventional Mode1; frozen 1.0.0 has its separate AX210 qualification. Repeat/long-run/sleep-wake limits remain |
-| AX201; AX211 | Earlier results from AX201 tester Fulvio ([@netiave on tonymacx86](https://www.tonymacx86.com/members/netiave.1548699/) / [@Funzio on InsanelyMac](https://www.insanelymac.com/forum/profile/2547924-funzio/) / [@netiave on GitHub](https://github.com/netiave)) and AX211 tester Luiz ([@LuizMeliga on tonymacx86](https://www.tonymacx86.com/members/luizmeliga.1658846/) / [@luizmeliga on GitHub](https://github.com/luizmeliga)) motivated this beta. Do not assign a DMA route from the AX201 label; verify the hardware identity and actual reported mode. Luiz's historical AppleVTD-active result is not positive proof of numerical Mode2. Neither is yet ZC28-qualified |
-| Additional IWX source candidates | AX200, selected AX101/AX203/AX411 and named Killer 1650/1675/1690 variants; selected AC 9461/9462/9560/Killer 1550 variants. Actual PCI/MAC/RF/subdevice selection and enclosed firmware are required; these are **awaiting physical confirmation**, not blanket mapped support |
-| Separate upstream backend paths | IWM: 3160/3165/3168, 7260/7265, 8260/8265, 9260 and selected 9461/9462/9560. IWN: 4965,5100/5150/5300/5350,100/105/130/135/1000/1030,2200/2230,6005/6030/6050/6150/6200/6235/6300. They do not enter the IWX-specific service/DMA paths; no same-fix or new qualification claim |
-| Table-only / excluded or future | AX221/AX231 and other MA/SnJ/QnJ entries can select firmware absent from this frozen package; table presence is not usable support. BE200 remains future work |
-
-The [source-grounded hardware overview](docs/beta/HARDWARE_COVERAGE.md) and [exact 208-row source ledger](docs/beta/HARDWARE_SOURCE_LEDGER.json) trace frozen ZC28, not the repository root's 1.0.0 code. Some changes are shared across IWX, others depend on family/mode; not every upstream card received the same implementation. This list **does not expand the unchanged AX201/AX210/AX211 comparison runner** or silently authorise another DMA route.
-
-## Different prerequisites — choose the correct driver environment
-
-**KGP AirportItlwm-Tahoe 1.1.0 Beta (ZC28 and KGP historical controls) requires all of:**
-- **OCLP-CustoMac 3.0.3**, including **its Skywalk replacement** and restored legacy wireless frameworks.
-- **AMFIPass.kext with `-amfipassbeta`**.
-- The matching supported framework/boot configuration and a known-working recovery path.
-
-**External laobamac53 uses a native Wi-Fi approach. For its Wi-Fi implementation it does not require OCLP, Skywalk replacement or `-amfipassbeta`.** Those KGP prerequisites must not be applied to this external control. Other hardware on a tester's system may have independent patch requirements.
-
-**Replacing a kext does not undo existing root patches.** Record the ACTUAL installed/loaded frameworks, Skywalk replacement, root-patch/OCLP version and AMFIPass/boot configuration for every historical and new comparison. A native-capable driver is not proof that a particular run used an unpatched system. Historical saved loaded-framework evidence and unknowns are listed in the [environment register](docs/beta/FRAMEWORK_ENVIRONMENT_REGISTER.txt).
-
-**Separate installation paths:** for KGP, update only the existing KGP bundle in the already matching patched environment; for external53, use its separately documented native-framework environment and ready `Laobamac/53/AirportItlwm.kext` bundle. See the two manual paths and rollback instructions in [README_TESTS.txt](README_TESTS.txt). Desktop setup applies/removes no patches, edits no EFI and changes no boot settings. Do not treat an external-driver swap on a patched KGP system as a clean native comparison.
-
-**Start here: [README_TESTS.txt](README_TESTS.txt).** Download/extract the ZIP, run its one clearly named setup action, then follow the short existing-installation update, user-controlled reboot, ZC28 test and rollback procedure. Setup only creates Desktop files and opens the guide; it does not install/load a kext, edit EFI or change root patches/boot settings. All individual comparison commands, actual card/interface/server prompts, prerequisites, Ookla and return instructions are in that single guide; a complete historical matrix is optional.
-
-Recent ZC28 conventional campaigns retained roughly 483–485Mbps TCP TX with useful TCP RX, but mapped TX dips, UDP loss bursts, upload-loaded latency tails and long-run/sleep-wake questions remain open. This is not a universal 600-Mbps RX or permanent-fix claim. See [reference results and limitations](docs/beta/REFERENCE_NOTES.txt) and the [complete three-conventional-campaign analysis](docs/beta/ZC28_CONVENTIONAL_ANALYSIS.txt), including all adverse observations.
-
-**Choose the expected DMA route from verified runtime evidence, not the AX201/AX211 retail label.** Mapped validation requires actual Mode2 and active AppleVTD; conventional validation requires Mode1 without independently requiring AppleVTD to be absent. See the [corrected AX201 validation commands](#ax201-validation-commands). The runner's UUID/marker/mode/fault/epoch checks remain strict. External53 mapped/conventional labels describe the tester's declared boot configuration, not verified KGP numerical DMA/fault telemetry; unavailable is not zero. Its framework environment differs from the KGP legacy target.
-
-**1.1.0 Beta names the public package, not a changed binary version.** KGP bundles retain their frozen internal 1.0.0 fields and individual UUID/hashes; the external bundle retains its own development fields. [Source/license mapping](docs/beta/SOURCE_LICENSE_MAP.txt) documents every snapshot and build. Root source still represents the frozen 1.0.0 implementation; beta source snapshots are supplied separately in the ZIP, not merged or rebuilt for packaging.
-
-After independent qualification, **stable 1.1.0 is planned to become the main recommendation**, with this beta material retained in release history. Stable 1.1.0 is not yet released or qualified. Earlier [ZC4 testing and its existing source offer](docs/beta/ZC4_PUBLIC_BETA_HISTORY.md) are historical.
-
-Discussion/results: [InsanelyMac project thread](https://www.insanelymac.com/forum/topic/363194-airportitlwm-tahoe-100-%E2%80%93-intel-wi-fi-with-applevtdiommu-and-awdl-baseline-support-on-macos-tahoe/) and [tonymacx86 project thread](https://www.tonymacx86.com/threads/airportitlwm-tahoe-1-0-0-intel-wi-fi-with-applevtd-iommu-and-awdl-baseline-support-on-macos-tahoe.333361/). **New campaign-post permalinks will be added after KGP posts in both forums.**
-
-## Submit beta results
-
-Use ONE central GitHub results thread: **“AirportItlwm-Tahoe 1.1.0 Beta — Test results”**. **[Open the central results thread](https://github.com/kgp-macPro/AirportItlwm-Tahoe/issues/2).** All testers submit each campaign as a comment in that single thread; start every comment with **card | candidate | AppleVTD configuration | actual DMA route (or unavailable)**. Use the short copyable comment template in [README_TESTS.txt](README_TESTS.txt). Do not open a results issue per tester or build; separate issues are for concrete bugs needing independent investigation and should link the relevant result comment.
-
-For **each campaign**, attach **ONE Return-ZIP** containing the untouched runner-result ZIP, Ookla screenshot/result URL and short configuration notes. Include failures and slow runs. If Ookla could not run, say why. Record the actual patch/framework environment as well as card/system, macOS, candidate, AP and wired-server details. Keep archives as issue/forum attachments, not repository changes.
-
-**IM and TM are equivalent alternatives:** use the respective shared beta discussion in the [InsanelyMac project thread](https://www.insanelymac.com/forum/topic/363194-airportitlwm-tahoe-100-%E2%80%93-intel-wi-fi-with-applevtdiommu-and-awdl-baseline-support-on-macos-tahoe/) or [tonymacx86 project thread](https://www.tonymacx86.com/threads/airportitlwm-tahoe-1-0-0-intel-wi-fi-with-applevtd-iommu-and-awdl-baseline-support-on-macos-tahoe.333361/). New beta-post permalinks will be added after KGP posts there. No GitHub account is required for forum submission. Link an existing report instead of duplicating uploads; the same one-Return-ZIP-per-campaign rule and identifying first line apply there.
+For EACH campaign attach ONE Return-ZIP containing the untouched runner-result ZIP, Ookla screenshot/link and short configuration notes. Include failures and slow runs. The [comment template and complete return instructions](docs/benchmark/README.md#submit-results) request actual patch/framework state, AP/radio and wired-server details. Archives remain attachments, not repository changes; separate issues are for concrete bugs.
 
 ## Selected historical best results — original whole-test measurements
 
+Highest completed whole-test goodput per variable; these historical selections are not one combined campaign or a stability claim.
+
+<details>
+<summary>Show TCP, UDP, Internet results and original run references</summary>
+
+
 **Definition:** “best” is the highest whole-test receiver goodput from a completed 8-second TCP or 5-second UDP measurement, never a one-second peak or a short final interval. Internet download/upload use the highest recorded respective networkQuality result, with directional RPM from that SAME run/phase. Different rows may come from different runs; **these tables are not one combined campaign or a stability claim**.
 
-**Cohort:** KGP's spare AX210, AC channel 36/80MHz, wired M1 MacBook with UGREEN ASIX AX88179B (`.33`) and the existing comparable protocol. Earlier Realtek/`.161` and Luiz's AX211/other-AP results are not pooled into these best values. The external53 native-capable implementation is distinct from KGP's legacy target; the actual saved framework evidence and unverified patch state are recorded separately in the environment register. Completed TCP tests in an interrupted campaign may qualify; interrupted measurements and the known source-mutated 43-result attempt do not. ZC19 conventional has no qualifying original here and is shown as N/A.
+**Historical AX210 cohort:** KGP's spare AX210, AC channel 36/80MHz, wired M1 MacBook with UGREEN ASIX AX88179B (`.33`) and the existing comparable protocol. Earlier Realtek/`.161` and Luiz's AX211/other-AP results are not pooled into these best values. The external53 native-capable implementation is distinct from KGP's legacy target; the actual saved framework evidence and unverified patch state are recorded separately in the environment register. Completed TCP tests in an interrupted campaign may qualify; interrupted measurements and the known source-mutated 43-result attempt do not. ZC19 conventional has no qualifying original here and is shown as N/A.
+
+**BE200 is a separate cohort:** Alpha 1/P7 and Alpha 2/P8R1 use the same BE200 system and wired ASIX peer, Tahoe 26.7.2 (25G332), actual Mode 2 with active AppleVTD; do not pool these with AX210 as a card ranking. R34/R35 identify the complete original campaigns. Per-test PHY/channel state was not continuously captured; earlier screenshots are not contemporaneous radio proof. The [BE200 per-row source ledger](docs/benchmark/BE200_RESULT_SELECTION.json) includes all 84 completed test summaries, exact JSON/server members and hashes. Protocol timing is unchanged across r8/r10/r11; observation/profile revisions are recorded separately.
 
 KGP mode comes from saved actual route proof; ZC8's legacy opaque record verifies the route but does not supply later numerical fault counters. **laobamac53 is the unchanged external control**: its mode labels are DECLARED AppleVTD boot configurations, not KGP numerical mode verification. N/A means unavailable, never zero. TCP retransmissions are sender counts, **not packet-loss percentages**. UDP rates and losses below belong to the same selected measurement; reported loss percentage is retained verbatim rather than recomputed from iperf's differing accounting windows/counters.
 
@@ -389,6 +310,14 @@ KGP mode comes from saved actual route proof; ZC8's legacy opaque record verifie
 | laobamac53 (external) | AX210 spare | declared AppleVTD-on/mapped | RX | P1 | 485.213 | 1387 | R02 R01 |
 | laobamac53 (external) | AX210 spare | declared AppleVTD-on/mapped | TX | P4 | 489.657 | 3310 | R02 R02 |
 | laobamac53 (external) | AX210 spare | declared AppleVTD-on/mapped | RX | P4 | 447.329 | 1166 | R02 R01 |
+| BE200 Alpha 1 / P7 | BE200 8086:272B | mapped (verified Mode 2) | TX | P1 | 29.031 | 0 | R34 R03 |
+| BE200 Alpha 1 / P7 | BE200 8086:272B | mapped (verified Mode 2) | RX | P1 | 197.911 | 0 | R34 R02 |
+| BE200 Alpha 1 / P7 | BE200 8086:272B | mapped (verified Mode 2) | TX | P4 | 28.782 | 0 | R34 R01 |
+| BE200 Alpha 1 / P7 | BE200 8086:272B | mapped (verified Mode 2) | RX | P4 | 226.185 | 204 | R34 R03 |
+| BE200 Alpha 2 / P8R1 | BE200 8086:272B | mapped (verified Mode 2) | TX | P1 | 484.847 | 45 | R35 R03 |
+| BE200 Alpha 2 / P8R1 | BE200 8086:272B | mapped (verified Mode 2) | RX | P1 | 506.846 | 1844 | R35 R02 |
+| BE200 Alpha 2 / P8R1 | BE200 8086:272B | mapped (verified Mode 2) | TX | P4 | 480.914 | 6315 | R35 R01 |
+| BE200 Alpha 2 / P8R1 | BE200 8086:272B | mapped (verified Mode 2) | RX | P4 | 475.986 | 2111 | R35 R01 |
 
 ### UDP — local iperf3
 
@@ -521,6 +450,26 @@ KGP mode comes from saved actual route proof; ZC8's legacy opaque record verifie
 | laobamac53 (external) | AX210 spare | declared AppleVTD-on/mapped | RX | 500 | 500.001 | 501.378 | 22/261372 | 0.008410 | R02 R01 |
 | laobamac53 (external) | AX210 spare | declared AppleVTD-on/mapped | TX | 600 | 457.817 | 450.155 | 636/236762 | 0.266534 | R02 R03 |
 | laobamac53 (external) | AX210 spare | declared AppleVTD-on/mapped | RX | 600 | 599.998 | 601.617 | 52/313410 | 0.016578 | R02 R01 |
+| BE200 Alpha 1 / P7 | BE200 8086:272B | mapped (verified Mode 2) | TX | 100 | 33.427 | 26.709 | 28/15394 | 0.161 | R34 R01 |
+| BE200 Alpha 1 / P7 | BE200 8086:272B | mapped (verified Mode 2) | RX | 100 | 100.001 | 100.313 | 0/52293 | 0.000 | R34 R01 |
+| BE200 Alpha 1 / P7 | BE200 8086:272B | mapped (verified Mode 2) | TX | 250 | 32.805 | 27.114 | 51/15103 | 0.298 | R34 R02 |
+| BE200 Alpha 1 / P7 | BE200 8086:272B | mapped (verified Mode 2) | RX | 250 | 250.000 | 250.877 | 0/130695 | 0.000 | R34 R03 |
+| BE200 Alpha 1 / P7 | BE200 8086:272B | mapped (verified Mode 2) | TX | 400 | 36.474 | 27.341 | 40/16986 | 0.211 | R34 R01 |
+| BE200 Alpha 1 / P7 | BE200 8086:272B | mapped (verified Mode 2) | RX | 400 | 400.000 | 401.027 | 54/209109 | 0.026 | R34 R01 |
+| BE200 Alpha 1 / P7 | BE200 8086:272B | mapped (verified Mode 2) | TX | 500 | 33.028 | 27.445 | 28/15192 | 0.163 | R34 R01 |
+| BE200 Alpha 1 / P7 | BE200 8086:272B | mapped (verified Mode 2) | RX | 500 | 500.000 | 501.248 | 84/261265 | 0.032 | R34 R01 |
+| BE200 Alpha 1 / P7 | BE200 8086:272B | mapped (verified Mode 2) | TX | 600 | 32.715 | 27.228 | 39/15067 | 0.229 | R34 R01 |
+| BE200 Alpha 1 / P7 | BE200 8086:272B | mapped (verified Mode 2) | RX | 600 | 600.000 | 583.642 | 8559/312549 | 2.724 | R34 R03 |
+| BE200 Alpha 2 / P8R1 | BE200 8086:272B | mapped (verified Mode 2) | TX | 100 | 99.999 | 99.646 | 0/52086 | 0.000 | R35 R03 |
+| BE200 Alpha 2 / P8R1 | BE200 8086:272B | mapped (verified Mode 2) | RX | 100 | 100.001 | 100.324 | 0/52275 | 0.000 | R35 R02 |
+| BE200 Alpha 2 / P8R1 | BE200 8086:272B | mapped (verified Mode 2) | TX | 250 | 250.000 | 249.073 | 19/130310 | 0.015 | R35 R02 |
+| BE200 Alpha 2 / P8R1 | BE200 8086:272B | mapped (verified Mode 2) | RX | 250 | 249.999 | 250.753 | 0/130686 | 0.000 | R35 R01 |
+| BE200 Alpha 2 / P8R1 | BE200 8086:272B | mapped (verified Mode 2) | TX | 400 | 399.998 | 398.491 | 3/208331 | 0.001 | R35 R03 |
+| BE200 Alpha 2 / P8R1 | BE200 8086:272B | mapped (verified Mode 2) | RX | 400 | 399.999 | 401.083 | 0/208917 | 0.000 | R35 R01 |
+| BE200 Alpha 2 / P8R1 | BE200 8086:272B | mapped (verified Mode 2) | TX | 500 | 462.972 | 453.172 | 83/239083 | 0.034 | R35 R02 |
+| BE200 Alpha 2 / P8R1 | BE200 8086:272B | mapped (verified Mode 2) | RX | 500 | 499.999 | 500.656 | 406/261168 | 0.155 | R35 R01 |
+| BE200 Alpha 2 / P8R1 | BE200 8086:272B | mapped (verified Mode 2) | TX | 600 | 457.111 | 446.404 | 106/236175 | 0.045 | R35 R02 |
+| BE200 Alpha 2 / P8R1 | BE200 8086:272B | mapped (verified Mode 2) | RX | 600 | 599.999 | 601.292 | 249/313629 | 0.079 | R35 R01 |
 
 ### Online networkQuality — Internet, separate from LAN iperf3
 
@@ -557,12 +506,18 @@ KGP mode comes from saved actual route proof; ZC8's legacy opaque record verifie
 | ZC28 | AX210 spare | mapped (verified route) | Upload | 41.072 | 33.092 | R28 online |
 | laobamac53 (external) | AX210 spare | declared AppleVTD-on/mapped | Download | 76.594 | 391.895 | R02 online |
 | laobamac53 (external) | AX210 spare | declared AppleVTD-on/mapped | Upload | 37.091 | 37.571 | R02 online |
+| BE200 Alpha 1 / P7 | BE200 8086:272B | mapped (verified Mode 2) | Download | 71.967 | 301.074 | R34 online |
+| BE200 Alpha 1 / P7 | BE200 8086:272B | mapped (verified Mode 2) | Upload | 36.541 | 48.502 | R34 online |
+| BE200 Alpha 2 / P8R1 | BE200 8086:272B | mapped (verified Mode 2) | Download | 73.370 | 595.345 | R35 online |
+| BE200 Alpha 2 / P8R1 | BE200 8086:272B | mapped (verified Mode 2) | Upload | 35.588 | 47.396 | R35 online |
+
+**BE200 adverse findings remain:** P7 TCP TX approximately 29 Mbit/s, RX stalls/retransmissions and UDP losses are retained in R34. P8R1 retransmissions, UDP losses, sender-limited TX500/600 and RX variation remain in R35. Find My is unresolved. Original failed P8 and the pre-reboot identity mismatch are distinct attempts, not successful P8R1 measurements. Best rows cannot establish stable recovery or a common AX/BE200 RX cause.
 
 **Adverse findings remain:** the severe earlier ZC26 conventional mixed TCP/UDP collapse, ZC28 mapped TX P1 247.018Mbps (one full interval 32.494Mbps), UDP loss bursts and sender-limited TX500/600 are not erased by maximum rows. ZC28's three conventional campaigns share one boot and do not prove permanent repair or long-run/sleep-wake stability. Online endpoints/times differ and upload-loaded tails remain long; best Internet capacity cannot qualify LAN performance or responsiveness. See the linked complete analysis/reference notes for the counterevidence. Selected raw-origin ZIPs and per-row source fields accompany the package; no individual logs are reproduced here.
 
 #### Compact run references for the selected rows
 
-Dates/times are from the original archive names (local CEST); `R01`/`R02`/`R03` after a reference means the round, and “online” means that archive's separate networkQuality stage. Only origins actually selected above are listed.
+Dates/times are from the original archive names (18–22 October 2026: CEST; 30 October: CET); `R01`/`R02`/`R03` after a reference means the round, and “online” means that archive's separate networkQuality stage. Only origins actually selected above are listed.
 
 - **R01** — `LAOBAMAC_53_738D4C6_CONVENTIONAL_AX210_3X14_unverified_20261020_123708_tPD1WD.zip` (unchanged external control; declared DMA configuration only; actual framework evidence in the environment register).
 - **R02** — `LAOBAMAC_53_738D4C6_MAPPED_AX210_3X14_unverified_20261020_122534_n2sdvy.zip` (unchanged external control; declared DMA configuration only; actual framework evidence in the environment register).
@@ -597,6 +552,13 @@ Dates/times are from the original archive names (local CEST); `R01`/`R02`/`R03` 
 - **R31** — `ZC8_AX210_3X14_mapped_20261018_025805_S2ZwkD.zip`.
 - **R32** — `ZC8_AX210_3X14_mapped_20261019_150738_kx2VLl.zip`.
 - **R33** — `ZC8_AX210_3X14_mapped_20261020_112715_nRtmGO.zip`.
+
+
+- **R34** — `BE200-ALPHA1_BE200_3X14_mapped_20261030_195034_oazuaw.zip`; SHA-256 `05eb55be559b93238f249b40a411382e80f0f5051eec6f7f40a5c1d3d0445684`. BE200 actual Mode 2 / AppleVTD, complete 42-test campaign.
+- **R35** — `BE200-P8_BE200_3X14_mapped_20261030_232645_lLBMwH.zip`; SHA-256 `2fa6be173c86c26c2a4345cfc1d105537c70a5074525311668b5718185f50875`. BE200 actual Mode 2 / AppleVTD, complete 42-test campaign.
+
+
+</details>
 
 ## Credits
 
@@ -653,4 +615,4 @@ AI-assisted work was performed under continuous human direction, physical testin
 
 For this beta use the [Submit beta results](#submit-beta-results) procedure: ONE central GitHub results thread, **“AirportItlwm-Tahoe 1.1.0 Beta — Test results”** ([https://github.com/kgp-macPro/AirportItlwm-Tahoe/issues/2](https://github.com/kgp-macPro/AirportItlwm-Tahoe/issues/2)), with one campaign per comment; the shared IM/TM beta threads are equivalent alternatives. Link existing reports rather than uploading twice. Include the untouched runner ZIP, Ookla result and notes in one Return-ZIP per campaign, including failures and slow runs.
 
-Separate issues are for concrete bugs needing independent investigation. Record card/PCI identity, macOS, exact candidate UUID/SHA, ACTUAL framework/patch environment, system AppleVTD setting and observed driver DMA route; unavailable is not zero. Existing debugging/forensic procedures are separate from the r7 throughput campaign and must not be run concurrently or used as pre-test preparation.
+Separate issues are for concrete bugs needing independent investigation. Record card/PCI identity, macOS, exact candidate UUID/SHA, ACTUAL framework/patch environment, system AppleVTD setting and observed driver DMA route; unavailable is not zero. Existing debugging/forensic procedures are separate from the shared throughput campaign and must not be run concurrently or used as pre-test preparation.

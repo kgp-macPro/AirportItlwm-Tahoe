@@ -1,365 +1,199 @@
-AIRPORTITLWM-TAHOE 1.1.0 BETA — QUICK START AND ALL TEST COMMANDS
-20 October 2026
+CURRENT SHARED VALIDATION GUIDE — r11
 
-QUICK START — ZC28 FIRST; COMPARISONS OPTIONAL
+The current 1.2.0 Alpha is primary for AX201/AX210/AX211/BE200. Beta/ZC comparisons are optional. Laobamac 44/47/53 is AX201/AX210/AX211-only and does NOT support BE200. Frozen beta ZIP and r7 remain unchanged; current instructions supersede old setup and blanket DMA assignments.
 
-DIFFERENT PREREQUISITES — READ BEFORE ANY DRIVER INSTALLATION
+# Validation testing: AX201, AX210, AX211 and BE200
 
-KGP ZC28 / ZC8 / ZC19 / ZC22 / ZC26 require ALL of:
-- OCLP-CustoMac 3.0.3, including its Skywalk replacement and restored legacy
-  wireless frameworks.
-- AMFIPass.kext with -amfipassbeta.
-- The matching supported framework/boot configuration and a recovery path.
-This beta does NOT work independently of its required KGP environment.
+This is the current shared test guide. It supersedes older bundled tool-setup and blanket AX201 DMA instructions. Frozen beta r7 and all old result archives remain unchanged. Current tools: **shared-2026-10-31-r11-public-be200**; protocol **AIRPORTITLWM_3X14_NO_PROFILER_V1**.
 
-EXTERNAL laobamac53 is a native Wi-Fi implementation. For Wi-Fi it does NOT
-require OCLP, Skywalk replacement or -amfipassbeta. Do not apply the KGP
-requirements to the external control. Other hardware can have independent
-patch requirements; this package must not remove them automatically.
+## Quick start and prerequisites
 
-Replacing AirportItlwm.kext does NOT undo existing root patches or restore
-stock Skywalk. Record the ACTUAL framework/root-patch/AMFIPass environment
-for EVERY comparison, including historical runs. Native-capable source is
-not proof that a run was native/unpatched. Unknown details stay unknown.
-See SOURCES/FRAMEWORK_ENVIRONMENT_REGISTER.txt for saved historical evidence.
-Desktop setup changes NO patches, EFI, boot arguments or system settings.
+1. Use the driver and matching framework/boot environment below. Save a complete working bundle/boot backup. Driver replacement, root patches and reboot are manual; tool setup does none of these.
+2. Download/extract [AirportItlwm-Shared-Benchmark-r11.zip](https://github.com/kgp-macPro/AirportItlwm-Tahoe/raw/refs/heads/main/tools/benchmark/releases/AirportItlwm-Shared-Benchmark-r11.zip) on both Macs. Extracting creates `AirportItlwm-Shared-Benchmark-r11/` in Downloads.
+3. Run the one setup command below on each Mac. It prepares Desktop tools, preserves differing existing files and opens the instructions. It does not start tests.
+4. Start the wired server, then run the appropriate client command. The client asks for the current wired-server IPv4.
+5. Keep the original output ZIP, including failures; perform Ookla separately and return one outer Return-ZIP per campaign.
 
-KGP INSTALLATION PATH — EXISTING MATCHING PATCHED ENVIRONMENT
+**The current KGP Alpha for AX201/AX210/AX211/BE200 requires [Retro-OCLP-CustoMac root patching](https://github.com/kgp-macPro/OCLP-CustoMac)** with restored Ventura legacy wireless frameworks and the matching supported Skywalk/AMFIPass/`-amfipassbeta` boot environment. **KGP ZC28 and historical beta controls require OCLP-CustoMac 3.0.3, its Skywalk replacement, AMFIPass.kext with `-amfipassbeta`, and their matching supported framework/boot configuration.**
 
-This updates an ALREADY WORKING AirportItlwm installation on Intel-based Tahoe
-26.x with the required restored legacy wireless frameworks. It is not a
-root-patch installer or an automatic EFI installer. New/unsupported setups
-must satisfy the project's INSTALL.md first; do not force boot/mapper changes.
+**External laobamac53 is a separate native Wi-Fi control:** its Wi-Fi implementation does not require OCLP, Skywalk replacement or `-amfipassbeta`. A kext swap does not remove root patches. Preserve a working configuration, follow the external driver's supported native environment and record ACTUAL loaded frameworks/patches rather than calling a run unpatched because the driver supports native operation. No supplied tool applies/removes root patches or changes EFI. The frozen [beta installation/rollback reference](https://github.com/kgp-macPro/AirportItlwm-Tahoe/blob/v1.1.0-beta.1/README_TESTS.txt) must be read with the current DMA erratum, not as a retail-card route rule.
 
-1. Download AirportItlwm-Tahoe-1.1.0-Beta.zip and extract it in Downloads.
-   Keep the extracted AirportItlwm-Tahoe-1.1.0-Beta folder there. Run this ONE
-   command in Terminal (no sudo):
+Tools require macOS, Bash 3.2+, **Python 3.9+**, existing `iperf3`, `xcrun dwarfdump` (Command Line Tools), `ioreg`, `kmutil` and `networkQuality`. Setup installs no dependencies. No `system_profiler`, concurrent Wi-Fi scans or forensic capture during measurement.
 
-/bin/bash "$HOME/Downloads/AirportItlwm-Tahoe-1.1.0-Beta/SETUP_AirportItlwm_Beta.command"
+## Desktop setup (tools only)
 
-   Setup verifies the extracted package, creates Desktop candidate/TOOLS/TESTS/
-   SOURCES/LICENSES/reference directories and opens THIS quick-start file.
-   Existing TESTS stay intact; differing managed files are backed up on Desktop.
-   The .command has executable permission, but Finder/Gatekeeper double-click
-   behavior is not physically verified. The explicit /bin/bash command is the
-   supported launch path, tested natively. Do not disable Gatekeeper/quarantine
-   or other system protections to bypass a failure; return the exact message.
+Paste this after extracting the tool ZIP into Downloads:
 
-2. BEFORE REPLACING YOUR EXISTING DRIVER: keep a known-working recovery boot
-   medium/configuration. Use your established method to open the EFI partition
-   that ACTUALLY boots this macOS installation. Locate its CURRENT configured
-   AirportItlwm.kext (normally EFI/OC/Kexts/AirportItlwm.kext). If the path or
-   active bootloader is uncertain, stop and ask rather than modifying another EFI.
-   Copy that entire installed bundle to a NEW, separate Desktop rollback folder
-   and record which EFI/configuration it came from. This is distinct from the
-   automatic Desktop setup backup: setup never sees or backs up the installed EFI.
+```bash
+/bin/bash "$HOME/Downloads/AirportItlwm-Shared-Benchmark-r11/SETUP_AirportItlwm_Benchmark.command"
+```
 
-3. With Finder, replace the ENTIRE existing AirportItlwm.kext bundle at the SAME
-   configured location with:
-   ~/Desktop/AirportItlwm/B1-ZC28-SERVICE/AirportItlwm.kext
-   Remove the old destination bundle first AFTER its rollback copy is verified;
-   copy the new whole bundle, not a merge of Contents. Do not rename it, resign
-   it, add a second variant, write to /System/Library or /Library/Extensions,
-   change root patches, or alter AppleVTD/DisableIoMapper for this first test.
-   An existing correct Kernel/Add entry stays BundlePath=AirportItlwm.kext,
-   ExecutablePath=Contents/MacOS/AirportItlwm, PlistPath=Contents/Info.plist,
-   Enabled=true with its established dependency order. If yours differs, use
-   INSTALL.md/configuration review; this package does not edit config.plist.
-   Reboot YOURSELF using the same working boot configuration.
+The same `.command` can be double-clicked if macOS permits it; the Terminal command above is the verified fallback. The installed common runner is `~/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh`, with all required `runner_profiles/` files. Existing differing tools are backed up under `~/Desktop/AirportItlwm/BACKUPS/benchmark-r11-<time>-<random>/`; existing TESTS and unrelated files are preserved. Symlink/conflicting paths and checksum errors are rejected. To undo a tool update, restore the complete corresponding TOOLS files from that backup. To undo a driver change, restore the complete known-working kext and matching boot configuration, then reboot manually.
 
-4. Check scanning/association and ordinary connectivity. Start iperf3 -s on a
-   separate wired server (its Wi-Fi OFF). Perform the actual interface/card/IP
-   preparation below, then run ONE matching ZC28 command:
+**The old beta setup still installs frozen r7. Run this new setup AFTER using beta setup.** If beta setup is used again, rerun current setup and verify:
 
-   AX201, or AX210/AX211 on the conventional Mode-1 route:
-/bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC28 conventional
+```bash
+/bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" --version
+```
 
-   Qualified AX210/AX211 AppleVTD-on Mode-2 route (NOT AX201):
-/bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC28 mapped
+Expected revision: `shared-2026-10-31-r11-public-be200`. Compare its printed SHA-256 with [RUNNER_IDENTITY.json](https://github.com/kgp-macPro/AirportItlwm-Tahoe/blob/main/tools/benchmark/RUNNER_IDENTITY.json) and the [tool ZIP checksum](https://github.com/kgp-macPro/AirportItlwm-Tahoe/raw/refs/heads/main/tools/benchmark/releases/AirportItlwm-Shared-Benchmark-r11.zip.sha256). Each campaign saves the executed script/resource copies, hashes, revision, protocol and effective settings. Frozen r7/r8/r9/r10 references are enclosed; none replaces the current runner.
 
-   The runner asks for the CURRENT server IPv4 and checks loaded UUID/mode.
-   Expected ZC28 UUID: 469CBE97-EEB4-3084-99C4-433E73F4FC23.
-   Wrong UUID/mode: preserve the failure ZIP; do not relax checks. After the
-   complete 3x14 and final networkQuality, run Ookla and return one outer ZIP
-   containing the UNTOUCHED runner ZIP, Ookla screenshot/link and short notes.
+## Wired server Mac — explicitly bind Ethernet IPv4
 
-ROLLBACK — IF ASSOCIATION, BOOT OR NORMAL PERFORMANCE REGRESSES
-Use your known-working recovery boot if necessary. Open the SAME active EFI,
-remove the new whole AirportItlwm.kext, restore the ENTIRE verified previous
-bundle from the separate rollback folder to the original configured path,
-and reboot yourself. Keep the original config/root patches/dependency ordering.
-Do not mix files from two bundles. If setup itself needs undoing, use the dated
-AirportItlwm_Beta_Backup_* Desktop folder; that backup is NOT an EFI rollback.
-The setup action changes only Desktop files, never the running/installed driver.
-These deployment steps are reviewed against INSTALL.md; no installation/reboot
-or physical deployment validation was performed by Codex in preparing this ZIP.
+Connect Ethernet and turn the **server's Wi-Fi OFF manually**. On the server Mac after tool setup:
 
-PUBLIC NAME VERSUS BINARY IDENTITY
-AirportItlwm-Tahoe 1.1.0 Beta is the comparison PACKAGE/prerelease name, proposed
-Git tag v1.1.0-beta.1. It does not relabel/rebuild the included binaries: five
-KGP candidates retain internal 1.0.0 fields and their own UUID/SHA256; the
-external control retains its original v2.4.0 development identity. A displayed
-version alone cannot identify the loaded build. See SOURCES/SOURCE_BINARY_LICENSE_MAP.json.
+```bash
+/bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_IPERF3_WIRED_SERVER.sh"
+```
 
+It lists ports, asks for the real wired BSD interface, checks Wi-Fi is off and that wired IPv4/link are available, then runs **`iperf3 -s -B "$ip" -p 5201`** with that address (optional `IPERF_PORT`). Enter the printed current IPv4 in the client prompt. Nothing changes network settings. Ctrl-C stops the listener. Interface names and addresses are not shared defaults between testers.
 
-Use the SAME common runner as KGP. No new benchmark or result-packaging program.
-The supplied runner is unchanged r7-service, SHA256:
-be9c07168daf7b8ffd6f6c71ba4f62117d1e28334c4a64a9a063b2a115cc19ed
+## Candidate and interface selection
 
-FILES AFTER SETUP_AirportItlwm_Beta.command HAS FINISHED
-~/Desktop/AirportItlwm/B1-ZC8-PERF/AirportItlwm.kext
-~/Desktop/AirportItlwm/B1-ZC19-PERF/AirportItlwm.kext
-~/Desktop/AirportItlwm/B1-ZC22-PERF/AirportItlwm.kext
-~/Desktop/AirportItlwm/B1-ZC26-PERF/AirportItlwm.kext
-~/Desktop/AirportItlwm/B1-ZC28-SERVICE/AirportItlwm.kext
-~/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh
-~/Desktop/AirportItlwm/TESTS/                         your new result ZIPs
-~/Desktop/AirportItlwm/REFERENCE_RESULTS/             seven original KGP reference ZIPs
-~/Desktop/AirportItlwm/REFERENCE_NOTES.txt            context, results and limitations
-~/Desktop/AirportItlwm/ZC28_CONVENTIONAL_ANALYSIS.txt  all three new conventional runs
-~/Desktop/AirportItlwm/README_TESTS.txt               this file
-~/Desktop/AirportItlwm/SOURCES/                      all corresponding source/build records
-~/Desktop/AirportItlwm/LICENSES/                     preserved license texts
-~/Desktop/Laobamac/53/AirportItlwm.kext
+Install/reboot with each matching complete candidate manually; confirm association and IPv4 first. The on-disk candidate is a comparison reference, not an automatic installation path. `CANDIDATE_KEXT=/absolute/path/AirportItlwm.kext` overrides it. `AIRPORTITLWM_ROOT` and `AIRPORTITLWM_TEST_DIR` remain configurable. No label verifies hardware.
 
-SETUP_AirportItlwm_Beta.command copies files to these Desktop locations. It does NOT install a kext
-into EFI, load a driver, reboot, or change AppleVTD/DisableIoMapper/root patches.
-Use your established deployment procedure, install ONE candidate at a time and
-boot its matching configuration before running that candidate's command.
-Simply having the bundle on the Desktop does not load it. The runner checks
-the loaded UUID against that Desktop candidate. Do not run all commands in a row
-without installing/booting each corresponding candidate.
+The runner discovers a unique Intel PCI -> selected controller -> infrastructure interface binding and records PCI/subsystem identity, provider/controller/interface paths and entry IDs. Optional `WIFI_IFACE` and `IOREG_WIFI_SERVICE` overrides must agree with that binding. It excludes awdl0 and rejects missing/ambiguous/wrong bindings. `en2`/`ARPT` are KGP's observations, not defaults.
 
-WHO CAN PARTICIPATE AND WHAT TO COMPARE
-This public beta invites owners of Intel AX201, AX210 and AX211 on Intel-based
-systems running macOS Tahoe 26.x, through InsanelyMac (IM) and tonymacx86 (TM).
-An invitation to test does not establish compatibility on every host/card/AP.
-Use the matching supported driver/framework environment and your established
-kext deployment procedure; setup only places files on the Desktop.
+For manual identification only, before the campaign:
 
-Start with ONE complete ZC28 campaign in your normal working configuration,
-followed by Ookla. If practical, repeat in the other already working AppleVTD
-boot configuration. Volunteers can compare all frozen ZC8/19/22/26/28 on the
-same hardware, plus laobamac53 as a separate external control. All individual
-commands remain below; a full five-build matrix is optional participation.
-If ZC28 regresses, compare the last known good build on the same setup and
-report both originals. Preserve failures and slow runs as well as good ones.
-We particularly want to know whether the historical strong AX211/AX201 RX
-survives later changes, and whether TX, losses and later rounds improve.
-
-All five are experimental comparison betas. ZC26 had a severe conventional
-incident; ZC28 has mapped dips. The three new
-ZC28 conventional campaigns completed without that sustained collapse; this
-is useful beta evidence, not proof of a permanent fix. See the analysis file.
-
-PREREQUISITES
-Client: macOS Tahoe 26.x on an Intel-based system, /bin/bash, Python 3.9 or newer, iperf3,
-Xcode command-line tools providing
-xcrun/dwarfdump, and the normal macOS networkQuality/ioreg/kmutil/route/ipconfig/
-ditto/shasum commands. The runner checks these and preserves failures. Report a
-missing dependency; do not remove a check. No extra Python package is required.
-
-Server: a separate wired Ethernet computer with iperf3, its Wi-Fi off, reachable
-over your router/switch. On that computer run:
-
-iperf3 -s
-
-On Windows the corresponding command is iperf3.exe -s. Record that computer's
-current IPv4, OS, iperf3 version, Ethernet adapter/chipset and wired link speed.
-Enter its CURRENT IP when the CLIENT runner asks; the displayed .33 is only an
-example. Do not inherit KGP's server address or Wi-Fi interface.
-
-ONCE IN EACH NEW CLIENT TERMINAL
-First identify your actual Wi-Fi Device:
-
+```bash
+ioreg -p IOService -w0 | /usr/bin/grep -i -B 6 -A 6 AirportItlwm
 networksetup -listallhardwareports
-printf 'Enter the Device under Hardware Port: Wi-Fi (for example en0): '
-read -r WIFI_IFACE
-export WIFI_IFACE
+```
 
-Use the supplied default Desktop paths and prompt for the current server:
+`EXPECTED_MODE` checks the actual driver route; it does not select DMA mode or change OpenCore. **Mapped requires reported Mode 2 and active AppleVTD. Conventional requires reported Mode 1, without independently requiring system AppleVTD to be absent.** Record configured DisableIoMapper and captured AppleVTD separately. AX201 is not universally conventional-only; a retail name, CNVW/ARPT or AppleVTD alone proves neither identity nor mode. A guard failure is evidence to return, not permission to bypass checks.
 
-unset AIRPORTITLWM_ROOT AIRPORTITLWM_TEST_DIR LAOBAMAC_KEXT LAOBAMAC_SOURCE_REF
-unset BENCHMARK_PROFILE EXPECTED_MODE CANDIDATE_LABEL EXTERNAL_SOURCE_REF EXTERNAL_DECLARED_MODE
-unset IPERF_SERVER IPERF_PORT IOREG_WIFI_SERVICE TEST_GAP_SECONDS
+All iperf traffic binds the verified Wi-Fi IPv4 and checks the route to the chosen server. Final sequential networkQuality binds that Wi-Fi interface. Ethernet may exist on the client; it must not carry the measured traffic. The common script does not disable it.
 
-Enter your actual card name in uppercase:
-printf 'Wi-Fi card (AX201, AX210 or AX211): '
-read -r DEVICE_LABEL
-export DEVICE_LABEL
+## Current 1.2.0 Alpha — primary KGP candidate for all four cards
 
-The Wi-Fi node defaults to ARPT. If the required node/record is absent, return
-the failure ZIP; let KGP inspect it before setting another IOREG_WIFI_SERVICE.
-Do not bypass the identity or mode checks.
+The unchanged published Alpha 2/P8R1 is the primary KGP validation candidate for **AX201, AX210, AX211 and BE200**. BE200 has the documented physical campaign; AX201/AX210/AX211 are invited to validate it, not newly qualified by the BE200 result. No mandatory ZC comparison matrix. All four calls reference the same full extracted bundle.
 
-APPLE VTD ON/OFF — IMPORTANT CARD DISTINCTION
-The runner argument checks an EXPECTED driver route; it does not switch boot
-settings. In KGP telemetry conventional is Mode 1, mapped is Mode 2.
+### AX201 / AX210 / AX211 Alpha validation
 
-AX201: previous peer tests DID have system AppleVTD active. In this driver
-the AX201 still uses the original/conventional route, including with AppleVTD
-active and DisableIoMapper=false. Use the conventional commands for an AX201
-in BOTH AppleVTD-on and AppleVTD-off boot configurations. Record which one was
-used. System AppleVTD-on does not require numeric Mode 2 on this card.
+Run ONE matching command after manual installation/reboot. These examples request Mode 2; use `conventional` instead only for the corresponding actual Mode 1 validation. Neither setting changes the route.
 
-AX210/AX211: use mapped for an independently qualified AppleVTD-on/Mode-2 boot.
-Use conventional for the matching AppleVTD-off/original-route boot. AppleVTD
-presence alone is not proof that the card actually selected Mode 2. A mode
-mismatch must be reported with its ZIP, not forced past the guard.
+```bash
+CANDIDATE_KEXT="$HOME/Downloads/AirportItlwm-Tahoe-1.2.0-BE200-Alpha-2/AirportItlwm.kext" /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" AX201-ALPHA2 mapped
+CANDIDATE_KEXT="$HOME/Downloads/AirportItlwm-Tahoe-1.2.0-BE200-Alpha-2/AirportItlwm.kext" /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" AX210-ALPHA2 mapped
+CANDIDATE_KEXT="$HOME/Downloads/AirportItlwm-Tahoe-1.2.0-BE200-Alpha-2/AirportItlwm.kext" /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" AX211-ALPHA2 mapped
+```
 
-Test both AppleVTD boot configurations where already supported by your setup.
-Keep the AP, radio settings, placement, server and Ethernet adapter consistent.
-Do not invent a new EFI/patch combination just to force a test to pass.
+The three AX profiles independently pin the same published UUID/executable/Info.plist hashes, the actual non-BZ `ZC30-PERF` marker and inherited health schema. Their allowed Intel PCI IDs come from the pinned implementation's non-BZ IWX match table, not a claimed retail-card identity mapping. Provider/subsystem identity is recorded; labels do not decide or qualify DMA admission. BE200 cannot pass an AX profile and an AX device cannot pass the BE200 profile. Default AX reference bundle: `~/Desktop/AirportItlwm/CANDIDATES/ALPHA2/AirportItlwm.kext`, unless overridden as above.
 
-KGP CANDIDATES — CONVENTIONAL
-For all three cards on the original/Mode-1 route, including AX201 with AppleVTD ON.
-These are INDIVIDUAL commands after booting the corresponding kext, not a batch:
+### BE200 Alpha validation
 
-/bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC8 conventional
-/bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC19 conventional
-/bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC22 conventional
-/bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC26 conventional
-/bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC28 conventional
+Use the unchanged [public Alpha 2 bundle](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/tag/v1.2.0-be200-alpha.2). After extracting that release ZIP into Downloads and manually installing/rebooting, this exact command references its complete extracted bundle:
 
-KGP CANDIDATES — QUALIFIED AX210/AX211 APPLEVTD ON / MAPPED
-For a qualified AX210/AX211 route; NOT a numeric Mode-2 test for AX201:
+```bash
+CANDIDATE_KEXT="$HOME/Downloads/AirportItlwm-Tahoe-1.2.0-BE200-Alpha-2/AirportItlwm.kext" DEVICE_LABEL=BE200 /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" BE200-ALPHA2 mapped
+```
 
-/bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC8 mapped
-/bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC19 mapped
-/bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC22 mapped
-/bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC26 mapped
-/bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC28 mapped
+This candidate profile pins UUID `E4414AAB-1D58-3E40-93A5-6838D3CDCD20`, executable SHA-256 `8e4a38121b06941630afa98728b245cbaeec813c14139c46715dc44723461f63`, P8R1 registry/marker, Intel `8086:272B`, inherited health and BE200 transport diagnostics. It is not ZC28 identity. Without `CANDIDATE_KEXT`, the public default is `~/Desktop/AirportItlwm/CANDIDATES/BE200-ALPHA2/AirportItlwm.kext`; place a full unmerged reference bundle there yourself if using that layout.
 
-LAOBAMAC BUILD 53 — APPLEVTD ON AND OFF
-The bundle is already at ~/Desktop/Laobamac/53/AirportItlwm.kext, exactly where
-the unchanged numbered-build command expects it. Boot that actual driver in
-the matching native framework environment first. KGP's OCLP/Skywalk/AMFIPass
-requirements above are NOT requirements of this external Wi-Fi implementation.
+**Optional own BE200 reference only:** The original private call `BE200-P8 mapped` still pins the SAME corrected P8R1 and retains `BE200-EXPERIMENTAL-P8` as its default directory. The original failed P8 is not accepted. Alpha 1/P7 remains independently pinned and supported:
 
-EXTERNAL INSTALLATION PATH — READY BUNDLE, SEPARATE FRAMEWORK PREREQUISITES
-1. Keep a known-working recovery boot and back up the ENTIRE currently installed
-   AirportItlwm bundle plus your existing boot/framework configuration.
-2. Use an ALREADY verified native-framework configuration supported by build53.
-   If this machine has KGP root patches/Skywalk replacement, merely changing the
-   driver does NOT undo them. Do not improvise patch removal from this guide;
-   use the established, reviewed platform/upstream procedure with recovery.
-   If the actual environment is not established, record it as unknown and defer
-   the clean native comparison. No automatic patch/EFI conversion is supplied.
-3. At the existing configured OpenCore location (normally EFI/OC/Kexts), replace
-   ONE whole AirportItlwm.kext with ~/Desktop/Laobamac/53/AirportItlwm.kext.
-   Keep BundlePath/ExecutablePath/PlistPath as documented above. Do not merge
-   bundles or load competing drivers. Do not apply KGP-only dependencies to a
-   native configuration. You control any separately reviewed boot configuration.
-4. Reboot yourself, check loaded external UUID AEF5621B-B1D8-3487-BC9D-92E035BC087E,
-   association/connectivity and ACTUAL loaded frameworks/patch state, then use
-   the matching declared-configuration command below. To roll back, restore
-   the whole saved driver AND its matching saved framework/boot environment;
-   restoring a driver alone cannot reverse framework/root-patch changes.
+```bash
+CANDIDATE_KEXT="$HOME/Downloads/AirportItlwm-Tahoe-1.2.0-BE200-Alpha-1/AirportItlwm.kext" DEVICE_LABEL=BE200 /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" BE200-ALPHA1 mapped
+```
 
-If build53 is tested on an already patched system, label that ACTUAL environment
-explicitly; do not call the run native/unpatched from source capability alone.
-The historical controls are not a clean one-function or framework-identical A/B.
-Neither Desktop setup nor the runner applies/removes patches or edits EFI.
+An absolute bundle path with `BENCHMARK_PROFILE=be200 CANDIDATE_LABEL=BE200-ALPHA2` is equivalent. BE200 conventional syntax remains available for explicit route validation, but the published measurements here qualify Mode 2 only; do not claim an untested route as qualified. Firmware/transport and inherited epoch/fault guards stay enabled. Optional histories are explicitly UNAVAILABLE when absent, not zero/success.
 
-AppleVTD ON / declared mapped configuration, for any of the three cards if working:
+## Optional reference comparisons: AX201 / AX210 / AX211 beta builds
+
+The Alpha above is primary. There is no required historical matrix. Optionally use the unchanged [1.1.0 Beta comparison package](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/tag/v1.1.0-beta.1) for its complete KGP candidates; run current tool setup afterwards to replace r7 safely. Set `DEVICE_LABEL` to the tester's reported card, with runtime hardware checked independently. Choose **one verified mode at a time**. These examples use `mapped`; substitute `conventional` only for the matching actual Mode 1 comparison:
+
+```bash
+DEVICE_LABEL=AX210 /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC28 mapped
+DEVICE_LABEL=AX210 /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC8 mapped
+DEVICE_LABEL=AX210 /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC19 mapped
+DEVICE_LABEL=AX210 /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC22 mapped
+DEVICE_LABEL=AX210 /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC26 mapped
+```
+
+Run separately with the matching installed/rebooted candidate, never paste the entire block as a batch. Existing ZC13/ZC18/ZC20/ZC21/ZC23/ZC24/ZC25/ZC27 and private ZC29/ZC30 calls remain supported with their existing schemas/layouts; they do not require a new physical campaign. Luiz's AX211 label is `DEVICE_LABEL=AX211`; his real interface/node must be discovered, not inferred from KGP or Fulvio.
+
+### AX201 validation commands
+
+These four explicit examples preserve Fulvio's **observed CNVW node / en0** override. Use the generic discovery commands instead on other systems. `DEVICE_LABEL=AX201` does not verify retail identity. A wrong-Mode-1 stop does not by itself prove Mode 2. Mapped is a validation request, not a general hardware qualification.
+
+```bash
+IOREG_WIFI_SERVICE=CNVW EXPECTED_MODE=mapped WIFI_IFACE=en0 DEVICE_LABEL=AX201 /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC28
+```
+
+Install/reboot ZC8 before:
+
+```bash
+IOREG_WIFI_SERVICE=CNVW EXPECTED_MODE=mapped WIFI_IFACE=en0 DEVICE_LABEL=AX201 /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC8
+```
+
+For the intended AppleVTD-off comparison, configure `Kernel -> Quirks -> DisableIoMapper=true` yourself in the actual boot EFI and reboot with ZC28. Record the configured setting and runtime AppleVTD separately; the script requires actual Mode 1, not necessarily absence of system AppleVTD:
+
+```bash
+IOREG_WIFI_SERVICE=CNVW EXPECTED_MODE=conventional WIFI_IFACE=en0 DEVICE_LABEL=AX201 /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC28
+```
+
+Install/reboot ZC8 retaining that same conventional boot configuration before:
+
+```bash
+IOREG_WIFI_SERVICE=CNVW EXPECTED_MODE=conventional WIFI_IFACE=en0 DEVICE_LABEL=AX201 /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC8
+```
+
+These current instructions supersede the blanket AX201 mode assignments in older bundled guides. No tool changes EFI or performs these manual steps.
+
+## Optional external laobamac control — AX201 / AX210 / AX211 ONLY
+
+**The supported laobamac comparison builds 44/47/53 do not support BE200. All laobamac commands here are exclusively for AX201, AX210 and AX211. BE200 uses the current Alpha and optional earlier own BE200 candidates, not these external builds.**
+
+Run each separately after the correct external bundle/boot environment is installed. The numbered legacy path `~/Desktop/Laobamac/53/AirportItlwm.kext` remains supported; `LAOBAMAC_KEXT` overrides it. Public beta setup supplies that bundle unchanged:
+
+```bash
+/bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" LAOBAMAC 44 mapped
+/bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" LAOBAMAC 44 conventional
+/bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" LAOBAMAC 47 mapped
+/bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" LAOBAMAC 47 conventional
 /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" LAOBAMAC 53 mapped
-
-AppleVTD OFF / declared conventional configuration:
 /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" LAOBAMAC 53 conventional
+```
 
-For external laobamac, these labels record your declared configuration only.
-The runner verifies loaded UUID/candidate hashes at the normal boundaries;
-numeric KGP DMA/reset/fault telemetry is unavailable, not zero. The word mapped
-in this external command does NOT certify KGP numeric Mode 2 on an AX201.
-Declared source: 738d4c61b5a64433b27c1ab09dba94916ab77d8d; source linkage is established by upstream run53/artifact digest, nested release
-asset digest and byte-identical tested bundle, not an independent rebuild. The
-pinned MacKernelSDK and full source/licenses are included; external runtime
-numeric DMA telemetry remains unavailable. See the source/identity map.
-If laobamac does not work with your card/environment, report that instead of
-changing guards or treating an unloaded/wrong driver as a completed test.
+`mapped`/`conventional` here record the user's DECLARED AppleVTD configuration, not verified KGP numerical DMA telemetry. Loaded UUID, reference executable/Info.plist hashes, binding and route remain checked. Missing KGP fault/mode/epoch data is explicitly unavailable, not fabricated healthy/zero. Numbered 44/47 require their separately acquired matching full bundles at `~/Desktop/Laobamac/44/` and `/47/`; the beta package includes 53, not those other payloads. Source declarations: 44=`d695c971420cc8af0daa286dcd3297e8236c0a63`, 47=`bbe368ec7d55a5395d08c729e88eeaabebae8255`, 53=`738d4c61b5a64433b27c1ab09dba94916ab77d8d`. The earlier two-argument calls also remain unchanged:
 
-THE ROUTINE
-One campaign already contains THREE rounds of FOURTEEN tests:
-TCP TX P1, RX P1, TX P4, RX P4 — each 8 seconds;
-then UDP TX/RX at 100,250,400,500,600 Mbps — each 5 seconds,1200-byte payloads;
-2-second pauses, saved original client JSON/server output/intervals/commands;
-then one separate online networkQuality test over the Wi-Fi interface.
-No system_profiler SPAirPortDataType before/between rounds, no repeated ioreg
-sampler/radio-status polling, and no concurrent Ookla or large background load.
-Do not change network/radio settings in the middle of a campaign.
-One complete campaign per version/boot configuration is the starting comparison.
-Keep slow and failed attempts. Repeat anomalies or the preferred candidate only
-as useful, and mark first-after-boot versus later repeats and any sleep/wake.
-The 'wrong ZC19 actual DMA mode' text refers to the common health format used
-by later versions; it does not itself mean ZC19 is loaded.
+```bash
+/bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" LAOBAMAC mapped
+/bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" LAOBAMAC conventional
+```
 
-OOKLA AND ONE RETURN ZIP PER TEST
-After each campaign, wait for the final networkQuality stage to finish. Then
-run one Ookla Speedtest in the same candidate/configuration, preferably with
-the same Ookla server throughout. Save its result/curve screenshot and result
-URL. Keep LAN and Internet measurements distinct.
+Those unnumbered calls retain their existing `~/Desktop/AirportItlwm/LAOBAMAC-738d4c6/AirportItlwm.kext` default, overridable with `LAOBAMAC_KEXT` and `LAOBAMAC_SOURCE_REF`. They are not BE200 commands. `EXTERNAL_SOURCE_REF` is a declaration, not proof of binary/source correspondence. Never use this profile to evade a KGP candidate guard.
 
-The runner prints the original result ZIP path, normally in:
-~/Desktop/AirportItlwm/TESTS/
+## Unchanged measurement protocol and originals
 
-In Finder, select that original result ZIP and the Ookla screenshot together
-(plus a short notes TXT if needed), choose Compress, and name the resulting
-single archive clearly with candidate/configuration and _RETURN.zip.
-Send ONLY that one outer ZIP for that campaign. No extra packaging program.
-Do not edit the original runner ZIP or its internal checksum list.
-If a test fails and Ookla cannot run, include the original failure ZIP and a
-short explanation instead; do not discard the failure.
+Three rounds of fourteen cases: TCP TX P1, RX P1, TX P4, RX P4 (8 seconds each), then UDP TX/RX pairs at 100/250/400/500/600 Mbit/s (5 seconds, 1200-byte payload). The same order, 2-second gaps, eight original boundary checks and final sequential networkQuality are retained. Original final pre-online pause is also retained. No arbitrary warm-up or favorable-round selection. Nondefault settings remain parameterizable and recorded, but are not the reference protocol.
 
-Please record exact card/computer/macOS build, OpenCore/OCLP/root-patch versions,
-AppleVTD and DisableIoMapper, AP/channel/width, wired server/adapter and topology,
-Ookla server/time/result link, first versus repeated workload, and any stalls,
-connection loss or sleep/wake issues. A full system_profiler report is not needed.
+Each campaign preserves client JSON/intervals/stream values, sender/receiver accounting durations, TCP retransmissions (counts, not loss percentages), UDP actual sender rates, receiver rates and reported lost/total/percent from the SAME measurement, original server output, stderr/errors and settings. Failed/interrupted campaigns remain identifiable and are not complete measurements. networkQuality directional RPM and raw latency series remain alongside Internet capacity; online PASS means successful execution, not acceptable performance.
 
-SUBMIT BETA RESULTS — ONE CENTRAL THREAD
-The GitHub results thread will be titled exactly:
-AirportItlwm-Tahoe 1.1.0 Beta — Test results
-URL: https://github.com/kgp-macPro/AirportItlwm-Tahoe/issues/2
-Do NOT create a tester-specific results
-issue. ALL testers add EACH campaign as a COMMENT in this ONE central thread.
-Start every comment with card | candidate | AppleVTD setting | actual DMA route.
-Separate issues are reserved for concrete bugs requiring independent investigation;
-link their relevant central-thread comment/attachment instead of duplicating it.
+Results: `~/Desktop/AirportItlwm/TESTS/<candidate>_<label>_3X14_<mode>_<timestamp>_<random>.zip` plus the same-named original folder. Never edit/repack the inner runner ZIP. Adjacent equal health snapshots are accepted; rollback against the last accepted snapshot is rejected; FINAL must advance from INITIAL. Loaded UUID/marker/mode/fault/epoch and profile-specific guards remain strict. Boundary health cannot rule out all brief stalls.
 
-For EACH campaign attach ONE Return-ZIP containing:
-- The UNTOUCHED runner-result ZIP (do not unpack/repack it internally).
-- Ookla screenshot/result URL and short configuration notes.
-Keep failures and slow runs. If Ookla cannot run, include why. Keep archives as
-issue/forum attachments, not repository/README changes or the entire beta ZIP.
+## Submit results
 
-COPYABLE CAMPAIGN COMMENT — replace placeholders, one campaign per comment
-CARD | CANDIDATE | AppleVTD=on/off | DMA=conventional Mode1 / mapped Mode2 / unavailable (external declared)
-System/CPU; macOS version/build; loaded UUID/hash or identity-check failure:
-ACTUAL environment: OCLP version/root patches; Skywalk replacement/version; AMFIPass/-amfipassbeta; loaded wireless frameworks (unknown if not established):
-AP/model/channel/width/topology; client Wi-Fi interface/IP:
-Wired server OS/iperf3; adapter/chip/link/interface/IP:
-Campaign date/time/timezone; first/repeat; prior traffic/sleep; stalls/failures:
-Return-ZIP attachment (untouched runner ZIP + Ookla screenshot/result URL + notes):
-Ookla server/time/link, or why unavailable; existing report link (no duplicate upload):
-END COMMENT TEMPLATE
+Use the [existing central results thread](https://github.com/kgp-macPro/AirportItlwm-Tahoe/issues/2), one campaign per comment, or the equivalent [InsanelyMac](https://www.insanelymac.com/forum/topic/363194-airportitlwm-tahoe-100-%E2%80%93-intel-wi-fi-with-applevtdiommu-and-awdl-baseline-support-on-macos-tahoe/) / [tonymacx86](https://www.tonymacx86.com/threads/airportitlwm-tahoe-1-0-0-intel-wi-fi-with-applevtd-iommu-and-awdl-baseline-support-on-macos-tahoe.333361/) project threads. Link an existing report instead of uploading twice. No account on a second platform is required. Concrete bugs may have separate issues linked to the results.
 
-Actual DMA guidance: KGP AX201 stays conventional Mode1 even with system
-AppleVTD active; AX210/AX211 use their qualified actual Mode1/Mode2 route.
-laobamac53 mode labels are DECLARED AppleVTD configurations; unavailable KGP
-numerical telemetry is not zero. Actual patch/framework state is a separate field.
+Attach ONE outer Return-ZIP per campaign containing the untouched runner ZIP, Ookla screenshot/result link and brief notes. Include slow/failed attempts. Run Ookla after the campaign; if unavailable, say why. Keep forensic/debugging collections separate, never simultaneous with throughput measurement. Existing forensic attachments are unchanged.
 
-IM/TM shared beta threads are EQUIVALENT alternatives; no GitHub account needed:
-https://www.insanelymac.com/forum/topic/363194-airportitlwm-tahoe-100-%E2%80%93-intel-wi-fi-with-applevtdiommu-and-awdl-baseline-support-on-macos-tahoe/
-https://www.tonymacx86.com/threads/airportitlwm-tahoe-1-0-0-intel-wi-fi-with-applevtd-iommu-and-awdl-baseline-support-on-macos-tahoe.333361/
-The new shared beta-post permalinks will be added after KGP posts there. Use the same first
-line, comment template and one-Return-ZIP rule. Link existing GitHub/IM/TM reports
-instead of duplicating uploads. Add later campaigns as replies in that shared
-thread. A forum account may be needed there; a GitHub account is not required.
+Copyable comment:
 
-HARDWARE AND EARLIER TESTERS
-This runner remains focused on AX201/AX210/AX211; the new source-derived hardware
-overview does not add a required matrix or mapped qualification. See
-SOURCES/BETA_DOCUMENTATION/HARDWARE_COVERAGE.md for exact ZC28 source boundaries.
-Earlier AX201 tests were by AX201 tester Fulvio ([@netiave on tonymacx86](https://www.tonymacx86.com/members/netiave.1548699/) / [@Funzio on InsanelyMac](https://www.insanelymac.com/forum/profile/2547924-funzio/) / [@netiave on GitHub](https://github.com/netiave)). Earlier AX211
-tests were by AX211 tester Luiz ([@LuizMeliga on tonymacx86](https://www.tonymacx86.com/members/luizmeliga.1658846/) / [@luizmeliga on GitHub](https://github.com/luizmeliga)); neither is claimed to have tested ZC28.
-Use the r7 campaign separately from any support forensic capture/profiler; the
-existing 1.0.0 forensic attachment is not a beta identity/health validator.
+```text
+Card / PCI ID | candidate + UUID | AppleVTD configured/runtime | actual DMA mode (or unavailable)
+System / macOS build:
+Actual root patches / frameworks / Skywalk / AMFIPass / boot settings:
+Runner revision + SHA256:
+Wi-Fi interface/provider (from DEVICE_BINDING.json):
+AP, band/channel/width, distance; wired server hardware/adapter/iperf3:
+Boot / OFF-ON / sleep-wake / prior traffic / failures or slow cases:
+Return-ZIP attachment or existing report link:
+```
+
+The tools do not qualify a card, select a DMA route, install a driver or start traffic until the tester runs the commands. Existing frozen Kext ZIPs, releases and original result archives are unchanged.
+
+## Source and license
+
+Maintained tools and frozen references are distributed as source under the repository GPL-2.0 license (LICENSE enclosed). The source is in `tools/benchmark/` on main; no kext or firmware is bundled in this tool ZIP.

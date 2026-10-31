@@ -1,0 +1,6 @@
+{
+  "source": "/Users/kgp/Desktop/AirportItlwm/EVIDENCE/2026-10-30_BE200_ALPHA_PUBLICATION/runtime/PROVIDER.plist",
+  "source_sha256": "f2d1bba5c3bf3873c70e9a1118b072a0a8db35679026d3ca0e30baebde715e95",
+  "fixture_sha256": "282878c73e1e283a276da3a93245200bbb0ba9c2728f834cdd7174bba01a702b",
+  "scope": "Reduced actual P7 binding + unmodified schema19/BZ200/history data from 30Oct01:53 read-only capture; not newly simulated hardware success. Synthetic tests explicitly mutate copies."
+}

@@ -1,0 +1,18 @@
+Current public commands and prerequisites: README.md in this directory.
+Central maintained guide: https://github.com/kgp-macPro/AirportItlwm-Tahoe/blob/main/docs/benchmark/README.md
+
+SERVER (run tool setup first on both Macs):
+/bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_IPERF3_WIRED_SERVER.sh"
+
+CLIENT (matching extracted Alpha 2 bundle, installed/rebooted manually):
+CANDIDATE_KEXT="$HOME/Downloads/AirportItlwm-Tahoe-1.2.0-BE200-Alpha-2/AirportItlwm.kext" DEVICE_LABEL=BE200 /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" BE200-ALPHA2 mapped
+
+Server prompts for wired interface and binds its current IPv4; client prompts for that IPv4.
+No interface/provider names are assumed. No test was executed by preparing these commands.
+
+PRIMARY AX VALIDATION (same complete Alpha bundle, not a new build):
+CANDIDATE_KEXT="$HOME/Downloads/AirportItlwm-Tahoe-1.2.0-BE200-Alpha-2/AirportItlwm.kext" /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" AX201-ALPHA2 mapped
+CANDIDATE_KEXT="$HOME/Downloads/AirportItlwm-Tahoe-1.2.0-BE200-Alpha-2/AirportItlwm.kext" /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" AX210-ALPHA2 mapped
+CANDIDATE_KEXT="$HOME/Downloads/AirportItlwm-Tahoe-1.2.0-BE200-Alpha-2/AirportItlwm.kext" /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" AX211-ALPHA2 mapped
+Choose actual Mode2+AppleVTD or use conventional for actual Mode1; no retail-label route assignment.
+Optional external laobamac 44/47/53 is AX201/AX210/AX211-only, NO BE200. See README.md for both declared configurations, all paths and separate native-framework prerequisites.

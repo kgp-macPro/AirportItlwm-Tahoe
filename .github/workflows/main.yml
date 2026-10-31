@@ -34,6 +34,11 @@ jobs:
         run: |
           python3 tools/prepare_sdk.py
           python3 tools/verify_source.py --sdk
+      - name: Shared benchmark profiles, protocol, wired server and safe setup (offline)
+        run: |
+          python3 -B tools/benchmark/tests/test_shared_runner.py
+          python3 -B tools/benchmark/tests/test_wired_server.py
+          python3 -B tools/benchmark/tests/test_public_tools.py
       - name: Host ownership, reset and drain regressions
         run: python3 tools/run_host_tests.py
       - name: Build Tahoe Release x86_64 (not the official qualified artifact)

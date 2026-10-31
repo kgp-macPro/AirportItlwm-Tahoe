@@ -1,5 +1,7 @@
 # AirportItlwm-Tahoe 1.2.0 BE200 Alpha 1 — installation, first checks and rollback
 
+**Historical Alpha 1 installation reference.** For current release identity use the [release notes](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/tag/v1.2.0-be200-alpha.2); for throughput work use the [maintained shared guide](../benchmark/README.md). The commands/UUID below belong to Alpha 1, not a universal current candidate.
+
 **Required: Retro-OCLP-CustoMac root patching.** This BE200 alpha uses the restored Ventura legacy wireless frameworks and requires the corresponding root patches provided by [Retro-OCLP-CustoMac](https://github.com/kgp-macPro/OCLP-CustoMac). Keep the matching framework/Skywalk and AMFIPass/`-amfipassbeta` boot configuration; this is not a native, unpatched Wi-Fi driver.
 
 **Test environment: macOS Tahoe 26.7.2 (build 25G332), x86_64, with AppleVTD enabled.**

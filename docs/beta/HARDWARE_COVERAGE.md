@@ -5,12 +5,14 @@ Source baseline: **ZC28 `483940988c502379fb6d3dcde885dca83f00b7aa`**, tree
 contains frozen 1.0.0 driver source; do not use it to infer ZC28 coverage.
 This overview changes documentation only, not PCI matching, DMA policy or r7.
 
+**Current tool/DMA erratum (31 October 2026):** [Shared validation](../benchmark/README.md) supersedes blanket retail-label DMA assignments and old r7 setup. This document remains a frozen-ZC28 source overview, not an Alpha qualification.
+
 ## Physical evidence versus source eligibility
 
 | Hardware | Actual evidence | DMA/configuration boundary | ZC28 status |
 | --- | --- | --- | --- |
 | KGP AX210, PCI 8086:2725 | Frozen qualified 1.0.0 and later identified original campaigns; ZC28 has three complete mapped and three complete conventional campaigns | ZC28 saved actual Mode2 / Mode1 respectively, separate boots; same frozen ZC28 binary | Physically tested on this system; three repeats per mode share that mode's boot. Not universal stability or repeated-wake qualification |
-| AX201 tester **Fulvio ([@netiave on tonymacx86](https://www.tonymacx86.com/members/netiave.1548699/) / [@Funzio on InsanelyMac](https://www.insanelymac.com/forum/profile/2547924-funzio/) / [@netiave on GitHub](https://github.com/netiave))**, one person | Earlier ZC5-BOOTFIX1 reports: TCP TX 324/327, RX 601/569Mbps; UUID 1A496783-086D-37D1-85B3-EA6110F301C9 | KGP conventional route only, including when system AppleVTD was active. Historical reported values, not newly executed validation | No supplied ZC28 peer qualification |
+| AX201 tester **Fulvio ([@netiave on tonymacx86](https://www.tonymacx86.com/members/netiave.1548699/) / [@Funzio on InsanelyMac](https://www.insanelymac.com/forum/profile/2547924-funzio/) / [@netiave on GitHub](https://github.com/netiave))**, one person | Earlier ZC5-BOOTFIX1 reports: TCP TX 324/327, RX 601/569Mbps; UUID 1A496783-086D-37D1-85B3-EA6110F301C9 | Historical user reports; the actual numerical DMA route is not established here. Do not infer Mode 1 or Mode 2 from the AX201 label or system AppleVTD activity | No supplied ZC28 peer qualification |
 | AX211 tester **Luiz ([@LuizMeliga on tonymacx86](https://www.tonymacx86.com/members/luizmeliga.1658846/) / [@luizmeliga on GitHub](https://github.com/luizmeliga))** | Earlier ZC8 originals: TCP RX P1 rounds 600/617/601, P4 615/649/648Mbps | System AppleVTD was active; those originals did not positively establish KGP numerical mapped Mode2. Different AP/network/server cohort | No supplied ZC28 peer qualification |
 
 The AX201 and AX211 reports motivated this comparison; they do not qualify
@@ -25,7 +27,7 @@ AMFIPass.kext/-amfipassbeta and matching supported frameworks/boot configuration
 | Source-derived group | What is present in frozen ZC28 | Limit |
 | --- | --- | --- |
 | AX200; AX101 / AX203 variants | IWX match/config paths with enclosed CC or Qu/QuZ/So68 firmware for specific MAC/RF/subdevice combinations | Await physical confirmation; a retail name does not determine the selected family or DMA route |
-| Killer AX1650w/x (AX200), AX1650i/s (AX201), AX1675w/x (AX210), AX1675i/s (AX211), AX1690i/s (AX411) | Explicit device/subdevice names and corresponding IWX configurations | OEM/revision combinations must actually match; no blanket mapped qualification. AX201-based models remain conventional-only for this project |
+| Killer AX1650w/x (AX200), AX1650i/s (AX201), AX1675w/x (AX210), AX1675i/s (AX211), AX1690i/s (AX411) | Explicit device/subdevice names and corresponding IWX configurations | OEM/revision combinations must actually match; no blanket mapped qualification. Determine the resolved hardware configuration and actual runtime route; no retail-label conventional-only assignment |
 | AX411, selected So/GF4 variants | SO68 firmware and GF4 PNVM are enclosed; matching IWX entries exist | Not physically qualified here; other SnJ/SoSnj variants can select absent firmware |
 | Selected Wireless-AC 9461/9462/9560 and Killer 1550i/s on IWX Qu/QuZ/So paths | Named config rows with enclosed 68 firmware for some combinations | Other PCI variants of the same retail names bind IWM instead. Do not advertise the same fix across all variants |
 
@@ -33,8 +35,8 @@ The IWX table also contains AX221/AX231 and further MA/SnJ/QnJ configuration
 entries, but their selected MA/SoSnj63 or QuQnj48 firmware is **not enclosed**.
 These are table-only references, not working-beta or supported-mapped claims.
 A related AX201/AX211/AX411 name in such a row does not make that variant usable.
-BE200 remains future work; a matching PCI ID or generic MA entry does not
-establish BE200 support. No new firmware, PCI ID, mode or card has been enabled.
+BE200 is outside this frozen ZC28 source and is developed on the separate
+[BE200 alpha branch](https://github.com/kgp-macPro/AirportItlwm-Tahoe/tree/be200-alpha). A generic MA entry does not establish BE200 support. This documentation enables no firmware, PCI ID, mode or card.
 
 ## Separate preserved upstream backends
 
@@ -49,7 +51,7 @@ These lists come from active matching arrays, not every constant/name declared
 somewhere in source (for example, an unused 4165 constant does not add support).
 Shared frontend/net80211 dependencies exist; “separate backend” does not mean
 no shared code. No IWM/IWN mapped-mode or same-performance-fix claim is made.
-The comparison campaign and unchanged r7 remain focused on AX201/AX210/AX211.
+The frozen beta r7 remains focused on AX201/AX210/AX211; the newer shared runner adds explicit BE200 profiles without expanding driver admission.
 Wider source coverage does not require a larger tester matrix.
 
 ## Exact source contracts and references

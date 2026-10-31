@@ -1,0 +1,23 @@
+{
+  "BE200-ALPHA1": {
+    "public_name": "AirportItlwm-Tahoe 1.2.0 BE200 Alpha 1",
+    "uuid": "3610B51E-B7CD-3822-94BD-61EA7C138D99",
+    "executable_sha256": "5bfe3548f2aaf10d8d3b34bc979e7c1f8454dd2e32067d42adce45aefb99a880",
+    "info_plist_sha256": "7a5eea5d0d042d9bd62142b1e9bea7389061a3496bed284476d6a56a5056a8c5",
+    "registry_candidate": "BE200-GL92-PRIVATE-P7",
+    "marker": "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P7",
+    "pci_vendor": 32902,
+    "pci_device": 10027,
+    "binary_build_commit": "e1c50b1bbc2c80f78f4fd93d48e548c0eb58a338",
+    "transport_schema": [
+      200,
+      1,
+      384
+    ],
+    "inherited_health_schema": [
+      19,
+      1,
+      256
+    ]
+  }
+}
