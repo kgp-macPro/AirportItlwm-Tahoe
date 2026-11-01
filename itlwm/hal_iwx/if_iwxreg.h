@@ -1982,6 +1982,7 @@ struct iwx_tx_queue_cfg_rsp {
 #define IWX_REPLY_RX_PHY_CMD    0xc0
 #define IWX_REPLY_RX_MPDU_CMD    0xc1
 #define IWX_BAR_FRAME_RELEASE   0xc2
+#define IWX_FRAME_RELEASE       0xc3
 #define IWX_BA_NOTIF        0xc5
 
 /* Location Aware Regulatory */
@@ -4916,6 +4917,21 @@ static_assert(sizeof(struct iwx_mac_config_cmd) == 52,
 #define IWX_LINK_PROT_FLG_HT_PROT       (1 << 1)
 #define IWX_LINK_PROT_FLG_FAT_PROT      (1 << 2)
 #define IWX_LINK_PROT_FLG_SELF_CTS_EN   (1 << 3)
+
+/* LINK_CONFIG_CMD flags/flags_mask, Linux fw/api/mac-cfg.h iwl_link_ctx_flags */
+#define IWX_LINK_FLG_BSS_COLOR_DIS      (1 << 0)
+#define IWX_LINK_FLG_MU_EDCA_CW         (1 << 1)
+#define IWX_LINK_FLG_RU_2MHZ_BLOCK      (1 << 2)
+
+/* HE packet extension "no threshold" constellation, Linux IWL_HE_PKT_EXT_NONE */
+#define IWX_HE_PKT_EXT_NONE             7
+#define IWX_HE_PKT_EXT_BPSK             0
+
+/* STA_CONFIG_CMD htc_flags, Linux fw/api/mac.h IWL_HE_HTC_* */
+#define IWX_HE_HTC_SUPPORT              (1 << 0)
+#define IWX_HE_HTC_BSR_SUPP             (1 << 4)
+#define IWX_HE_HTC_OMI_SUPP             (1 << 5)
+#define IWX_HE_HTC_BQR_SUPP             (1 << 6)
 
 /**
  * struct iwx_link_config_cmd - LINK_CONFIG_CMD (MAC_CONF_GROUP 0x9)

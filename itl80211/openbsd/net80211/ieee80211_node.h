@@ -262,6 +262,8 @@ struct ieee80211_tx_ba {
 	/* Number of A-MPDU subframes in reorder buffer. */
 	u_int16_t		ba_winsize;
 #define IEEE80211_BA_MAX_WINSZ	64	/* corresponds to maximum ADDBA BUFSZ */
+/* RX reordering ring size; ADDBA responses accept this many only from HE peers. */
+#define IEEE80211_BA_MAX_RX_WINSZ	256
 
 	u_int8_t		ba_token;
 
