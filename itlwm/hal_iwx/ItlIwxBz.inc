@@ -1986,6 +1986,18 @@ iwx_bz_port_setup_he_rates(struct iwx_softc *sc)
         ic->ic_he_mcs_nss_supp.rx_mcs_160 = ic->ic_he_mcs_nss_supp.rx_mcs_80;
         ic->ic_he_mcs_nss_supp.tx_mcs_160 = ic->ic_he_mcs_nss_supp.tx_mcs_80;
     }
+    /*
+     * Optional SU beamformee (Linux iwl_he_capa advertises it); the firmware
+     * answers NDP sounding itself. STS 4 matches the VHT beamformee setting.
+     */
+    if (ic->ic_userflags & IEEE80211_F_HEBFEE) {
+        ic->ic_he_cap_elem.phy_cap_info[4] = IEEE80211_HE_PHY_CAP4_SU_BEAMFORMEE |
+            IEEE80211_HE_PHY_CAP4_BEAMFORMEE_MAX_STS_UNDER_80MHZ_4;
+        if (sc->sc_nvm.vht160_supported)
+            ic->ic_he_cap_elem.phy_cap_info[4] |= IEEE80211_HE_PHY_CAP4_BEAMFORMEE_MAX_STS_ABOVE_80MHZ_4;
+    }
+    sc->sc_pcitag->setProperty("ItlwmHeBeamformee",
+        (ic->ic_userflags & IEEE80211_F_HEBFEE) ? "on" : "off");
     ic->ic_flags |= IEEE80211_F_HEON;
     IOLog("itlwm: Experimental HE enabled: context-v%u rx80=%04x tx80=%04x width-bits=%02x\n",
         version, le16toh(ic->ic_he_mcs_nss_supp.rx_mcs_80),
@@ -3219,6 +3231,29 @@ iwx_bz_port_rx_mpdu_mq(struct iwx_softc *sc, mbuf_t m, void *pktdata,
         rxi.rxi_tstamp = (uint32_t)le64toh(desc->v1.tsf_on_air_rise);
     }
     rxi.rxi_chan = chanidx;
+
+    /* RX_MPDU notification v5+ carries the v2 rate_n_flags layout. */
+    {
+        const uint32_t format = rate_n_flags & IWX_RATE_MCS_MOD_TYPE_MSK;
+        const unsigned mcs = rate_n_flags & IWX_RATE_MCS_CODE_MSK;
+        const unsigned nss = !!(rate_n_flags & IWX_RATE_MCS_NSS_MSK);
+        const unsigned bw = (rate_n_flags & IWX_RATE_MCS_CHAN_WIDTH_MSK) >>
+            IWX_RATE_MCS_CHAN_WIDTH_POS;
+
+        if (format == IWX_RATE_MCS_HE_MSK && mcs < 12)
+            ++fRxRateHist[nss * 12 + mcs];
+        else if (format == IWX_RATE_MCS_VHT_MSK && mcs < 10)
+            ++fRxRateHist[24 + nss * 10 + mcs];
+        else if (format == IWX_RATE_MCS_HT_MSK)
+            ++fRxRateHist[44];
+        else
+            ++fRxRateHist[45];
+        if (bw < 5)
+            ++fRxRateHist[46 + bw];
+        /* Publish every 16384 MPDUs: no per-packet registry access. */
+        if ((++fRxRateHist[51] & 0x3fff) == 0)
+            sc->sc_pcitag->setProperty("ItlwmRxRateHist", fRxRateHist, sizeof(fRxRateHist));
+    }
 
     if (iwx_rx_reorder(sc, m, chanidx, desc,
                        (phy_info & IWX_RX_MPDU_PHY_SHORT_PREAMBLE),
