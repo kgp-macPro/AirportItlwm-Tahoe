@@ -1939,16 +1939,27 @@ iwx_bz_port_setup_he_rates(struct iwx_softc *sc)
     uint8_t version = iwx_lookup_cmd_ver(sc, IWX_DATA_PATH_GROUP, IWX_STA_HE_CTXT_CMD);
     /* Preinit builds modecaps before media_init enables HT. Requiring HTON
      * here would omit 11ax from the initial capability table permanently.
-     * Negotiation still requires HT and QoS on the associated node. */
-    if (!sc->sc_nvm.sku_cap_11ax_enable ||
-        !(ic->ic_userflags & IEEE80211_F_HEON) ||
-        (ic->ic_userflags & IEEE80211_F_NOVHT) ||
-        (version != 1 && version != 2))
-        return;
+     * Negotiation still requires HT and QoS on the associated node.
+     * MLD firmware (GL92) has no STA_HE_CTXT_CMD; HE station parameters
+     * travel in LINK_CONFIG_CMD and STA_CONFIG_CMD instead. */
+    const char *off = NULL;
+    if (!sc->sc_nvm.sku_cap_11ax_enable)
+        off = "off:nvm-11ax";
+    else if (!(ic->ic_userflags & IEEE80211_F_HEON))
+        off = "off:no-opt-in";
+    else if (ic->ic_userflags & IEEE80211_F_NOVHT)
+        off = "off:novht";
+    else if (!iwx_use_mld_api(sc) && version != 1 && version != 2)
+        off = "off:he-ctxt-version";
     unsigned rx = iwx_num_of_ant(iwx_fw_valid_rx_ant(sc));
     unsigned tx = iwx_num_of_ant(iwx_fw_valid_tx_ant(sc));
-    if (!rx || !tx)
+    if (!off && (!rx || !tx))
+        off = "off:antennas";
+    if (off) {
+        sc->sc_pcitag->setProperty("ItlwmHeSetup", off);
         return;
+    }
+    sc->sc_pcitag->setProperty("ItlwmHeSetup", "on");
     if (!iwx_mimo_enabled(sc))
         rx = tx = 1;
     /* Conservative station profile: no TWT, OMI, multi-TID or fragmentation. */
@@ -1976,7 +1987,7 @@ iwx_bz_port_setup_he_rates(struct iwx_softc *sc)
         ic->ic_he_mcs_nss_supp.tx_mcs_160 = ic->ic_he_mcs_nss_supp.tx_mcs_80;
     }
     ic->ic_flags |= IEEE80211_F_HEON;
-    XYLog("Experimental HE enabled: context-v%u rx80=%04x tx80=%04x width-bits=%02x\n",
+    IOLog("itlwm: Experimental HE enabled: context-v%u rx80=%04x tx80=%04x width-bits=%02x\n",
         version, le16toh(ic->ic_he_mcs_nss_supp.rx_mcs_80),
         le16toh(ic->ic_he_mcs_nss_supp.tx_mcs_80), ic->ic_he_cap_elem.phy_cap_info[0]);
 }
@@ -2108,6 +2119,7 @@ iwx_bz_port_sta_rx_agg(struct iwx_softc *sc, struct ieee80211_node *ni, uint8_t 
         getmicrouptime(&rxba->last_rx);
         iwx_init_reorder_buffer(&rxba->reorder_buf, ssn,
                                 winsize);
+        sc->sc_pcitag->setProperty("ItlwmRxBaWinsize", winsize, 32);
         if (timeout_val != 0) {
             struct ieee80211_rx_ba *ba;
             timeout_add_usec(&rxba->session_timer,
@@ -4559,7 +4571,7 @@ iwx_bz_port_rs_init(struct iwx_softc *sc, struct iwx_node *in, bool update)
         cfg_cmd.mode = IWX_TLC_MNG_MODE_NON_HT;
 
     if (ni->ni_flags & IEEE80211_NODE_HE)
-        XYLog("HE TLC: mode=%u width=%s nss=%u rates80=%04x/%04x rates160=%04x/%04x\n",
+        IOLog("itlwm: HE TLC: mode=%u width=%s nss=%u rates80=%04x/%04x rates160=%04x/%04x\n",
             cfg_cmd.mode, ieee80211_chan_width_name[ni->ni_chw], ni->ni_rx_nss,
             le16toh(cfg_cmd.ht_rates[0][0]), le16toh(cfg_cmd.ht_rates[1][0]),
             le16toh(cfg_cmd.ht_rates[0][1]), le16toh(cfg_cmd.ht_rates[1][1]));
@@ -4991,9 +5003,112 @@ iwx_mld_link_config_cmd(struct iwx_softc *sc, struct iwx_node *in,
     cmd.bi = htole32(ni->ni_intval);
     cmd.dtim_interval = htole32(ni->ni_intval * ni->ni_dtimperiod);
 
+    /*
+     * HE BSS parameters from the AP's HE Operation element, following
+     * Linux iwl_mvm_link_changed(): only for an associated HE link.
+     * MU EDCA and the 26-tone RU block stay explicitly cleared.
+     */
+    if ((modify_mask & IWX_LINK_CONTEXT_MODIFY_HE_PARAMS) &&
+        (ni->ni_flags & IEEE80211_NODE_HE)) {
+        uint32_t op = ni->ni_he_oper_params;
+        uint32_t flags = 0;
+
+        cmd.htc_trig_based_pkt_ext = op & IEEE80211_HE_OPERATION_DFLT_PE_DURATION_MASK;
+        cmd.frame_time_rts_th = htole16((op & IEEE80211_HE_OPERATION_RTS_THRESHOLD_MASK) >>
+            IEEE80211_HE_OPERATION_RTS_THRESHOLD_OFFSET);
+        cmd.bss_color = (op & IEEE80211_HE_OPERATION_BSS_COLOR_MASK) >>
+            IEEE80211_HE_OPERATION_BSS_COLOR_OFFSET;
+        if (op & IEEE80211_HE_OPERATION_BSS_COLOR_DISABLED)
+            flags |= IWX_LINK_FLG_BSS_COLOR_DIS;
+        cmd.flags = htole32(flags);
+        cmd.flags_mask = htole32(IWX_LINK_FLG_BSS_COLOR_DIS |
+            IWX_LINK_FLG_MU_EDCA_CW | IWX_LINK_FLG_RU_2MHZ_BLOCK);
+        modify_mask |= IWX_LINK_CONTEXT_MODIFY_BSS_COLOR_DISABLE;
+        IOLog("itlwm: HE link: color=%u disabled=%u pe=%u rts_th=%u\n", cmd.bss_color,
+            !!(flags & IWX_LINK_FLG_BSS_COLOR_DIS), cmd.htc_trig_based_pkt_ext,
+            le16toh(cmd.frame_time_rts_th));
+        /* bits 0-5 color, 6 color disabled, 8-10 PE, 16-25 RTS threshold */
+        sc->sc_pcitag->setProperty("ItlwmHeLink", cmd.bss_color |
+            (!!(flags & IWX_LINK_FLG_BSS_COLOR_DIS) << 6) |
+            (cmd.htc_trig_based_pkt_ext << 8) |
+            (le16toh(cmd.frame_time_rts_th) << 16), 32);
+    } else {
+        if (modify_mask & IWX_LINK_CONTEXT_MODIFY_HE_PARAMS)
+            sc->sc_pcitag->setProperty("ItlwmHeLink", "not-he");
+        modify_mask &= ~IWX_LINK_CONTEXT_MODIFY_HE_PARAMS;
+    }
+    cmd.modify_mask = htole32(modify_mask);
+
     return iwx_send_cmd_pdu(sc, iwx_cmd_id(IWX_LINK_CONFIG_CMD,
         IWX_MAC_CONF_GROUP, 0), 0, sizeof(cmd), &cmd);
 #undef IWX_EXP2
+}
+
+static uint8_t
+iwx_mld_he_ppe_value(const uint8_t *ppe, unsigned bit)
+{
+    unsigned value = ppe[bit / 8] >> (bit % 8);
+    if (bit % 8 > 5)
+        value |= unsigned(ppe[bit / 8 + 1]) << (8 - bit % 8);
+    return value & 7;
+}
+
+/*
+ * HE fields of the AP station, following Linux iwl_mvm_mld_cfg_sta():
+ * packet extension from the AP's PPE thresholds (or its nominal padding),
+ * HTC support and HE ack. UORA is not parsed, so trig_rnd_alloc stays 0.
+ */
+static void
+iwx_mld_sta_he_params(const struct ieee80211_node *ni, struct iwx_sta_cfg_cmd *cmd)
+{
+    const uint8_t *mac = ni->ni_he_cap_elem.mac_cap_info;
+    const uint8_t *phy = ni->ni_he_cap_elem.phy_cap_info;
+    uint32_t htc = 0;
+
+    memset(cmd->pkt_ext, IWX_HE_PKT_EXT_NONE, sizeof(cmd->pkt_ext));
+    if (phy[6] & IEEE80211_HE_PHY_CAP6_PPE_THRESHOLD_PRESENT) {
+        unsigned nss = (ni->ni_ppe_thres[0] & IEEE80211_PPE_THRES_NSS_MASK) + 1;
+        unsigned ru_mask = (ni->ni_ppe_thres[0] & IEEE80211_PPE_THRES_RU_INDEX_BITMASK_MASK) >>
+            IEEE80211_PPE_THRES_RU_INDEX_BITMASK_POS;
+        unsigned bit = 7; /* NSS (3) + RU index bitmask (4) header */
+
+        for (unsigned ss = 0; ss < nss && ss < 2; ss++) {
+            for (unsigned ru = 0; ru < 4; ru++) {
+                if (!(ru_mask & (1U << ru)))
+                    continue;
+                /* Bit stream holds PPET16 then PPET8 for each RU. */
+                cmd->pkt_ext[ss][ru][1] = iwx_mld_he_ppe_value(ni->ni_ppe_thres, bit);
+                cmd->pkt_ext[ss][ru][0] = iwx_mld_he_ppe_value(ni->ni_ppe_thres,
+                    bit + IEEE80211_PPE_THRES_INFO_PPET_SIZE);
+                bit += 2 * IEEE80211_PPE_THRES_INFO_PPET_SIZE;
+            }
+        }
+    } else {
+        /* Common nominal packet padding: 0 = 0us, 1 = 8us, 2 = 16us, 3 = reserved.
+         * Pad from BPSK upward; extra padding is always acceptable to the AP. */
+        unsigned padding = (phy[9] >> 6) & 3;
+
+        if (padding == 1 || padding == 2) {
+            for (unsigned ss = 0; ss < 2; ss++)
+                for (unsigned bw = 0; bw < 5; bw++)
+                    cmd->pkt_ext[ss][bw][padding - 1] = IWX_HE_PKT_EXT_BPSK;
+        }
+    }
+
+    if (mac[0] & IEEE80211_HE_MAC_CAP0_HTC_HE)
+        htc |= IWX_HE_HTC_SUPPORT;
+    if (mac[2] & IEEE80211_HE_MAC_CAP2_BSR)
+        htc |= IWX_HE_HTC_BSR_SUPP;
+    if (mac[3] & IEEE80211_HE_MAC_CAP3_OMI_CONTROL)
+        htc |= IWX_HE_HTC_OMI_SUPP;
+    if (mac[4] & IEEE80211_HE_MAC_CAP4_BQR)
+        htc |= IWX_HE_HTC_BQR_SUPP;
+    cmd->htc_flags = htole32(htc);
+    if (mac[2] & IEEE80211_HE_MAC_CAP2_ACK_EN)
+        cmd->ack_enabled = htole32(1);
+    IOLog("itlwm: HE sta: ppe=%u padding=%u htc=%08x ack=%u\n",
+        !!(phy[6] & IEEE80211_HE_PHY_CAP6_PPE_THRESHOLD_PRESENT), (phy[9] >> 6) & 3,
+        htc, le32toh(cmd->ack_enabled));
 }
 
 int ItlIwx::
@@ -5044,6 +5159,8 @@ iwx_mld_sta_config_cmd(struct iwx_softc *sc, struct iwx_node *in, int assoc)
         cmd.tx_ampdu_max_size = htole32(agg_size);
         if (ni->ni_flags & IEEE80211_NODE_QOS)
             cmd.sp_length = htole32(128);
+        if (ni->ni_flags & IEEE80211_NODE_HE)
+            iwx_mld_sta_he_params(ni, &cmd);
     }
 
     return iwx_send_cmd_pdu(sc, iwx_cmd_id(IWX_STA_CONFIG_CMD,
@@ -5421,11 +5538,13 @@ iwx_mld_run(struct iwx_softc *sc, struct iwx_node *in)
 
     step = IWX_MLD_STEP_RUN_LINK;
     iwx_mld_probe(sc, step, 0);
+    /* HE_PARAMS is dropped by iwx_mld_link_config_cmd() for non-HE links. */
     err = iwx_mld_link_config_cmd(sc, in, IWX_FW_CTXT_ACTION_MODIFY,
         IWX_LINK_CONTEXT_MODIFY_RATES_INFO |
         IWX_LINK_CONTEXT_MODIFY_PROTECT_FLAGS |
         IWX_LINK_CONTEXT_MODIFY_QOS_PARAMS |
-        IWX_LINK_CONTEXT_MODIFY_BEACON_TIMING, 1);
+        IWX_LINK_CONTEXT_MODIFY_BEACON_TIMING |
+        IWX_LINK_CONTEXT_MODIFY_HE_PARAMS, 1);
     if (err)
         goto fail;
 

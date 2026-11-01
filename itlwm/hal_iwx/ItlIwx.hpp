@@ -765,6 +765,7 @@ public:
     kgp_bz::CommandLedger fBzCommands;
     kgp_bz::RxLedger fBzRx;
     uint64_t fBzStats[32] = {}, fBzWire[48] = {};
+    uint32_t fFrameReleaseCount = 0; // firmware FRAME_RELEASE notifications handled
     int bzValidateFirmware();
     int bzWaitFailure(struct iwx_softc *, int, uint32_t);
     void bzPnvmComplete(struct iwx_softc *, const void *, size_t);

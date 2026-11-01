@@ -649,7 +649,7 @@ struct iwx_rxba_data {
     CTimeout *session_timer;
     struct iwx_softc *sc;
     struct iwx_reorder_buffer reorder_buf;
-    struct iwx_reorder_buf_entry entries[IEEE80211_BA_MAX_WINSZ];
+    struct iwx_reorder_buf_entry entries[IEEE80211_BA_MAX_RX_WINSZ];
 };
 
 static inline struct iwx_rxba_data *
