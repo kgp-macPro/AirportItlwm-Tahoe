@@ -1,4 +1,6 @@
-# Prepared manual forum updates — not posted
+# Archived manual forum drafts — not posted
+
+These r11/3×14 drafts are retained as historical text. The current two-variant entry flow, r12/3×20 package and independently checked 60-test BE200 result are in the [maintained benchmark guide](README.md) and [current repository README](../../README.md). Do not reuse the draft download or candidate instructions below as current guidance.
 
 ## InsanelyMac
 

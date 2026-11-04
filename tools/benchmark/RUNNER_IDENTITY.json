@@ -1,7 +1,8 @@
 {
-  "revision": "shared-2026-10-31-r11-public-be200",
-  "protocol": "AIRPORTITLWM_3X14_NO_PROFILER_V1",
-  "runner_sha256": "5f01573d8048c422b6657836cd09ad407d0291abb59a92629895e20e82502774",
+  "revision": "shared-2026-11-04-r12-local-udp900",
+  "protocol": "AIRPORTITLWM_3X20_NO_PROFILER_V1",
+  "runner_sha256": "5ce3165ae31ad0d1bb347eb8bdf571aa5542199b63fd427fc8e2aacc220f87e2",
+  "historical_3x14_runner_sha256": "5f01573d8048c422b6657836cd09ad407d0291abb59a92629895e20e82502774",
   "resource_sha256": {
     "decode_be200.py": "97bcfe49481ebe1738bc36bb617e67f19d85aa69d5a144174f01d8edda64b89c",
     "profiles.json": "e7c6510105ee59a9f34fe4af4bfb04804d4217395aea73ebc997aa9931210947",
@@ -44,5 +45,5 @@
       256
     ]
   },
-  "scope": "Tool-only; unchanged traffic protocol, no driver/binary/EFI/root-patch operations."
+  "scope": "Tool-only; separate 3x20 UDP extension and frozen 3x14 runner; no driver/binary/EFI/root-patch operations."
 }

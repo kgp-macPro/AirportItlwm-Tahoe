@@ -3,7 +3,7 @@
 from pathlib import Path
 import unittest,tempfile,subprocess,json,plistlib,struct,hashlib,copy,os,sys,re,importlib.util,zipfile,shlex,pty,select,time,errno
 B=Path(__file__).resolve().parents[1]
-NEW=B/'AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh';OLD=B/'reference/AirportItlwm_3x14_PORTABLE_IP_PROMPT.r7-service.sh'
+NEW=B/'AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh';EXT=B/'AirportItlwm_3x20_PORTABLE_IP_PROMPT.sh';OLD=B/'reference/AirportItlwm_3x14_PORTABLE_IP_PROMPT.r7-service.sh'
 spec=importlib.util.spec_from_file_location('profile',B/'runner_profiles/shared_profile.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 FIX=plistlib.loads((B/'tests/fixtures/P7_BOUNDARY.plist').read_bytes())
 P8=Path(os.environ.get('BE200_P8_TEST_KEXT','/nonexistent/private-P8'))
@@ -16,19 +16,19 @@ def modified(iface='en2',parent='ARPT'):
 def terminal_run(command,env,answer):
     pid,fd=pty.fork()
     if pid==0:os.execvpe(command[0],command,env)
-    chunks=[];deadline=time.monotonic()+90
+    chunks=[];deadline=time.monotonic()+120;sent=False
     try:
-        os.write(fd,answer.encode())
         while time.monotonic()<deadline:
             ready,_,_=select.select([fd],[],[],0.1)
             if ready:
                 try:
                     chunk=os.read(fd,65536)
-                    if chunk:chunks.append(chunk)
-                    else:break
+                    if chunk:
+                        chunks.append(chunk)
+                        if not sent and b'IPv4 des kabelgebundenen iperf3-Servers' in b''.join(chunks):
+                            os.write(fd,answer.encode());sent=True
                 except OSError as e:
-                    if e.errno==errno.EIO:break
-                    raise
+                    if e.errno!=errno.EIO:raise
             ended,status=os.waitpid(pid,os.WNOHANG)
             if ended:
                 # Drain pending terminal output after process exit.
@@ -41,7 +41,7 @@ def terminal_run(command,env,answer):
                 return subprocess.CompletedProcess(command,os.waitstatus_to_exitcode(status),b''.join(chunks).decode(errors='replace'),'')
         ended,status=os.waitpid(pid,os.WNOHANG)
         if not ended:
-            os.kill(pid,9);os.waitpid(pid,0);raise TimeoutError('Offline interactive runner timeout')
+            os.kill(pid,9);os.waitpid(pid,0);raise TimeoutError('Offline interactive runner timeout: '+b''.join(chunks).decode(errors='replace')[-2000:])
         return subprocess.CompletedProcess(command,os.waitstatus_to_exitcode(status),b''.join(chunks).decode(errors='replace'),'')
     finally:os.close(fd)
 
@@ -180,6 +180,7 @@ class Tests(unittest.TestCase):
    for script in [OLD,NEW]:
     p=t/(script.parent.name+'.plist');d=node_for('ZC28','mapped');p.write_bytes(plistlib.dumps(d));self.assertEqual(self.guard(script,p,'mapped','ZC28').returncode,0);ref=t/(script.parent.name+'-base.json');ref.write_bytes(p.with_suffix('.health.json').read_bytes());self.assertEqual(self.guard(script,p,'mapped','ZC28',ref=ref,prev=ref).returncode,0)
  def campaign(self,script,label='ZC28',mode='mapped',scene='normal',iface='en17',parent='WIFI',keyword=False):
+  expected=60 if script==EXT else 42
   with tempfile.TemporaryDirectory(prefix='SIMULATED-shared-r8-')as tmp:
    t=Path(tmp);bin=t/'bin';bin.mkdir();state=t/'state';state.mkdir();out=t/'results';root=t/'runner';root.mkdir();shutil=__import__('shutil');shutil.copytree(B/'runner_profiles',root/'runner_profiles');(bin/'mock.py').write_text(MOCK);(bin/'mock.py').chmod(0o755)
    for cmd in ['iperf3','networkQuality','ioreg','kmutil','xcrun','ipconfig','route','ifconfig','networksetup','sysctl','sw_vers','ps','sleep','ditto']:(bin/cmd).symlink_to('mock.py')
@@ -212,21 +213,21 @@ class Tests(unittest.TestCase):
     for line in z.read(prefix+'SHA256SUMS.txt').decode().splitlines():
      h,n=line.split(None,1);self.assertEqual(hashlib.sha256(z.read(prefix+n.removeprefix('./'))).hexdigest(),h)
     if scene in ['normal','adjacent-equal']:
-     self.assertEqual(r.returncode,0,r.stdout+r.stderr);self.assertIn('STATUS=COMPLETE_42_AND_ONLINE',status)
-     self.assertEqual(sum(n.endswith('.iperf3.json')for n in names),42);self.assertEqual(sum(n.endswith('.server_output.json')for n in names),42)
+     self.assertEqual(r.returncode,0,r.stdout+r.stderr);self.assertIn(f'STATUS=COMPLETE_{expected}_AND_ONLINE',status)
+     self.assertEqual(sum(n.endswith('.iperf3.json')for n in names),expected);self.assertEqual(sum(n.endswith('.server_output.json')for n in names),expected)
      for n in names:
       if n.endswith('.iperf3.json'):
        j=json.loads(z.read(n));self.assertTrue(j['SIMULATED']);self.assertEqual(json.loads(z.read(n.replace('.iperf3.json','.server_output.json'))),j['server_output_json'])
      self.assertEqual(z.read(prefix+'EXECUTED_RUNNER.sh'),run.read_bytes())
      self.assertIn(b'Download responsiveness (RPM): 210.74',z.read(prefix+'ONLINE_NETWORKQUALITY.txt'))
-     if script==NEW:
+     if script in (NEW,EXT):
       prov=json.loads(z.read(prefix+'RUNNER_PROVENANCE.json'));self.assertTrue(prov['copy_matches_executed_source_at_checks']);self.assertEqual(len(prov['resource_sha256']),3)
       binding=json.loads(z.read(prefix+'DEVICE_BINDING.json'));self.assertEqual(binding['interface_name'],iface);self.assertEqual(binding['provider_name'],parent)
      if label in ('BE200-ALPHA1','BE200-P8','BE200-ALPHA2'):
       h=json.loads(z.read(prefix+'FINAL.health.json'));self.assertEqual(h['Candidate'],label);self.assertIn('BE200',h);self.assertEqual(h['BE200']['record']['actual_mode'],2 if mode=='mapped'else 1)
     else:
      self.assertNotEqual(r.returncode,0,r.stdout+r.stderr);self.assertIn('STATUS=INCOMPLETE_OR_ONLINE_FAILURE',status)
-     if scene=='stale-final':self.assertIn('COMPLETED_IPERF_TESTS=42',status)
+     if scene=='stale-final':self.assertIn(f'COMPLETED_IPERF_TESTS={expected}',status)
      if scene in ['wrong-uuid','missing-bz','wrong-route']:self.assertIn('COMPLETED_IPERF_TESTS=0',status)
    calls=[json.loads(x)for x in(state/'iperf-calls.jsonl').read_text().splitlines()]if(state/'iperf-calls.jsonl').exists()else[]
    sleeps=[json.loads(x)for x in(state/'sleep-calls.jsonl').read_text().splitlines()]if(state/'sleep-calls.jsonl').exists()else[]
@@ -354,6 +355,22 @@ class Tests(unittest.TestCase):
   for label in ['AX201-ALPHA2','AX210-ALPHA2','AX211-ALPHA2']:
    for mode in ['mapped','conventional']:
     self.assertEqual(len(self.campaign(NEW,label,mode,'normal',keyword=True)[0]),42)
+
+ def test_14_extended_3x20_matrix_and_guards(self):
+  self.assertEqual(hashlib.sha256(EXT.read_bytes()).hexdigest(),'5ce3165ae31ad0d1bb347eb8bdf571aa5542199b63fd427fc8e2aacc220f87e2')
+  subprocess.run(['/bin/bash','-n',str(EXT)],check=True)
+  for a,b in [('run_test() {','\nstage="DISCOVER_BOUND_INTERFACE"'),('check_snapshot() {','\nexternal_identity_snapshot()')]:
+   self.assertEqual(EXT.read_text().split(a,1)[1].split(b,1)[0],NEW.read_text().split(a,1)[1].split(b,1)[0])
+  if not P8.exists():self.skipTest('Actual P8R1 bundle unavailable for full extended campaign')
+  before=self.campaign(NEW,'BE200-ALPHA2','mapped','adjacent-equal',keyword=True)[0]
+  after,sleeps=self.campaign(EXT,'BE200-ALPHA2','mapped','adjacent-equal',keyword=True)
+  self.assertEqual(len(after),60)
+  for i in range(3):
+   self.assertEqual(after[i*20:i*20+14],before[i*14:(i+1)*14])
+   self.assertEqual([int(c[c.index('-b')+1][:-1]) for c in after[i*20+14:(i+1)*20]],[700,700,800,800,900,900])
+  self.assertEqual(sleeps,[['2']]*60+[['3']])
+  self.campaign(EXT,'BE200-ALPHA2','mapped','wrong-uuid')
+  self.campaign(EXT,'BE200-ALPHA2','mapped','online-error')
 
 if __name__=='__main__':
  r=unittest.main(verbosity=2,exit=False);print('OFFLINE COVERAGE',json.dumps(COUNTS),flush=True);sys.exit(not r.result.wasSuccessful())

@@ -6,7 +6,7 @@
 
 # AirportItlwm-Tahoe
 
-[Current BE200 alpha testing campaign](#current-be200-alpha-testing-campaign) · [Optional 1.1.0 Beta reference comparisons](#optional-reference-comparisons-airportitlwm-tahoe-110-beta)
+[Alpha 2/P8R1 and current tests](#current-be200-alpha-testing-campaign) · [Benchmark guide](docs/benchmark/README.md) · [Historical results](#selected-historical-best-results--original-whole-test-measurements)
 
 ## Project overview and qualified 1.0.0 release
 
@@ -57,7 +57,7 @@ Reference hardware: **Intel AX210, PCI 8086:2725**, x86_64 Custom Mac, with the 
 
 Active `awdl0`, Apple P2P integration and the tested features do not establish complete AWDL or Apple Continuity restoration. Reported packet samples had no kernel drops; that is a sample result, not an unrestricted packet-loss guarantee.
 
-**Important scope note:** This kext does **not** claim to restore AirDrop, Continuity Camera, or Personal Hotspot. These features, and Intel BE200 support, remain future development gates. Broader post-1.0.0 development resumed in October 2026; the current AirportItlwm-Tahoe 1.1.0 Beta preparation focuses on independent AX201/AX210/AX211 comparisons, sustained-load behavior and the TX/RX balance. This does not imply a promised feature order or completion date for other future work.
+**Scope:** The qualified 1.0.0 release does **not** claim AirDrop, Continuity Camera, Personal Hotspot or BE200 support. The separate 1.2.0 Alpha 2/P8R1 adds experimental BE200 infrastructure support; native AirDrop remains unproven. AX201/AX210/AX211 validation uses the same Alpha 2 bundle with separate card and mode checks. No feature schedule is promised.
 
 ## Current KGP EFI distribution
 
@@ -67,7 +67,7 @@ The [current public KGP EFI distribution](https://www.insanelymac.com/forum/file
 
 For the frozen **AirportItlwm-Tahoe 1.0.0 release**, use the official release asset’s **`AirportItlwm.kext`** with the framework environment described in [INSTALL.md](INSTALL.md).
 
-For **AirportItlwm-Tahoe 1.1.0 Beta**, use the proposed single comparison ZIP once it has been reviewed and published. Follow [README_TESTS.txt](README_TESTS.txt) for the verified Desktop setup action, manual replacement of an existing installation, user-controlled reboot and rollback. The older ZC4 forum binary is historical.
+For current experimental testing, use the [unchanged Alpha 2/P8R1 release](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/tag/v1.2.0-be200-alpha.2) and the [central benchmark guide](docs/benchmark/README.md). The [1.1.0 Beta](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/tag/v1.1.0-beta.1) and older binaries remain historical downloads.
 
 Keep the bundle, executable and identifier unchanged; use only one AirportItlwm variant for the device. Preserve a working recovery setup. This project does not install itself, configure the bootloader, or provide a substitute for required OCLP root patches.
 
@@ -110,7 +110,7 @@ OpenIntelWireless / itlwm → pinned Dexter source → mapper-backed RX/TX/comma
 
 ## Current BE200 alpha testing campaign
 
-The current 1.2.0 Alpha is our primary KGP validation candidate for **AX201, AX210, AX211 and BE200** through the restored Ventura legacy wireless frontend. BE200 (`8086:272B`) has physical results; AX201/AX210/AX211 are explicitly invited to validate this shared build, not newly qualified by the BE200 measurements. **[Retro-OCLP-CustoMac root patching](https://github.com/kgp-macPro/OCLP-CustoMac) and the matching supported framework/boot environment are required.** Further performance optimization is planned; this is not Wi-Fi 7/MLO/6 GHz or broad hardware qualification.
+The unchanged 1.2.0 Alpha 2/P8R1 is our primary KGP validation candidate for **AX201, AX210, AX211 and BE200** through the restored Ventura legacy wireless frontend. BE200 (`8086:272B`) has physical results; AX201/AX210/AX211 are explicitly invited to validate this shared build, not newly qualified by the BE200 measurements. **[Retro-OCLP-CustoMac root patching](https://github.com/kgp-macPro/OCLP-CustoMac) and the matching supported framework/boot environment are required.** Further performance optimization is planned; this is not Wi-Fi 7/MLO/6 GHz or broad hardware qualification.
 
 [Current BE200 release, downloads, exact source/build identity and known issues](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/tag/v1.2.0-be200-alpha.2) · [Shared validation testing](#validation-testing-ax201-ax210-ax211-and-be200) · [Central commands and tool setup](docs/benchmark/README.md).
 
@@ -161,79 +161,33 @@ Version-specific changes, measurements and recovery findings belong to the relea
 
 </details>
 
-<a id="current-comparison-campaign-airportitlwm-tahoe-110-beta"></a>
+## Active validation: two driver variants
 
-## Optional reference comparisons: AirportItlwm-Tahoe 1.1.0 Beta
+The [single maintained guide](docs/benchmark/README.md) has current downloads, prerequisites, setup, server/client commands, card and mode checks, and result return instructions. Choose **unchanged AirportItlwm-Tahoe Alpha 2/P8R1** as the primary test driver for BE200/AX201/AX210/AX211. **BE200 VHT160 verified; AX201/AX210/AX211 VHT160 validation pending.** The existing AX VHT160 source paths are present, but no 160-MHz Alpha 2 hardware result for those three cards is established. This 802.11ac/VHT question is separate from HE in PR #5. **laobamac build 53** (`738d4c61b5a64433b27c1ab09dba94916ab77d8d`) is an optional external comparison for a separately verified supported AX201/AX210/AX211 setup only. The retained laobamac comparison build does **not** support BE200. Its native Wi-Fi framework path differs from the Alpha 2 restored legacy path; record the actual frameworks and patch state. A retail label alone does not establish PCI identity or DMA mode.
 
-The **current 1.2.0 Alpha is the primary KGP test candidate for AX201, AX210, AX211 and BE200**. These frozen beta/ZC builds are optional reference comparisons and fallback versions, not a mandatory matrix. Within that historical campaign ZC28 remains its original starting point; ZC8/ZC19/ZC22/ZC26 are additional controls. **laobamac44/47/53 are optional external controls for AX201/AX210/AX211 only and do not support BE200.** The [frozen beta download](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/tag/v1.1.0-beta.1), Kext bytes, source snapshots, licenses and old r7 tool remain unchanged. Use the newer shared tool setup after beta setup.
+The r12 [complete tool ZIP](tools/benchmark/releases/AirportItlwm-Shared-Benchmark-r12.zip) contains the new **3×20** UDP-extended runner and the unchanged **3×14** runner. The [r11 package](tools/benchmark/releases/AirportItlwm-Shared-Benchmark-r11.zip), older candidates, [1.1.0 Beta download](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/tag/v1.1.0-beta.1), source/credits and historical results below remain available, outside the active entry flow. No new driver binary is part of r12.
 
-[Shared validation instructions and result submission](#validation-testing-ax201-ax210-ax211-and-be200) · [Central test guide](docs/benchmark/README.md) · [Historical results below](#selected-historical-best-results--original-whole-test-measurements).
+## BE200 Alpha 2 VHT160: new 60-test result
 
-Earlier AX201/AX211 reports motivated the AX210 TX/RX investigation. The [retained motivation and source-derived hardware overview](docs/beta/COMPARISON_CONTEXT.md) distinguish physical evidence from source candidates and preserved upstream paths.
+[Full independently checked 3×20 report](docs/benchmark/BE200_ALPHA2_VHT160_3X20_20261104.md) · [Original 60-test ZIP](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v1.2.0-be200-alpha.2/BE200-ALPHA2_BE200_3X20_mapped_20261104_202616_0FpHg8.zip). The archive identifies the same Alpha 2/P8R1 binary, BE200 `8086:272B`, active AppleVTD, actual mapped Mode 2, channel 44/160 MHz, and Wi-Fi en2. KGP reports a Mercusys MR27BE AP in 802.11ac/VHT160, 1732 Mbit/s PHY, WPA2 and an M1 MacBook wired peer with a 1-Gbit/s OWC link. Those peer/menu details are user observations; the archive pins only its own saved client-side state and server IP/route.
 
-## Validation testing: AX201, AX210, AX211 and BE200
+| TCP test, Wi-Fi client perspective | Receiver mean (Mbit/s) | Sender retransmissions, 3 rounds |
+|---|---:|---:|
+| TX, 1 stream | 645.4 | 2,139 |
+| RX, 1 stream | 919.4 | 0 |
+| TX, 4 streams | 586.8 | 12,130 |
+| RX, 4 streams | 925.4 | 0 |
 
-**[Open the central validation guide](docs/benchmark/README.md)** for all prerequisites, current profiles, complete commands, installation/rollback and return instructions. The common runner retains the original three rounds × 14 cases, 8-second TCP, 5-second UDP/1200-byte payload, 2-second gaps and final sequential networkQuality. Existing forensic/debugging capture remains separate.
+| UDP test | Target | Actual sender mean | Receiver mean | Max reported per-run loss |
+|---|---:|---:|---:|---:|
+| TX700 | 700 | 602.0 | 593.7 | 0.061% |
+| RX700 | 700 | 700.0 | 702.2 | 0% |
+| TX800 | 800 | 603.7 | 594.2 | 0.063% |
+| RX800 | 800 | 800.0 | 802.4 | 0% |
+| TX900 | 900 | 603.7 | 593.0 | 0.503% |
+| RX900 | 900 | 900.0 | 902.4 | 0.136% |
 
-### Prerequisites and separate installation paths
-
-- **Current KGP Alpha (AX201/AX210/AX211/BE200):** [Retro-OCLP-CustoMac root patching](https://github.com/kgp-macPro/OCLP-CustoMac), restored Ventura legacy frameworks and the matching Skywalk/AMFIPass/`-amfipassbeta` boot environment.
-- **KGP ZC beta/historical controls:** OCLP-CustoMac 3.0.3, its Skywalk replacement, AMFIPass.kext with `-amfipassbeta` and matching supported framework/boot configuration.
-- **External laobamac44/47/53 (AX201/AX210/AX211 ONLY, no BE200):** native Wi-Fi implementation, without those OCLP/Skywalk/`-amfipassbeta` Wi-Fi prerequisites. A kext swap does not undo root patches. Record the ACTUAL framework/patch state for every comparison; native-capable does not mean an observed run was unpatched. See the [environment register](docs/beta/FRAMEWORK_ENVIRONMENT_REGISTER.txt).
-
-Update/restore complete Kext bundles and matching boot configurations manually, then reboot. Setup installs only tools; it never changes EFI, root patches or driver loading. Existing source/license mapping and the [ZC4 historical source offer](docs/beta/ZC4_PUBLIC_BETA_HISTORY.md) remain available. Qualified stable 1.0.0 remains the main recommendation; a future stable 1.1.0 requires independent qualification, with beta material retained in release history.
-
-### Current tools and setup
-
-[**Download shared benchmark r11 (all profiles and setup)**](https://github.com/kgp-macPro/AirportItlwm-Tahoe/raw/refs/heads/main/tools/benchmark/releases/AirportItlwm-Shared-Benchmark-r11.zip) · [ZIP SHA-256](https://github.com/kgp-macPro/AirportItlwm-Tahoe/raw/refs/heads/main/tools/benchmark/releases/AirportItlwm-Shared-Benchmark-r11.zip.sha256) · [Runner/resource identities](tools/benchmark/RUNNER_IDENTITY.json).
-
-Extract in Downloads on both Macs, then run:
-
-```bash
-/bin/bash "$HOME/Downloads/AirportItlwm-Shared-Benchmark-r11/SETUP_AirportItlwm_Benchmark.command"
-```
-
-This prepares `~/Desktop/AirportItlwm/TOOLS` and preserves differing files in timestamped BACKUPS; TESTS and unrelated files are untouched. **Run it after old beta setup**, which still installs r7. Verify `--version` reports `shared-2026-10-31-r11-public-be200`. Python 3.9+, existing iperf3 and Command Line Tools are required; no dependency is silently installed.
-
-### Server and client commands
-
-On the wired server Mac, manually turn Wi-Fi OFF, connect Ethernet and run:
-
-```bash
-/bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_IPERF3_WIRED_SERVER.sh"
-```
-
-It asks for the actual wired interface and starts `iperf3 -s -B "$ip" -p 5201` using its checked current Ethernet IPv4. The client prompts for this address. After manually installing/rebooting with the matching extracted Alpha 2 bundle:
-
-```bash
-CANDIDATE_KEXT="$HOME/Downloads/AirportItlwm-Tahoe-1.2.0-BE200-Alpha-2/AirportItlwm.kext" DEVICE_LABEL=BE200 /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" BE200-ALPHA2 mapped
-```
-
-For AX validation use the SAME current Alpha bundle, after manual installation/reboot. Example requesting actual Mode 2 (substitute `AX201-ALPHA2` or `AX211-ALPHA2` for those systems, and `conventional` for an actual Mode 1 comparison):
-
-```bash
-CANDIDATE_KEXT="$HOME/Downloads/AirportItlwm-Tahoe-1.2.0-BE200-Alpha-2/AirportItlwm.kext" /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" AX210-ALPHA2 mapped
-```
-
-**Optional laobamac control is AX201/AX210/AX211-only; these builds do not support BE200.** After its separate native-environment installation/reboot:
-
-```bash
-/bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" LAOBAMAC 53 mapped
-```
-
-The last argument in that external call records DECLARED AppleVTD configuration; numerical KGP DMA/fault/epoch telemetry is unavailable. Existing Alpha 1/P7, private P8R1, AX/ZC and numbered laobamac calls retain their checks and paths. The [full guide](docs/benchmark/README.md) has Alpha 1, historical, conventional and override examples.
-
-### AX201 validation commands
-
-The former blanket AX201-conventional-only instruction is withdrawn. **Use actual runtime identity and mode, not the retail label.** Mapped requires reported Mode 2 plus active AppleVTD; conventional requires Mode 1 without independently requiring absence of system AppleVTD. EXPECTED_MODE checks, never selects the route. Configured DisableIoMapper and captured AppleVTD are separate evidence.
-
-The runner discovers the actual PCI/controller/infrastructure-interface binding, excludes awdl0 and checks the server route and Wi-Fi traffic binding. `WIFI_IFACE` / `IOREG_WIFI_SERVICE` are optional checked overrides, never universal en2/ARPT/CNVW defaults. Fulvio's observed CNVW/en0 examples and all four ZC28/ZC8 mapped/conventional commands are in the [corrected command section](docs/benchmark/README.md#ax201-validation-commands). A Mode 1 mismatch alone does not prove Mode 2. This section and the guide supersede the blanket guidance in unchanged bundled documentation; failed checks must be returned, not bypassed.
-
-### Submit beta results
-
-Use the [ONE central GitHub results thread](https://github.com/kgp-macPro/AirportItlwm-Tahoe/issues/2), one campaign per comment, or the equivalent shared [IM](https://www.insanelymac.com/forum/topic/363194-airportitlwm-tahoe-100-%E2%80%93-intel-wi-fi-with-applevtdiommu-and-awdl-baseline-support-on-macos-tahoe/) / [TM](https://www.tonymacx86.com/threads/airportitlwm-tahoe-1-0-0-intel-wi-fi-with-applevtd-iommu-and-awdl-baseline-support-on-macos-tahoe.333361/) threads. Start with **card | candidate | AppleVTD configured/runtime | actual DMA mode (or unavailable)**. Link existing reports instead of uploading twice.
-
-For EACH campaign attach ONE Return-ZIP containing the untouched runner-result ZIP, Ookla screenshot/link and short configuration notes. Include failures and slow runs. The [comment template and complete return instructions](docs/benchmark/README.md#submit-results) request actual patch/framework state, AP/radio and wired-server details. Archives remain attachments, not repository changes; separate issues are for concrete bugs.
+All 60 cases and the separate final online check completed. The 700–900 TX targets were sender-limited at about 600–605 Mbit/s with roughly 97–99% client iperf process CPU; the 900 target is **not** a 900-Mbit/s Wi-Fi TX measurement, and the target gap is not packet loss. RX700/RX800 reported zero loss in every round; RX900 loss was 0.136%, 0%, 0%. The prior 3×14 archive is internal comparison evidence and is not a new public result. The driver was unchanged while AP/server conditions changed, so the new throughput is not a driver-switch gain. KGP separately observed a 1→10→1-Gbit/s OWC server-link comparison, with the other VHT160 setup unchanged: single-stream TCP RX receiver goodput was 919→368→919 Mbit/s and sender retransmissions 0→608→0 over 10-second runs. These manual runs are outside the 60-test tables and have not been independently audited from raw data here. The RX drop is repeatedly associated with the 10-Gbit/s server-link configuration and disappeared after restoration; the cause is unknown, and neither adapter defect nor driver fault or its exclusion is proven. The UDP TX/client-CPU limit is a separate observation. These data show VHT160 in this setup, not HE or functional AirDrop.
 
 ## Selected historical best results — original whole-test measurements
 

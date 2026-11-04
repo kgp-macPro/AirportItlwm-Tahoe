@@ -12,18 +12,20 @@ class PublicTools(unittest.TestCase):
   cls.build=json.loads(subprocess.check_output(['python3',str(B/'build_package.py'),'--output-dir',str(cls.base/'out')],text=True))
   cls.archive=cls.base/'out'/cls.build['filename']
   with zipfile.ZipFile(cls.archive)as z:z.extractall(cls.base/'extract')
-  cls.package=cls.base/'extract'/'AirportItlwm-Shared-Benchmark-r11'
+  cls.package=cls.base/'extract'/'AirportItlwm-Shared-Benchmark-r12'
  @classmethod
  def tearDownClass(cls):cls.tmp.cleanup()
  def test_01_archive_complete_and_reproducible(self):
   with zipfile.ZipFile(self.archive)as z:
-   self.assertIsNone(z.testzip());name='AirportItlwm-Shared-Benchmark-r11/SETUP_AirportItlwm_Benchmark.command'
+   self.assertIsNone(z.testzip());name='AirportItlwm-Shared-Benchmark-r12/SETUP_AirportItlwm_Benchmark.command'
    self.assertEqual((z.getinfo(name).external_attr>>16)&0o777,0o755)
    self.assertFalse(any('.kext' in n for n in z.namelist()))
   result=json.loads(subprocess.check_output(['python3',str(B/'build_package.py'),'--output-dir',str(self.base/'again')],text=True))
   self.assertEqual(result,self.build)
   for n in ['shared_profile.py','decode_be200.py','profiles.json']:
    self.assertTrue((self.package/'TOOLS/runner_profiles'/n).exists())
+  self.assertEqual((self.package/'TOOLS/AirportItlwm_3x20_PORTABLE_IP_PROMPT.sh').read_bytes(),(B/'AirportItlwm_3x20_PORTABLE_IP_PROMPT.sh').read_bytes())
+  self.assertEqual((self.package/'TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh').read_bytes(),(B/'AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh').read_bytes())
  def test_02_fresh_setup_only_tools(self):
   with tempfile.TemporaryDirectory()as t:
    home=Path(t);r=installer.install(self.package,home);root=home/'Desktop/AirportItlwm'
@@ -59,9 +61,10 @@ class PublicTools(unittest.TestCase):
     with self.assertRaises(ValueError):installer.install(self.package,home)
     self.assertEqual((tools/'unrelated').read_text(),'intact')
     if not symlink:self.assertEqual(conflict.read_text(),'file must survive')
- def test_06_source_guides_identical_no_private_install_paths(self):
-  self.assertEqual((B/'README.md').read_bytes(),(ROOT/'docs/benchmark/README.md').read_bytes())
-  for p in [B/'README.md',B/'START_COMMANDS.txt',B/'install_tools.py',B/'SETUP_AirportItlwm_Benchmark.command']:
+ def test_06_single_source_guide_packaged_and_no_private_install_paths(self):
+  self.assertEqual((self.package/'TOOLS/README.md').read_bytes(),(ROOT/'docs/benchmark/README.md').read_bytes())
+  self.assertIn('single maintained source',(B/'README.md').read_text())
+  for p in [B/'README.md',B/'START_COMMANDS.txt',B/'install_tools.py',B/'SETUP_AirportItlwm_Benchmark.command',ROOT/'docs/benchmark/README.md']:
    self.assertNotIn('/Users/kgp/',p.read_text())
  def test_07_public_profile_generic_binding_and_old_pins(self):
   data=plistlib.loads((B/'tests/fixtures/P7_BOUNDARY.plist').read_bytes());p=data[0];s=profile.profile('BE200-ALPHA2')
@@ -76,7 +79,7 @@ class PublicTools(unittest.TestCase):
   with self.assertRaises(ValueError):profile.resolve(data,info,'external','LAOBAMAC_53')
  def test_08_readme_order_collapsed_rows_and_anchors(self):
   text=(ROOT/'README.md').read_text();old=json.loads((B/'tests/fixtures/historical_rows.json').read_text())
-  order=['## Project overview and qualified 1.0.0 release','## CI and the official release','## Lineage and documentation','## Current BE200 alpha testing campaign','## Optional reference comparisons: AirportItlwm-Tahoe 1.1.0 Beta','## Validation testing: AX201, AX210, AX211 and BE200','## Selected historical best results — original whole-test measurements','## Credits']
+  order=['## Project overview and qualified 1.0.0 release','## CI and the official release','## Lineage and documentation','## Current BE200 alpha testing campaign','## Active validation: two driver variants','## BE200 Alpha 2 VHT160: new 60-test result','## Selected historical best results — original whole-test measurements','## Credits']
   self.assertEqual([text.index(x)for x in order],sorted(text.index(x)for x in order))
   for row in old:self.assertEqual(text.splitlines().count(row),1)
   result=text.split(order[-2],1)[1].split(order[-1],1)[0]
@@ -84,7 +87,8 @@ class PublicTools(unittest.TestCase):
   inside=result.split('</summary>',1)[1].split('</details>',1)[0]
   self.assertTrue(all(row in inside for row in old));self.assertEqual(len([r for r in inside.splitlines()if r.startswith('| BE200 Alpha')]),32)
   self.assertIn('#### Compact run references for the selected rows',inside)
-  self.assertIn('### AX201 validation commands',text);self.assertIn('### Submit beta results',text)
+  self.assertIn('AX201-ALPHA2',(ROOT/'docs/benchmark/README.md').read_text())
+  self.assertIn('LAOBAMAC 53',(ROOT/'docs/benchmark/README.md').read_text())
  def test_09_best_rows_same_measurement_not_means(self):
   data=json.loads((ROOT/'docs/benchmark/BE200_RESULT_SELECTION.json').read_text())
   self.assertEqual(len(data['selected_rows']),32);self.assertEqual(len(data['all_84_completed_test_summaries']),84)

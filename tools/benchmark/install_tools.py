@@ -47,7 +47,7 @@ def install(package, home):
     # old bytes are backed up before the first replacement; unrelated files and
     # TESTS are never touched. No shell, sudo, network, EFI or kext operation.
     for folder in [target,root/'TESTS',root/'BACKUPS']:folder.mkdir(parents=True,exist_ok=True)
-    backup=Path(tempfile.mkdtemp(prefix='benchmark-r11-'+datetime.now().strftime('%Y%m%d_%H%M%S')+'-',dir=root/'BACKUPS'))
+    backup=Path(tempfile.mkdtemp(prefix='benchmark-r12-'+datetime.now().strftime('%Y%m%d_%H%M%S')+'-',dir=root/'BACKUPS'))
     staging=Path(tempfile.mkdtemp(prefix='.benchmark-stage-',dir=root))
     changed=[]; installed=[]
     try:
@@ -63,7 +63,7 @@ def install(package, home):
             os.replace(staging/rel,dest)
             assert digest(dest)==digest(p)
             installed.append({'path':str(rel),'sha256':digest(dest)})
-        report={'revision':'shared-2026-10-31-r11-public-be200','time_utc':datetime.now(timezone.utc).isoformat(),
+        report={'revision':'shared-2026-11-04-r12-local-udp900','time_utc':datetime.now(timezone.utc).isoformat(),
                 'package_manifest_sha256':digest(manifest),'destination':str(target),'backup':str(backup),
                 'saved_previous_files':changed,'installed':installed,'results_preserved':True,
                 'kext_or_boot_changes':False}
