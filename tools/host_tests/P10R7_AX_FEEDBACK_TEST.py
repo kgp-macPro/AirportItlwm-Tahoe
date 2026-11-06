@@ -23,12 +23,12 @@ report=extract((root/'include/HAL/ItlDriverInfo.hpp').read_text(),'struct ItlHeT
 a=s.index('    const int rxGeneration',s.index('iwx_ba_task(void *arg)'))
 b=s.index('    for (tid = 0;',s.index('    for (tid = 0;',a)+10)
 loop=s[a:b]
-old=subprocess.check_output(['git','show','1411f062ac0222ad0063d14927ad27c4731498aa:itlwm/hal_iwx/ItlIwx.cpp'],cwd=root,text=True)
+old=(root/'tools/host_tests/reference/ax/1411f062ac02.cpp').read_text()
 a0=old.index('    for (tid = 0;',old.index('iwx_ba_task(void *arg)')); b0=old.index('    for (tid = 0;',a0+10); oldloop=old[a0:b0]
 ba_enum=extract(reg,'enum iwx_ba_resp_flags {')+';'
 stat_enum=extract(s,'enum {\n    AXD_SINGLE')+';'
 newhook=extract(s,'void ItlIwx::axHeDiagBa')
-oldhook=extract(subprocess.check_output(['git','show','da5bccf4b2681ea86340cccd2aeebf96f09cd2e4:itlwm/hal_iwx/ItlIwx.cpp'],cwd=root,text=True),'void ItlIwx::axHeDiagBa').replace('ItlIwx::axHeDiagBa','ItlIwx::oldAxHeDiagBa')
+oldhook=extract((root/'tools/host_tests/reference/ax/da5bccf4b268.cpp').read_text(),'void ItlIwx::axHeDiagBa').replace('ItlIwx::axHeDiagBa','ItlIwx::oldAxHeDiagBa')
 code=r'''
 #include <cstdint>
 #include <cassert>

@@ -1,0 +1,37 @@
+{
+  "AX210-VHT.png": {
+    "local_original_name": "AX210.png",
+    "sha256": "24201a4d91b6f8d25230b399470341f3b974be49a0f0f0eea1b7fe322671816f",
+    "pixel_edit": false
+  },
+  "AX210-HE.png": {
+    "local_original_name": "AX210-HE.png",
+    "sha256": "ad66e2c0dd7aec3a47cd1d8287b9aead988a114cec6313264442d98d3a67fca0",
+    "pixel_edit": false
+  },
+  "AX210-HE-BF.png": {
+    "local_original_name": "AX210-HE+BF.png",
+    "sha256": "d4c9a3f0c1371673ddf442c131cb6e5deca1258aab07823dbb81d944a75449ce",
+    "pixel_edit": false
+  },
+  "BE200-HE.png": {
+    "local_original_name": "BE200-P10-HE.png",
+    "sha256": "b514ce5a6b8a76477f0a2448d459474c53be939d1017d4446cf22c7c6092f9f7",
+    "pixel_edit": false
+  },
+  "BE200-HE-BF.png": {
+    "local_original_name": "BE200-P10-HE-BF.png",
+    "sha256": "7f5583b359395bd7f5562ddb9608d644e60ffd3760bc1895521cc5e12d5ecf45",
+    "pixel_edit": false
+  },
+  "AX210-Hackintool.png": {
+    "local_original_name": "AX-210-Hackintool.png",
+    "sha256": "6c57ca2d8d8bd5607691781b119b7513c401a6c40ec7d760877418660b48b240",
+    "pixel_edit": false
+  },
+  "BE200-Hackintool.png": {
+    "local_original_name": "BE200-Hackintool.png",
+    "sha256": "990887be0c35e71f453fd6e9f5e80793c8017214163f9a4999351253a2664120",
+    "pixel_edit": false
+  }
+}

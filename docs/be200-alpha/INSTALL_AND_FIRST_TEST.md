@@ -1,3 +1,5 @@
+> Historical BE200 Alpha/P8R1 provenance. For current2.0.0 use [README](../../README.md), [installation](../../INSTALL.md) and the current technical lineage. Old pending/version statements below refer to their original date.
+
 # AirportItlwm-Tahoe 1.2.0 BE200 Alpha 1 — installation, first checks and rollback
 
 **Historical Alpha 1 installation reference.** For current release identity use the [release notes](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/tag/v1.2.0-be200-alpha.2); for throughput work use the [maintained shared guide](../benchmark/README.md). The commands/UUID below belong to Alpha 1, not a universal current candidate.

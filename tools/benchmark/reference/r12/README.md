@@ -1,0 +1,1 @@
+Historical r12 setup helpers, preserved for the corresponding historical ZIP layout. They are not the r13 entry point. Use the current complete r13 package directly and read tools/benchmark/README.md. Original r12 release assets remain available.

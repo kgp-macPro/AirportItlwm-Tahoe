@@ -1,0 +1,17 @@
+{
+  "version": "2.0.0",
+  "source_commit": "4b948ae16a7cbe82699dc7078cf4c917456eff89",
+  "uuid": "E01CC22A-6A2D-3E0D-A8FD-229ED62C1751",
+  "executable_sha256": "ab8688febf2ccc78984ea6b2b9be933cb14317bc7951983330ffadab32d3a2f8",
+  "info_plist_sha256": "ba5bc5c337f639b82e04f22ac29e6bb338f26e046d46d79a26a38ecdd5dfd0ef",
+  "benchmark_profile_labels": [
+    "BE200-2.0.0",
+    "AX201-2.0.0",
+    "AX210-2.0.0",
+    "AX211-2.0.0"
+  ],
+  "candidate_folder": "AirportItlwm-Tahoe-2.0.0",
+  "test_evidence_binary": "P10R9 for AX210 HE/HE+BF; P10 for BE200 VHT/HE/HE+BF",
+  "byte_identical_to_tested_candidates": false,
+  "source_tag": "v2.0.0"
+}

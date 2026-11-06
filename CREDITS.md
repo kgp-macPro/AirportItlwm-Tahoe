@@ -7,7 +7,10 @@
 
 ## Project development and research
 
-- **KGP / kgp-macPro** — Project lead; Tahoe concept and integration; AppleVTD and Intel/AWDL research; experiments; physical hardware/runtime validation; release.
+**KGP / kgp-macPro — Project lead, maintainer and integration coordinator.** Project concept and technical goals; continuous human direction, supervision and critical review of AI-assisted development and reverse engineering; integration and refinement of upstream contributions; regression investigation; software and hardware validation across driver revisions, devices and macOS builds; and the design, execution and analysis of reproducible benchmark campaigns.
+
+KGP also coordinates community testing, reviews conflicting findings, challenges assumptions and redirects investigations, maintains technical documentation and evidence-backed handovers, and manages release preparation and publication. Development combines AI-assisted implementation and binary analysis with sustained human judgment, hands-on hardware testing and repeated validation on real systems.
+
 - **ChatGPT by OpenAI** — Reasoning, evidence analysis, architecture, experiment planning, runtime interpretation, safety review and documentation.
 - **OpenAI Codex CLI** — Repository/source analysis, implementation, tests, reproducible builds, auditing, evidence and release preparation.
 
@@ -27,9 +30,16 @@ These acknowledgements concern historical reports, not testing or qualification 
 
 AI-assisted work was performed under continuous human direction, review, physical testing and editorial control. KGP controls project and release decisions. This assistance and these acknowledgements do not imply endorsement by OpenAI or any referenced project or developer.
 
-## External comparison control
+## HE integration and analysis credits
 
-- **[laobamac](https://github.com/laobamac/itlwm)** — unchanged build53, packaged as a separately attributed external control. Its original source, pinned SDK and notices are enclosed; upstream artifact/source linkage is recorded. No independent rebuild or external code port into ZC28 is claimed.
+- **[gsfront](https://github.com/gsfront)** — BE200 HE and optional HE SU-Beamformee, link/station firmware setup, HE IE correction, 256-entry HE RX BA/reordering and associated frame-release/rate-histogram work. [Original PR #5](https://github.com/kgp-macPro/AirportItlwm-Tahoe/pull/5), merged as `999d71fafb4788702b527572932dcc9768fb122e`; both original commits/authorship preserved.
+- **[laobamac](https://github.com/laobamac/itlwm)** — AX201/AX210/AX211 HE reference and basis for adaptation to our Ventura Legacy path; pinned v2.4.0-alpha [`7204c69d1bfa7f5cc0f7864e08fb03e55d0ec29e`](https://github.com/laobamac/itlwm/tree/7204c69d1bfa7f5cc0f7864e08fb03e55d0ec29e). Capability/firmware/HE-context/TLC and reporting prerequisites were reviewed and adapted, not a wholesale frontend/DMA replacement. GPL notices remain.
+- **[REA — Reverse Engineer Anything](https://github.com/morluto/rea)** — local native binary analysis with Ghidra, used to inspect built driver/Legacy handoff and error paths alongside source/runtime evidence. Used REA 6.8.0 / Ghidra 12.1.4; no local binaries or private data sent to external analysis services.
+- **OCLP developers and [OCLP-CustoMac](https://github.com/kgp-macPro/OCLP-CustoMac)** — required framework/root-patch environment, distinct from the Intel driver implementation.
+
+## Historical external comparison control
+
+- **[laobamac](https://github.com/laobamac/itlwm)** — unchanged build 53, packaged as a separately attributed external control. Its original source, pinned SDK and notices are enclosed; upstream artifact/source linkage is recorded. No independent rebuild or external code port into ZC28 is claimed.
 
 ## Inherited licenses and attribution
 

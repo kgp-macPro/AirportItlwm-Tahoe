@@ -1,52 +1,46 @@
-# Build and CI
+# Building AirportItlwm-Tahoe 2.0.0
 
-The repository is already the complete AirportItlwm-Tahoe source. Do not apply internal RC/experimental patches. Only the dedicated Tahoe target produces this product; avoid the upstream “(all)” aggregate for a Tahoe build.
+The repository contains the complete Tahoe target and pinned, vendored MacKernelSDK. No experimental patch application, submodule checkout or latest-SDK substitution is needed. Use the dedicated `AirportItlwm-Tahoe` target, not the aggregate for other macOS versions.
 
-## Toolchain and dependency
+## Release source and binary
 
-The physically qualified release used Xcode **26.5 / 17F42**, Apple clang 21.0.0 and MacOSX26.5 SDK on an x86_64 Tahoe host. Install/select a suitable full Xcode for source builds; this document does not change your global Xcode selection.
+The release build was produced from **`4b948ae16a7cbe82699dc7078cf4c917456eff89`** with Xcode **26.5 / 17F42**, Apple clang 21 and MacOSX26.5 SDK, x86_64, unsigned. The final tag also includes public documentation, regression fixtures and benchmark tooling; the protected production-input manifest confirms that those later commits do not alter the build inputs.
 
-MacKernelSDK is an ignored standalone dependency, as in the pinned upstream baseline, not a registered submodule. Its exact commit/tree and exported file hashes are in `tools/sdk_pin.json` and `tools/sdk_sha256.json`. From the repository root:
+| Item | 2.0.0 release |
+|---|---|
+| Bundle | `AirportItlwm.kext` / `com.zxystd.AirportItlwm` |
+| Bundle versions | `2.0.0` |
+| UUID | `E01CC22A-6A2D-3E0D-A8FD-229ED62C1751` |
+| Executable SHA-256 | `ab8688febf2ccc78984ea6b2b9be933cb14317bc7951983330ffadab32d3a2f8` |
+| Info.plist SHA-256 | `ba5bc5c337f639b82e04f22ac29e6bb338f26e046d46d79a26a38ecdd5dfd0ef` |
+
+This is a **new versioned rebuild**, not a byte-identical copy of hardware-tested P10 or R9. All protected functional sources, firmware, headers, SDK and build scripts match the final R9 build input; the two Tahoe target-local MODULE_VERSION values alone change from 1.0.0 to 2.0.0. Campaigns continue to identify their original binary. See [lineage and scope](TECHNICAL_LINEAGE.md), [hardware qualification](QUALIFICATION.md) and [results](results/2.0.0.md).
+
+## Verify and build
+
+From a full checkout, with a suitable full Xcode selected:
 
 ```sh
-python3 tools/prepare_sdk.py
-python3 tools/verify_source.py --sdk
-python3 tools/run_host_tests.py
-```
-
-The setup helper fetches only the declared MacKernelSDK commit if the directory is absent, verifies the pin/content and refuses to overwrite existing unexpected content. An exact exported SDK directory is also accepted. No latest-branch fallback is used.
-
-## Build directly
-
-From the repository root, with the selected Xcode available through `xcrun`/`xcodebuild`:
-
-```sh
+python3 -B tools/verify_release_source.py
+python3 -B tools/validate_release.py build/release-validation
 build_root="$PWD/build/tahoe"
 xcodebuild -project itlwm.xcodeproj \
   -target AirportItlwm-Tahoe -configuration Release ARCHS=x86_64 \
+  MODULE_VERSION=2.0.0 \
   SYMROOT="$build_root/products" OBJROOT="$build_root/intermediates" \
   SHARED_PRECOMPS_DIR="$build_root/precompiled" \
   CLANG_MODULE_CACHE_PATH="$build_root/module-cache" \
   CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
 ```
 
-Output: `build/tahoe/products/Release/Tahoe/AirportItlwm.kext`. The existing fw_gen dependency generates FwBinary.cpp as required; it is ignored by Git. Do not override MODULE_VERSION: the target defines 1.0.0 locally. The actual bundle and executable retain their upstream names.
+Output: `build/tahoe/products/Release/Tahoe/AirportItlwm.kext`. The fw_gen dependency generates the embedded firmware source; it remains untracked. Do not replace pinned firmware or mix targets. Other inherited target versions are historical/upstream values, not the Tahoe product version.
 
-A source rebuild is a new binary. Matching source/version does not guarantee the frozen release UUID/hash or transfer physical qualification to that build.
+Matching source does not guarantee identical UUID or executable bytes across toolchains. Verify downloaded packages with the release SHA256SUMS and BUILD_IDENTITY. A local rebuild needs its own explicitly reviewed identity profile; do not disable the runner's UUID/hash checks to accept it.
 
-## CI validation
+## Continuous integration
 
-The workflow uses GitHub’s documented **macos-15-intel (x86_64)** runner and explicitly selected **Xcode 26.3**, which is listed on that image. The release’s Xcode 26.5 is not assumed to be present. If the selected Xcode is absent, CI fails clearly rather than silently using another toolchain. This hosted build is a compatibility check, not exact release-byte reproduction.
+Contents-read-only CI uses macOS 15 Intel and Xcode 26.3 as a compatibility build, checks the 2.0.0 production/SDK/firmware and reference manifests, runs the actual-function host regression suite, then builds the dedicated Tahoe target. It does not publish, install or hardware-qualify a driver. Checkout disables persistent credentials. Output is labeled **CI BUILD — NOT PHYSICALLY VALIDATED**.
 
-CI performs:
+The earlier PR #5 check used the old frozen P8R1 source guard and failed when the intended HE boot-argument source differed. The final workflow protects the reviewed 2.0.0 input rather than applying that obsolete P8R1 identity to new code. Historical guards remain available for historical releases.
 
-1. Checkout with credentials persistence disabled; no release/tag/write permissions.
-2. Frozen source hashes, Tahoe/Ventura source-phase equivalence, target-local versions/macros/legacy dependency and upstream-target checks.
-3. Exact MacKernelSDK acquisition/verification.
-4. Preserved host ownership/reset/stale-completion/drain models under ASan/UBSan and TSan.
-5. Explicit Tahoe Release x86_64 build, plus generated artifact bundle/version/architecture checks.
-6. A labeled ZIP uploaded as **CI BUILD — NOT PHYSICALLY VALIDATED**, with a short retention period.
-
-The workflow never creates tags or releases. Host tests use modeled IOKit/hardware behavior; they are not kernel, hardware or physical test substitutes. Existing qualification is tied to the [frozen release identity](../README.md#exact-release-identity), not CI outputs. The workflow’s own runtime success must be observed on GitHub; preparing it locally is not a claim that it has run.
-
-Runner references: [available images](https://github.com/actions/runner-images#available-images), [macOS 15 Intel image/toolchains](https://github.com/actions/runner-images/blob/main/images/macos/macos-15-Readme.md).
+Host tests mock hardware/IOKit and cannot prove firmware acceptance, physical throughput, sleep/wake or long-term stability. Successful P10/R9 hardware campaigns are separately pinned in the result index. No additional hardware campaign was requested solely for release metadata.

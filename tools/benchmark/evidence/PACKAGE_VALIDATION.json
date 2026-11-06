@@ -1,0 +1,722 @@
+{
+  "status": "PASS offline; no hardware tests",
+  "runners": {
+    "AirportItlwm_3x20_PORTABLE_IP_PROMPT.sh": {
+      "tests": 60,
+      "per_round": [
+        {
+          "name": "TCP_TX_P1",
+          "seconds": 8,
+          "streams": 1,
+          "reverse": false
+        },
+        {
+          "name": "TCP_RX_P1",
+          "seconds": 8,
+          "streams": 1,
+          "reverse": true
+        },
+        {
+          "name": "TCP_TX_P4",
+          "seconds": 8,
+          "streams": 4,
+          "reverse": false
+        },
+        {
+          "name": "TCP_RX_P4",
+          "seconds": 8,
+          "streams": 4,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX100",
+          "seconds": 5,
+          "offered_mbps": 100,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX100",
+          "seconds": 5,
+          "offered_mbps": 100,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX250",
+          "seconds": 5,
+          "offered_mbps": 250,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX250",
+          "seconds": 5,
+          "offered_mbps": 250,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX400",
+          "seconds": 5,
+          "offered_mbps": 400,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX400",
+          "seconds": 5,
+          "offered_mbps": 400,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX500",
+          "seconds": 5,
+          "offered_mbps": 500,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX500",
+          "seconds": 5,
+          "offered_mbps": 500,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX600",
+          "seconds": 5,
+          "offered_mbps": 600,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX600",
+          "seconds": 5,
+          "offered_mbps": 600,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX700",
+          "seconds": 5,
+          "offered_mbps": 700,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX700",
+          "seconds": 5,
+          "offered_mbps": 700,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX800",
+          "seconds": 5,
+          "offered_mbps": 800,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX800",
+          "seconds": 5,
+          "offered_mbps": 800,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX900",
+          "seconds": 5,
+          "offered_mbps": 900,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX900",
+          "seconds": 5,
+          "offered_mbps": 900,
+          "payload_bytes": 1200,
+          "reverse": true
+        }
+      ],
+      "protocol": "AIRPORTITLWM_3X20_NO_PROFILER_V1",
+      "sha256": "b7b3119f020c852d37b1730d7c3592895f58dc8ea3366c48ec8bf35117ebc73d"
+    },
+    "AirportItlwm_3x20_UDP1200_PORTABLE_IP_PROMPT.sh": {
+      "tests": 60,
+      "per_round": [
+        {
+          "name": "TCP_TX_P1",
+          "seconds": 8,
+          "streams": 1,
+          "reverse": false
+        },
+        {
+          "name": "TCP_RX_P1",
+          "seconds": 8,
+          "streams": 1,
+          "reverse": true
+        },
+        {
+          "name": "TCP_TX_P4",
+          "seconds": 8,
+          "streams": 4,
+          "reverse": false
+        },
+        {
+          "name": "TCP_RX_P4",
+          "seconds": 8,
+          "streams": 4,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX300",
+          "seconds": 5,
+          "offered_mbps": 300,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX300",
+          "seconds": 5,
+          "offered_mbps": 300,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX500",
+          "seconds": 5,
+          "offered_mbps": 500,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX500",
+          "seconds": 5,
+          "offered_mbps": 500,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX600",
+          "seconds": 5,
+          "offered_mbps": 600,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX700",
+          "seconds": 5,
+          "offered_mbps": 700,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX600",
+          "seconds": 5,
+          "offered_mbps": 600,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX900",
+          "seconds": 5,
+          "offered_mbps": 900,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX600",
+          "seconds": 5,
+          "offered_mbps": 600,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX1000",
+          "seconds": 5,
+          "offered_mbps": 1000,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX600",
+          "seconds": 5,
+          "offered_mbps": 600,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX1100",
+          "seconds": 5,
+          "offered_mbps": 1100,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX600",
+          "seconds": 5,
+          "offered_mbps": 600,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX1200",
+          "seconds": 5,
+          "offered_mbps": 1200,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX600",
+          "seconds": 5,
+          "offered_mbps": 600,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX1200",
+          "seconds": 5,
+          "offered_mbps": 1200,
+          "payload_bytes": 1200,
+          "reverse": true
+        }
+      ],
+      "protocol": "AIRPORTITLWM_3X20_TX600_RX1200_NO_PROFILER_V2",
+      "sha256": "fca815f27f18373447de6cabccc45c78408f206c0634c5eac7f48e7a9f7692fa"
+    },
+    "AirportItlwm_3x20_UDP1300_PORTABLE_IP_PROMPT.sh": {
+      "tests": 60,
+      "per_round": [
+        {
+          "name": "TCP_TX_P1",
+          "seconds": 8,
+          "streams": 1,
+          "reverse": false
+        },
+        {
+          "name": "TCP_RX_P1",
+          "seconds": 8,
+          "streams": 1,
+          "reverse": true
+        },
+        {
+          "name": "TCP_TX_P4",
+          "seconds": 8,
+          "streams": 4,
+          "reverse": false
+        },
+        {
+          "name": "TCP_RX_P4",
+          "seconds": 8,
+          "streams": 4,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX300",
+          "seconds": 5,
+          "offered_mbps": 300,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX300",
+          "seconds": 5,
+          "offered_mbps": 300,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX500",
+          "seconds": 5,
+          "offered_mbps": 500,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX500",
+          "seconds": 5,
+          "offered_mbps": 500,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX600",
+          "seconds": 5,
+          "offered_mbps": 600,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX700",
+          "seconds": 5,
+          "offered_mbps": 700,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX600",
+          "seconds": 5,
+          "offered_mbps": 600,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX900",
+          "seconds": 5,
+          "offered_mbps": 900,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX600",
+          "seconds": 5,
+          "offered_mbps": 600,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX1000",
+          "seconds": 5,
+          "offered_mbps": 1000,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX600",
+          "seconds": 5,
+          "offered_mbps": 600,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX1100",
+          "seconds": 5,
+          "offered_mbps": 1100,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX600",
+          "seconds": 5,
+          "offered_mbps": 600,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX1200",
+          "seconds": 5,
+          "offered_mbps": 1200,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX600",
+          "seconds": 5,
+          "offered_mbps": 600,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX1300",
+          "seconds": 5,
+          "offered_mbps": 1300,
+          "payload_bytes": 1200,
+          "reverse": true
+        }
+      ],
+      "protocol": "AIRPORTITLWM_3X20_TX600_RX1300_NO_PROFILER_V2",
+      "sha256": "f991bd269f5184191d9814af2e91e10f8e4136fdaf4c1c030ba7be263de26e29"
+    },
+    "AirportItlwm_3x20_UDP1600_PORTABLE_IP_PROMPT.sh": {
+      "tests": 60,
+      "per_round": [
+        {
+          "name": "TCP_TX_P1",
+          "seconds": 8,
+          "streams": 1,
+          "reverse": false
+        },
+        {
+          "name": "TCP_RX_P1",
+          "seconds": 8,
+          "streams": 1,
+          "reverse": true
+        },
+        {
+          "name": "TCP_TX_P4",
+          "seconds": 8,
+          "streams": 4,
+          "reverse": false
+        },
+        {
+          "name": "TCP_RX_P4",
+          "seconds": 8,
+          "streams": 4,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX300",
+          "seconds": 5,
+          "offered_mbps": 300,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX300",
+          "seconds": 5,
+          "offered_mbps": 300,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX500",
+          "seconds": 5,
+          "offered_mbps": 500,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX500",
+          "seconds": 5,
+          "offered_mbps": 500,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX600",
+          "seconds": 5,
+          "offered_mbps": 600,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX700",
+          "seconds": 5,
+          "offered_mbps": 700,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX600",
+          "seconds": 5,
+          "offered_mbps": 600,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX900",
+          "seconds": 5,
+          "offered_mbps": 900,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX600",
+          "seconds": 5,
+          "offered_mbps": 600,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX1100",
+          "seconds": 5,
+          "offered_mbps": 1100,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX600",
+          "seconds": 5,
+          "offered_mbps": 600,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX1300",
+          "seconds": 5,
+          "offered_mbps": 1300,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX600",
+          "seconds": 5,
+          "offered_mbps": 600,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX1500",
+          "seconds": 5,
+          "offered_mbps": 1500,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX600",
+          "seconds": 5,
+          "offered_mbps": 600,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX1600",
+          "seconds": 5,
+          "offered_mbps": 1600,
+          "payload_bytes": 1200,
+          "reverse": true
+        }
+      ],
+      "protocol": "AIRPORTITLWM_3X20_TX600_RX1600_NO_PROFILER_V2",
+      "sha256": "ce52cd188b2f163e38a8fda62ef8297d65535fc5aa89f9a3147a143388b357d6"
+    },
+    "AirportItlwm_3x20_UDP1700_PORTABLE_IP_PROMPT.sh": {
+      "tests": 60,
+      "per_round": [
+        {
+          "name": "TCP_TX_P1",
+          "seconds": 8,
+          "streams": 1,
+          "reverse": false
+        },
+        {
+          "name": "TCP_RX_P1",
+          "seconds": 8,
+          "streams": 1,
+          "reverse": true
+        },
+        {
+          "name": "TCP_TX_P4",
+          "seconds": 8,
+          "streams": 4,
+          "reverse": false
+        },
+        {
+          "name": "TCP_RX_P4",
+          "seconds": 8,
+          "streams": 4,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX300",
+          "seconds": 5,
+          "offered_mbps": 300,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX300",
+          "seconds": 5,
+          "offered_mbps": 300,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX500",
+          "seconds": 5,
+          "offered_mbps": 500,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX500",
+          "seconds": 5,
+          "offered_mbps": 500,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX600",
+          "seconds": 5,
+          "offered_mbps": 600,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX700",
+          "seconds": 5,
+          "offered_mbps": 700,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX600",
+          "seconds": 5,
+          "offered_mbps": 600,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX900",
+          "seconds": 5,
+          "offered_mbps": 900,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX600",
+          "seconds": 5,
+          "offered_mbps": 600,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX1100",
+          "seconds": 5,
+          "offered_mbps": 1100,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX600",
+          "seconds": 5,
+          "offered_mbps": 600,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX1300",
+          "seconds": 5,
+          "offered_mbps": 1300,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX600",
+          "seconds": 5,
+          "offered_mbps": 600,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX1500",
+          "seconds": 5,
+          "offered_mbps": 1500,
+          "payload_bytes": 1200,
+          "reverse": true
+        },
+        {
+          "name": "UDP_TX600",
+          "seconds": 5,
+          "offered_mbps": 600,
+          "payload_bytes": 1200,
+          "reverse": false
+        },
+        {
+          "name": "UDP_RX1700",
+          "seconds": 5,
+          "offered_mbps": 1700,
+          "payload_bytes": 1200,
+          "reverse": true
+        }
+      ],
+      "protocol": "AIRPORTITLWM_3X20_TX600_RX1700_NO_PROFILER_V2",
+      "sha256": "cca3f3d117b1afa0293adadde59819574fecfc09b0c83f1d98910a442dcc9815"
+    }
+  },
+  "identity": "AX201/AX210/AX211-2.0.0 + original BE200-P10 + BE200-2.0.0 exact UUID/hash positives, wrong binary pin rejection; AX/BE200 PCI binding negatives; actual embedded health guards for both families in all 5 runners with no AX fields; wrong marker/mode/fault negatives",
+  "diagnostic_decoder": "actual script with synthetic 42/43 records; BE200 skips AX and missing AX fields remain optional"
+}

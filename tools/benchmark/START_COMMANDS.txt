@@ -1,12 +1,13 @@
-Current complete instructions: docs/benchmark/README.md in the repository or TOOLS/README.md in the extracted r12 package.
+AirportItlwm-Tahoe 2.0.0 / benchmark tools r13
 
-After extracting AirportItlwm-Shared-Benchmark-r12.zip into Downloads, run on both Macs:
-/bin/bash "$HOME/Downloads/AirportItlwm-Shared-Benchmark-r12/SETUP_AirportItlwm_Benchmark.command"
+Full current instructions: https://github.com/kgp-macPro/AirportItlwm-Tahoe/blob/main/docs/benchmark/README.md
 
-Wired server (Wi-Fi off, choose actual Ethernet interface):
-/bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_IPERF3_WIRED_SERVER.sh"
+Wired Mac: identify its Ethernet interface and verify negotiated 1000Base-T for VHT, 2500Base-T for HE/HE+BF. Never 5000Base-T/10GBase-T for these campaigns.
+Server: iperf3 -s -B YOUR_WIRED_SERVER_IPV4 -p 5201
 
-Wi-Fi client, unchanged Alpha 2/P8R1 (choose one matching profile; client prompts for the server IPv4):
-CANDIDATE_KEXT="$HOME/Downloads/AirportItlwm-Tahoe-1.2.0-BE200-Alpha-2/AirportItlwm.kext" /bin/bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x20_PORTABLE_IP_PROMPT.sh" BE200-ALPHA2 mapped
+Client example (replace interface, paths and labels for your device):
+WIFI_IFACE=en2 DEVICE_LABEL=AX210 CANDIDATE_LABEL=AX210-2.0.0 EXPECTED_MODE=mapped /bin/bash "$HOME/Downloads/AirportItlwm-Tahoe-Benchmark-Tools-r13/AirportItlwm_3x20_PORTABLE_IP_PROMPT.sh" "$HOME/Downloads/AirportItlwm-Tahoe-2.0.0/AirportItlwm.kext"
 
-AX201-ALPHA2, AX210-ALPHA2 or AX211-ALPHA2 use the same bundle path with the corresponding profile. Use conventional only for an actual Mode 1 KGP run. Optional laobamac build 53 is for verified AX201/AX210/AX211 only, never BE200; its mode argument declares AppleVTD configuration, not a measured KGP DMA mode. Keep the original result ZIP, including failures.
+The server IP is prompted. Standard runner is the VHT starting point. For HE use -itlwmhe and an appropriate extended runner after confirming 2500Base-T. HE+BF additionally uses -itlwmbf. No -novht.
+BE200: add BENCHMARK_PROFILE=be200, DEVICE_LABEL=BE200, CANDIDATE_LABEL=BE200-2.0.0. AX201/CNVW uses conventional, not forced mapped. AX211 uses observed runtime mode. New AX201/AX211 HE/BF remains hardware-unvalidated.
+Return the full result ZIP. The candidate path is an identity reference to the already loaded bundle, not an installation command.

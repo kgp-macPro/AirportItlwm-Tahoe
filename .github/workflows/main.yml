@@ -1,20 +1,16 @@
-name: BE200 Alpha source and build validation
-
+name: Tahoe 2.0.0 source and build validation
 on:
   push:
   pull_request:
   workflow_dispatch:
-
 permissions:
   contents: read
-
 concurrency:
-  group: be200-source-build-${{ github.workflow }}-${{ github.ref }}
+  group: tahoe-validation-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
 jobs:
   validate:
-    name: Frozen P8R1 inputs, BE200 regressions and UNQUALIFIED CI build
+    name: Pinned 2.0.0 inputs, AX and BE200 regressions, compatibility build
     runs-on: macos-15-intel
     timeout-minutes: 45
     env:
@@ -23,17 +19,17 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
-          fetch-depth: 0 # regressions compare frozen ZC28/P5/P6 Git objects
-          submodules: false # complete pinned SDK is vendored, including declared ABI patch
-      - name: Verify toolchain, tested production source and references
+          fetch-depth: 0
+          submodules: false
+      - name: Verify toolchain and pinned production, SDK, firmware and references
         run: |
           test -d "$DEVELOPER_DIR"
           xcodebuild -version
-          python3 tools/verify_be200_release_source.py
+          python3 -B tools/verify_release_source.py
           git diff --check
-      - name: Actual BE200 ownership, recovery, ABI and existing-device regressions
-        run: python3 -B tools/validate_be200.py build/be200-validation
-      - name: Build Tahoe Release x86_64 (never the tested release artifact)
+      - name: Actual AX and BE200 host regressions
+        run: python3 -B tools/validate_release.py build/release-validation
+      - name: Tahoe Release x86_64 compatibility build
         shell: bash
         run: |
           set -euo pipefail
@@ -41,20 +37,21 @@ jobs:
           build_root="$GITHUB_WORKSPACE/build/tahoe"
           xcodebuild -project itlwm.xcodeproj \
             -target AirportItlwm-Tahoe -configuration Release ARCHS=x86_64 \
+            MODULE_VERSION=2.0.0 \
             SYMROOT="$build_root/products" OBJROOT="$build_root/intermediates" \
             SHARED_PRECOMPS_DIR="$build_root/precompiled" \
             CLANG_MODULE_CACHE_PATH="$build_root/module-cache" \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build \
             2>&1 | tee build/ci-evidence/BUILD_LOG.txt
-          python3 tools/verify_be200_release_source.py
-      - name: Label unqualified CI output
+          python3 -B tools/verify_release_source.py
+      - name: Label hosted output separately from release binary
         run: python3 tools/package_ci.py build/tahoe/products/Release/Tahoe/AirportItlwm.kext build/ci-evidence
-      - if: always() # retain failed-test logs; no validation/build condition is bypassed
+      - if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: BE200-CI-BUILD-NOT-PHYSICALLY-VALIDATED-${{ github.sha }}
+          name: CI-NOT-PHYSICALLY-VALIDATED-${{ github.sha }}
           path: |
             build/ci-evidence/
-            build/be200-validation/
+            build/release-validation/
           if-no-files-found: error
           retention-days: 7

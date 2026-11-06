@@ -1,7 +1,7 @@
 #!/bin/bash
 # Maintained SHARED entry point; traffic protocol AIRPORTITLWM_3X20_NO_PROFILER_V1.
 # Derived from portable runner SHA256 00cf96aadddc0a130ef4c030bc80d4bea293bdf1e2e96a631c0fa1968956f15e
-# r12-local: add UDP TX/RX 700/800/900 Mbps; 3x20 = 60 cases.
+# Public distribution r13: five frozen traffic matrices; release2.0.0 and retained historical pins.
 # r11: public BE200-ALPHA2 alias and portable tool distribution; traffic unchanged.
 # r10: corrected P8R1 pins/private ZC30; prior P8 and r9 resources archived.
 # r9: private P8/ZC29 support; unchanged P7 profile and archived r8.
@@ -35,6 +35,13 @@ PROFILE_HELPER="$PROFILE_DIR/shared_profile.py"
 usage() {
   cat <<'HELP'
 Usage: /bin/bash AirportItlwm_3x20_PORTABLE_IP_PROMPT.sh AX201-ALPHA2|AX210-ALPHA2|AX211-ALPHA2|BE200-ALPHA2|BE200-P8|BE200-ALPHA1|ZC30|ZC29|ZC28|ZC27|ZC26|ZC25|ZC24|ZC23|ZC22|ZC21|ZC20|ZC19|ZC8|ZC13|ZC18|/absolute/path/AirportItlwm.kext
+
+P10 development candidate (use the absolute path to the extracted P10 Kext):
+  BENCHMARK_PROFILE=be200 CANDIDATE_LABEL=BE200-P10 EXPECTED_MODE=mapped /bin/bash AirportItlwm_3x20_PORTABLE_IP_PROMPT.sh /absolute/path/AirportItlwm.kext
+  CANDIDATE_LABEL=AX201-P10R9 EXPECTED_MODE=conventional /bin/bash AirportItlwm_3x20_PORTABLE_IP_PROMPT.sh /absolute/path/AirportItlwm.kext
+  CANDIDATE_LABEL=AX210-P10R9 EXPECTED_MODE=mapped /bin/bash AirportItlwm_3x20_PORTABLE_IP_PROMPT.sh /absolute/path/AirportItlwm.kext
+  CANDIDATE_LABEL=AX211-P10R9 EXPECTED_MODE=mapped /bin/bash AirportItlwm_3x20_PORTABLE_IP_PROMPT.sh /absolute/path/AirportItlwm.kext
+Confirm each card's actual DMA eligibility before selecting mapped or conventional.
 
 Simple calls:
   /bin/bash AirportItlwm_3x20_PORTABLE_IP_PROMPT.sh AX201-ALPHA2 mapped
@@ -114,7 +121,7 @@ No automatic reconnect, reboot, EFI installation or network changes.
 HELP
 }
 if [[ $# -eq 1 && "$1" == --version ]]; then
-  echo 'shared-2026-11-04-r12-local-udp900'
+  echo 'shared-2026-11-05-r13-p10r9-udp900'
   shasum -a 256 "${BASH_SOURCE[0]}"
   exit 0
 fi
@@ -273,10 +280,10 @@ if [[ "$CANDIDATE_INPUT" == */* ]]; then
   fi
 else
   LABEL="$(printf '%s' "$CANDIDATE_INPUT" | tr '[:lower:]' '[:upper:]')"
-  if [[ "$PROFILE" == be200 && "$LABEL" != BE200-ALPHA1 && "$LABEL" != BE200-P8 && "$LABEL" != BE200-ALPHA2 ]]; then
-    echo 'STOP: be200 profile requires BE200-ALPHA1, BE200-ALPHA2, BE200-P8 or an absolute candidate path'; exit 2;
+  if [[ "$PROFILE" == be200 && "$LABEL" != BE200-ALPHA1 && "$LABEL" != BE200-P8 && "$LABEL" != BE200-ALPHA2 && "$LABEL" != BE200-P10 ]]; then
+    echo 'STOP: be200 profile requires BE200-ALPHA1, BE200-ALPHA2, BE200-P8, BE200-P10 or an absolute candidate path'; exit 2;
   fi
-  [[ "$LABEL" =~ ^ZC[0-9]+$ || "$LABEL" == AX201-ALPHA2 || "$LABEL" == AX210-ALPHA2 || "$LABEL" == AX211-ALPHA2 || ( "$PROFILE" == be200 && ( "$LABEL" == BE200-ALPHA1 || "$LABEL" == BE200-P8 || "$LABEL" == BE200-ALPHA2 ) ) ]] || {
+  [[ "$LABEL" =~ ^ZC[0-9]+$ || "$LABEL" == AX201-ALPHA2 || "$LABEL" == AX210-ALPHA2 || "$LABEL" == AX211-ALPHA2 || "$LABEL" == AX201-P10 || "$LABEL" == AX201-P10R4D || "$LABEL" == AX210-P10 || "$LABEL" == AX210-P10R4D || "$LABEL" == AX211-P10 || "$LABEL" == AX211-P10R4D || ( "$PROFILE" == be200 && ( "$LABEL" == BE200-ALPHA1 || "$LABEL" == BE200-P8 || "$LABEL" == BE200-ALPHA2 || "$LABEL" == BE200-P10 ) ) ]] || {
     echo "STOP: Use ZC<number>, BE200-ALPHA1 or an absolute AirportItlwm.kext path"; exit 2;
   }
   if [[ "$LABEL" == AX201-ALPHA2 || "$LABEL" == AX210-ALPHA2 || "$LABEL" == AX211-ALPHA2 ]]; then
@@ -307,10 +314,10 @@ if [[ "$PROFILE" == external ]]; then
   }
 elif [[ "$PROFILE" == be200 ]]; then
   LABEL="$(printf '%s' "${CANDIDATE_LABEL:-BE200-ALPHA1}" | tr '[:lower:]' '[:upper:]')"
-  [[ "$LABEL" == BE200-ALPHA1 || "$LABEL" == BE200-P8 || "$LABEL" == BE200-ALPHA2 ]] || { echo 'STOP: unsupported BE200 candidate profile'; exit 2; }
+  [[ "$LABEL" == BE200-ALPHA1 || "$LABEL" == BE200-P8 || "$LABEL" == BE200-ALPHA2 || "$LABEL" == BE200-P10 || "$LABEL" == BE200-P10R6 || "$LABEL" == BE200-P10R9 || "$LABEL" == BE200-2.0.0 ]] || { echo 'STOP: unsupported BE200 candidate profile'; exit 2; }
 elif [[ -n "${CANDIDATE_LABEL:-}" ]]; then
   LABEL="$(printf '%s' "$CANDIDATE_LABEL" | tr '[:lower:]' '[:upper:]')"
-  [[ "$LABEL" =~ ^ZC[0-9]+$ || "$LABEL" == AX201-ALPHA2 || "$LABEL" == AX210-ALPHA2 || "$LABEL" == AX211-ALPHA2 ]] || { echo 'STOP: Invalid CANDIDATE_LABEL'; exit 2; }
+  [[ "$LABEL" =~ ^ZC[0-9]+$ || "$LABEL" == AX201-ALPHA2 || "$LABEL" == AX210-ALPHA2 || "$LABEL" == AX211-ALPHA2 || "$LABEL" == AX201-P10 || "$LABEL" == AX201-P10R4D || "$LABEL" == AX210-P10 || "$LABEL" == AX210-P10R4D || "$LABEL" == AX211-P10 || "$LABEL" == AX211-P10R4D || "$LABEL" == AX201-P10R4DBFR || "$LABEL" == AX210-P10R4DBFR || "$LABEL" == AX211-P10R4DBFR || "$LABEL" == AX201-P10R5 || "$LABEL" == AX210-P10R5 || "$LABEL" == AX211-P10R5 || "$LABEL" == AX201-P10R6 || "$LABEL" == AX210-P10R6 || "$LABEL" == AX211-P10R6 || "$LABEL" == AX201-P10R9 || "$LABEL" == AX201-2.0.0 || "$LABEL" == AX210-P10R9 || "$LABEL" == AX210-2.0.0 || "$LABEL" == AX211-P10R9 || "$LABEL" == AX211-2.0.0 ]] || { echo 'STOP: Invalid CANDIDATE_LABEL'; exit 2; }
 fi
 if [[ -n "${CANDIDATE_KEXT:-}" ]]; then
   [[ "$CANDIDATE_KEXT" == /* ]] || { echo 'STOP: CANDIDATE_KEXT must be absolute'; exit 2; }
@@ -370,7 +377,7 @@ PREVIOUS_HEALTH=""
 
 # Extended traffic protocol: original cases plus UDP 700/800/900 in each round.
 PROTOCOL_VERSION='AIRPORTITLWM_3X20_NO_PROFILER_V1'
-RUNNER_REVISION='shared-2026-11-04-r12-local-udp900'
+RUNNER_REVISION='r13-release-2.0.0-standard'
 RUNNER_SOURCE="${BASH_SOURCE[0]}"
 record_protocol() {
   python3 - "$RUNNER_SOURCE" "$OUT" "$PROTOCOL_VERSION" "$RUNNER_REVISION" "$1" \
@@ -453,6 +460,13 @@ finish() {
   local rc=$?
   trap - EXIT
   set +e
+  # Best-effort post-failure evidence. Keep the original stage/exit code.
+  # A failed guard must not prevent raw IORegistry data from being archived.
+  if (( rc != 0 )) && declare -F capture >/dev/null; then
+    ( capture "$OUT/FAILURE.plist" boundary ) > "$OUT/FAILURE_CAPTURE.log" 2>&1
+    printf 'CAPTURE_EXIT_CODE=%s\n' "$?" >> "$OUT/FAILURE_CAPTURE.log"
+    ifconfig "$IFACE" > "$OUT/FAILURE_IFCONFIG.txt" 2>&1
+  fi
   record_protocol final
   if [[ $? -ne 0 ]]; then rc=1; finished_ok=0; fi
   if [[ "$PROFILE" == be200 ]]; then
@@ -596,13 +610,13 @@ if profile=='external':
     with open(source.rsplit('.',1)[0]+'.health.json','w') as f:json.dump(health,f,indent=2)
     print('EXTERNAL: boundary UUID/hashes verified; actual DMA mode and KGP health UNAVAILABLE')
     sys.exit(0)
-if label in ('AX201-ALPHA2','AX210-ALPHA2','AX211-ALPHA2','ZC19','ZC20','ZC21','ZC22','ZC23','ZC24','ZC25','ZC26','ZC27','ZC28','ZC29','ZC30') or (profile=='be200' and label in ('BE200-ALPHA1','BE200-P8','BE200-ALPHA2')):
+if label in ('AX201-ALPHA2','AX210-ALPHA2','AX211-ALPHA2','AX201-P10','AX201-P10R4D','AX210-P10','AX210-P10R4D','AX211-P10','AX211-P10R4D','AX201-P10R6','AX210-P10R6','AX211-P10R6','AX201-P10R9','AX201-2.0.0','AX210-P10R9','AX210-2.0.0','AX211-P10R9','AX211-2.0.0','ZC19','ZC20','ZC21','ZC22','ZC23','ZC24','ZC25','ZC26','ZC27','ZC28','ZC29','ZC30') or (profile=='be200' and label in ('BE200-ALPHA1','BE200-P8','BE200-ALPHA2','BE200-P10','BE200-P10R6','BE200-P10R9','BE200-2.0.0')):
     if blobs or len(zc19)!=1 or len(zc19[0])!=256:
         sys.exit('STOP: expected exactly one ZC19 256-byte health record, no ZC10 schema')
     w=struct.unpack('<32Q',zc19[0])
     if w[:3]!=(19,1,256) or not w[3] or not w[4]:sys.exit('STOP: invalid/unpublished ZC19 schema')
     if w[5]!=(2 if expected_mode=='mapped' else 1):sys.exit('STOP: wrong ZC19 actual DMA mode')
-    marker=(json.load(open(os.environ['BENCHMARK_CANDIDATE_PROFILE_JSON']))[label]['marker'] if profile=='be200' or label in ('AX201-ALPHA2','AX210-ALPHA2','AX211-ALPHA2') else
+    marker=(json.load(open(os.environ['BENCHMARK_CANDIDATE_PROFILE_JSON']))[label]['marker'] if profile=='be200' or label in ('AX201-ALPHA2','AX210-ALPHA2','AX211-ALPHA2','AX201-P10','AX201-P10R4D','AX210-P10','AX210-P10R4D','AX211-P10','AX211-P10R4D','AX201-P10R6','AX210-P10R6','AX211-P10R6','AX201-P10R9','AX201-2.0.0','AX210-P10R9','AX210-2.0.0','AX211-P10R9','AX211-2.0.0') else
             'AirportItlwm-Tahoe-B1-ZC28-SERVICE' if label=='ZC28' else
             'AirportItlwm-Tahoe-B1-ZC27-STABILITY' if label=='ZC27' else
             'AirportItlwm-Tahoe-B1-ZC20-TX-CMD-UC' if label=='ZC20' else 'AirportItlwm-Tahoe-B1-'+label+'-PERF')

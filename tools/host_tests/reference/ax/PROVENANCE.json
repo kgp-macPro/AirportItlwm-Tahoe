@@ -1,0 +1,16 @@
+{
+  "license": "GPL-2.0",
+  "source_path": "itlwm/hal_iwx/ItlIwx.cpp",
+  "fixtures": [
+    {
+      "source_commit": "1411f062ac0222ad0063d14927ad27c4731498aa",
+      "file": "1411f062ac02.cpp",
+      "sha256": "076b5e575d444a8d1752d8674b375339418d5b59d33c508fb75c2c5103a16405"
+    },
+    {
+      "source_commit": "da5bccf4b2681ea86340cccd2aeebf96f09cd2e4",
+      "file": "da5bccf4b268.cpp",
+      "sha256": "2392a7534b81798d5028c9311caac52924ead8e385d8b344d18fd842bb4d74a1"
+    }
+  ]
+}

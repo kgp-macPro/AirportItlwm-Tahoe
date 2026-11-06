@@ -1,49 +1,34 @@
 {
-  "revision": "shared-2026-11-04-r12-local-udp900",
-  "protocol": "AIRPORTITLWM_3X20_NO_PROFILER_V1",
-  "runner_sha256": "5ce3165ae31ad0d1bb347eb8bdf571aa5542199b63fd427fc8e2aacc220f87e2",
-  "historical_3x14_runner_sha256": "5f01573d8048c422b6657836cd09ad407d0291abb59a92629895e20e82502774",
-  "resource_sha256": {
-    "decode_be200.py": "97bcfe49481ebe1738bc36bb617e67f19d85aa69d5a144174f01d8edda64b89c",
-    "profiles.json": "e7c6510105ee59a9f34fe4af4bfb04804d4217395aea73ebc997aa9931210947",
-    "shared_profile.py": "335aac2378f3bda800dbd637d9ca1acd2cf93952157044e5d763ea077cd1849f"
+  "revision": "r13-release-2.0.0",
+  "runners": {
+    "AirportItlwm_3x20_PORTABLE_IP_PROMPT.sh": "b7b3119f020c852d37b1730d7c3592895f58dc8ea3366c48ec8bf35117ebc73d",
+    "AirportItlwm_3x20_UDP1200_PORTABLE_IP_PROMPT.sh": "fca815f27f18373447de6cabccc45c78408f206c0634c5eac7f48e7a9f7692fa",
+    "AirportItlwm_3x20_UDP1300_PORTABLE_IP_PROMPT.sh": "f991bd269f5184191d9814af2e91e10f8e4136fdaf4c1c030ba7be263de26e29",
+    "AirportItlwm_3x20_UDP1600_PORTABLE_IP_PROMPT.sh": "ce52cd188b2f163e38a8fda62ef8297d65535fc5aa89f9a3147a143388b357d6",
+    "AirportItlwm_3x20_UDP1700_PORTABLE_IP_PROMPT.sh": "cca3f3d117b1afa0293adadde59819574fecfc09b0c83f1d98910a442dcc9815"
   },
-  "server_sha256": "983b411c600b89d546a416a7405eea1ed3cac8f77af1ade73ca510f5c0de09e0",
-  "frozen_references": {
-    "reference/AirportItlwm_3x14_PORTABLE_IP_PROMPT.r7-service.sh": "be9c07168daf7b8ffd6f6c71ba4f62117d1e28334c4a64a9a063b2a115cc19ed",
-    "reference/r10/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh": "e66ca99db2cdf77e4141b632b9165fdd9e32e83ce016b4b06733ada9905dead9",
-    "reference/r10/runner_profiles/decode_be200.py": "97bcfe49481ebe1738bc36bb617e67f19d85aa69d5a144174f01d8edda64b89c",
-    "reference/r10/runner_profiles/profiles.json": "4dbd2a77f59df3a3539411ef37b064177cd4b88e6308f999b5b6c1720ed5966b",
-    "reference/r10/runner_profiles/shared_profile.py": "4a198697296cb505e0649036bbf7974168ae8c290aa6565d1f5836e815fca91a",
-    "reference/r8/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh": "ad488030e076fc825538bc310bc3b62374ee08340659b34cf150d43acd26d398",
-    "reference/r8/runner_profiles/decode_be200.py": "c24a0537752ae3719542579cece399039a90ced0202b00624a86b8e125d73805",
-    "reference/r8/runner_profiles/profiles.json": "37fe751026aab008a66005b2e539a0eed2f1a26eb37ceee129f9b9df360bfe56",
-    "reference/r8/runner_profiles/shared_profile.py": "4a198697296cb505e0649036bbf7974168ae8c290aa6565d1f5836e815fca91a",
-    "reference/r9/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh": "ba4b08fdf8516140cdbfe8de43d6560945319e873f47725acd1e24f76962d182",
-    "reference/r9/runner_profiles/decode_be200.py": "87e2a580308f13f8ebc5cea1028c6ba919b06b4af2f1a9a285fcf462d72a53af",
-    "reference/r9/runner_profiles/profiles.json": "f3af29b4dc3a555c3f2d530a87f184d49871499a814947d483964d73c9c4053b",
-    "reference/r9/runner_profiles/shared_profile.py": "4a198697296cb505e0649036bbf7974168ae8c290aa6565d1f5836e815fca91a"
+  "resources": {
+    "runner_profiles/decode_be200.py": "97bcfe49481ebe1738bc36bb617e67f19d85aa69d5a144174f01d8edda64b89c",
+    "runner_profiles/profiles.json": "377023458572c7ac17007122d483d099d0c7e3c829936ec55ae78575bb2ab916",
+    "runner_profiles/shared_profile.py": "335aac2378f3bda800dbd637d9ca1acd2cf93952157044e5d763ea077cd1849f"
   },
-  "public_alpha2_profile": {
-    "public_name": "AirportItlwm-Tahoe 1.2.0 BE200 Alpha 2 \u2014 Performance Hotfix",
-    "uuid": "E4414AAB-1D58-3E40-93A5-6838D3CDCD20",
-    "executable_sha256": "8e4a38121b06941630afa98728b245cbaeec813c14139c46715dc44723461f63",
-    "info_plist_sha256": "7a5eea5d0d042d9bd62142b1e9bea7389061a3496bed284476d6a56a5056a8c5",
-    "registry_candidate": "BE200-GL92-PRIVATE-P8R1",
-    "marker": "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P8R1",
-    "pci_vendor": 32902,
-    "pci_device": 10027,
-    "binary_build_commit": "a10a32bf296d6b90da1b3390b3ef4459f9d207fc",
-    "transport_schema": [
-      200,
-      1,
-      384
+  "historical_3x14_sha256": "5f01573d8048c422b6657836cd09ad407d0291abb59a92629895e20e82502774",
+  "binary_identity": {
+    "version": "2.0.0",
+    "source_commit": "4b948ae16a7cbe82699dc7078cf4c917456eff89",
+    "uuid": "E01CC22A-6A2D-3E0D-A8FD-229ED62C1751",
+    "executable_sha256": "ab8688febf2ccc78984ea6b2b9be933cb14317bc7951983330ffadab32d3a2f8",
+    "info_plist_sha256": "ba5bc5c337f639b82e04f22ac29e6bb338f26e046d46d79a26a38ecdd5dfd0ef",
+    "benchmark_profile_labels": [
+      "BE200-2.0.0",
+      "AX201-2.0.0",
+      "AX210-2.0.0",
+      "AX211-2.0.0"
     ],
-    "inherited_health_schema": [
-      19,
-      1,
-      256
-    ]
+    "candidate_folder": "AirportItlwm-Tahoe-2.0.0",
+    "test_evidence_binary": "P10R9 for AX210 HE/HE+BF; P10 for BE200 VHT/HE/HE+BF",
+    "byte_identical_to_tested_candidates": false,
+    "source_tag": "v2.0.0"
   },
-  "scope": "Tool-only; separate 3x20 UDP extension and frozen 3x14 runner; no driver/binary/EFI/root-patch operations."
+  "scope": "Offline packaging only. Strict original and release identity profiles retained; AX diagnosis optional on BE200."
 }

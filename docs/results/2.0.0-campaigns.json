@@ -1,0 +1,1803 @@
+[
+  {
+    "id": "BE200_VHT",
+    "device": "BE200",
+    "mode": "VHT",
+    "archive": "BE200-P10_BE200_3X20_mapped_20261104_234618_Th4JI5.zip",
+    "original_archive_sha256": "e2072a3ea45158963f3107d2852fb8c8c6d150b7d6e63c2c5e5a498265cbe638",
+    "verified_manifest_files": 382,
+    "uuid": "2613EF21-BC57-3685-B252-AC94CFF4928B",
+    "executable_sha256": "eff556fb4846a7651bff02d0c6e38479c0d1d1493aaa8de958b6f6bbd336a270",
+    "tests_completed": 60,
+    "online": "PASS",
+    "macos": "26.7.2 / 25G332",
+    "dma_mode": "mapped",
+    "applevtd": "enabled as recorded and reported",
+    "protocol": "AIRPORTITLWM_3X20_NO_PROFILER_V1",
+    "rx_stages": [
+      100,
+      250,
+      400,
+      500,
+      600,
+      700,
+      800,
+      900
+    ],
+    "tx_stages": [
+      100,
+      250,
+      400,
+      500,
+      600,
+      700,
+      800,
+      900
+    ],
+    "tcp": {
+      "TCP_TX_P1": {
+        "receiver_mbps_mean": 633.2380366647976,
+        "receiver_mbps_by_round": [
+          630.8128712899614,
+          632.5572118820941,
+          636.3440268223375
+        ],
+        "retransmits_by_round": [
+          33,
+          53,
+          29
+        ]
+      },
+      "TCP_TX_P4": {
+        "receiver_mbps_mean": 587.436730776659,
+        "receiver_mbps_by_round": [
+          589.7192347923918,
+          583.2511834340443,
+          589.339774103541
+        ],
+        "retransmits_by_round": [
+          3600,
+          2196,
+          1611
+        ]
+      },
+      "TCP_RX_P1": {
+        "receiver_mbps_mean": 913.9613649610608,
+        "receiver_mbps_by_round": [
+          919.677963000183,
+          901.6702987708255,
+          920.5358331121737
+        ],
+        "retransmits_by_round": [
+          0,
+          463,
+          0
+        ]
+      },
+      "TCP_RX_P4": {
+        "receiver_mbps_mean": 922.2418204017903,
+        "receiver_mbps_by_round": [
+          923.678199179687,
+          918.4133530814913,
+          924.6339089441924
+        ],
+        "retransmits_by_round": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "tcp_full_zero_sum_intervals": 0,
+    "mode_properties": {
+      "ItlwmHeLink": "not-he",
+      "ItlwmRxBaWinsize": 64
+    },
+    "bluetooth": {
+      "com.zxystd.IntelBluetoothFirmware": "2.5.1",
+      "com.zxystd.IntelBTPatcher": "2.5.1",
+      "as.acidanthera.BlueToolFixup": "2.7.2"
+    },
+    "raw_files": {
+      "ROUND_01/T01_TCP_TX_P1_20261104_234624.iperf3.json": "bc87355340612aa55622ac1f5d1647590550ce0b5dafd76f6758d8086afabc5e",
+      "ROUND_01/T02_TCP_RX_P1_20261104_234635.iperf3.json": "840ab41e0345ebf53973d0ad6b10d098c62517625e84387e5c1239815f33d405",
+      "ROUND_01/T03_TCP_TX_P4_20261104_234646.iperf3.json": "e8530135207dcddfa8c39728e265bb93e8a07890f101003f5a9ee71e43719a80",
+      "ROUND_01/T04_TCP_RX_P4_20261104_234656.iperf3.json": "956f9d67b2c5b3249ee7459bc28015cbb393f33f73b83d23bc38457323cd1db8",
+      "ROUND_01/T05_UDP_TX100_20261104_234707.iperf3.json": "69bfd61518507c3ea6c420db9ca520370f34d34d6a5906310427d5cc2479711b",
+      "ROUND_01/T06_UDP_RX100_20261104_234714.iperf3.json": "afa3222bd0d0622ee0630d2541fa5f008279dc0ff0a33835f0f8a820dc0ede1a",
+      "ROUND_01/T07_UDP_TX250_20261104_234722.iperf3.json": "651c851fcc4e6a7f93232e2f330cb22a1088587dff9010b815b0e4fe3a6b084e",
+      "ROUND_01/T08_UDP_RX250_20261104_234729.iperf3.json": "8160967331a0afccf1a1f3732d5a333c9dafbd0c3a9b266a5ccd3a3987538b21",
+      "ROUND_01/T09_UDP_TX400_20261104_234737.iperf3.json": "3e2018c1a15e4c5303e0880cc0718ebdefb9276f58e77b89aeb797aab47221ea",
+      "ROUND_01/T10_UDP_RX400_20261104_234745.iperf3.json": "adf82daa18256a718c8942849faee2e5179216981c214282f45ff0b170e6e946",
+      "ROUND_01/T11_UDP_TX500_20261104_234752.iperf3.json": "ac5450fd48b8166fb025bc2d652298c09dd6ab37c4e74c1fc9c73835b4f92556",
+      "ROUND_01/T12_UDP_RX500_20261104_234800.iperf3.json": "607457422eae7646919f6518329e4d46b038eaf8802abfe538ccde06a55bc6ef",
+      "ROUND_01/T13_UDP_TX600_20261104_234807.iperf3.json": "70bd8936f8e5794b428423d1e332cdc83b5a235f60eb7eafe7b9e53504d4e1d9",
+      "ROUND_01/T14_UDP_RX600_20261104_234815.iperf3.json": "7ff29774ada30b5882e96079aef61b49f9f787a41d487b65eea0c5d26e14a77e",
+      "ROUND_01/T15_UDP_TX700_20261104_234822.iperf3.json": "080e73f3f41a00e40eeca552a33f6a2de7001fe4db301e66660e66ccb72dd7bc",
+      "ROUND_01/T16_UDP_RX700_20261104_234830.iperf3.json": "9dd3aed2712f1f78db365e292e17dbf883970290124f865c0a78703849f84c81",
+      "ROUND_01/T17_UDP_TX800_20261104_234838.iperf3.json": "3b4c5c8806158618893619549eb8ec5f76ab24ab4ce38049c9a08f01d54ec923",
+      "ROUND_01/T18_UDP_RX800_20261104_234845.iperf3.json": "53c5267d8831641a0c9097ad6bd676e4d4dda769c24dc3d1084b442a28f28779",
+      "ROUND_01/T19_UDP_TX900_20261104_234853.iperf3.json": "31a57c6fcab319ec9e275ad822b1887017eea11059d02a08bc80d441f2e816b6",
+      "ROUND_01/T20_UDP_RX900_20261104_234901.iperf3.json": "dc40cc1f59f2e5fbb99085fe3f50930e3c412e3599007243663cb6fabb4a24a1",
+      "ROUND_02/T01_TCP_TX_P1_20261104_234911.iperf3.json": "d354e33b79d680b6b2fa438e87609411bd66bf2747bc5402d688ec2194532f2c",
+      "ROUND_02/T02_TCP_RX_P1_20261104_234921.iperf3.json": "96b7ba1420595bd0e09928750d1fe01d94bef07643b7ed7924b694042f23bb88",
+      "ROUND_02/T03_TCP_TX_P4_20261104_234932.iperf3.json": "7472e344181fda930d45091289385ff83cb2a57434daccd4f130d2a6d2a1df2e",
+      "ROUND_02/T04_TCP_RX_P4_20261104_234942.iperf3.json": "ad49921b390712cfe7b2e262c86edb0aae59ed6268b84a6eb5bcd71bc7798dc7",
+      "ROUND_02/T05_UDP_TX100_20261104_234953.iperf3.json": "001a28f220cbd603612f7e42855688cbfc7f3b7795db8f4e686fd4412d52766c",
+      "ROUND_02/T06_UDP_RX100_20261104_235001.iperf3.json": "479741023ae7cda1bb929e6c8946d71fe1251f1840700208acdf14dfbf270eb8",
+      "ROUND_02/T07_UDP_TX250_20261104_235008.iperf3.json": "303e510a30bbe0cf532200120bcf3e5820045229af81088d2842a05e99fd3d7b",
+      "ROUND_02/T08_UDP_RX250_20261104_235016.iperf3.json": "6dc03c7847dabdc081309a4b186af30e62ee0f028d44225ade1ee1246fee0910",
+      "ROUND_02/T09_UDP_TX400_20261104_235023.iperf3.json": "1c68ffcdbff65110af2282610805c315e0c73d5830577964e8a43ba66464df5e",
+      "ROUND_02/T10_UDP_RX400_20261104_235031.iperf3.json": "0e20f9d50595bb65f50d16b65fd3e313fa301af8e10c9925d6cef918e973de43",
+      "ROUND_02/T11_UDP_TX500_20261104_235039.iperf3.json": "4a1fb58949dd859204078948d5a6ca8910b87838f65065bfc937fab573718d67",
+      "ROUND_02/T12_UDP_RX500_20261104_235046.iperf3.json": "6f7dd16d7f0c030e4bd97bc725f4a13215bbabf85ba84dd670cb549c5b4052a5",
+      "ROUND_02/T13_UDP_TX600_20261104_235054.iperf3.json": "568438763614d3afb13b6e672e813ccc6e313e615b6de6f1fcc3a23a7bf0b817",
+      "ROUND_02/T14_UDP_RX600_20261104_235101.iperf3.json": "d148c72b6dc2d0e6c981f6c371cd61a19660b6cc6fc55b9f68451eac00785049",
+      "ROUND_02/T15_UDP_TX700_20261104_235109.iperf3.json": "350e51e987664594868274f885ae610b34a61d9a222f0d85851cb838ba9e0727",
+      "ROUND_02/T16_UDP_RX700_20261104_235116.iperf3.json": "83fb9b5689753989c25420cef2c31be7b2144b1ec6837570378fb7b3651ad6e3",
+      "ROUND_02/T17_UDP_TX800_20261104_235124.iperf3.json": "0a9e71c7ca6bc49ef37229b5848f6ceabd034fb4bcb4c845563bfcaed25dc368",
+      "ROUND_02/T18_UDP_RX800_20261104_235132.iperf3.json": "b6b2ed292b65c1b57e754b46bf22d3b2f156c6df5cbb43f70366b32954b007af",
+      "ROUND_02/T19_UDP_TX900_20261104_235139.iperf3.json": "325374b2d06ea34c82954dfda56ac209bab02b4d70baf66d0629fa44c0e2a4aa",
+      "ROUND_02/T20_UDP_RX900_20261104_235147.iperf3.json": "72fb49e86e0cf482bc1679e6515b6b267fe68e7958921c55723d08ec223417e1",
+      "ROUND_03/T01_TCP_TX_P1_20261104_235157.iperf3.json": "9d774104d6dfa83862f44020eb6587db4995bf5ad80b6d96ddd365541b6c968a",
+      "ROUND_03/T02_TCP_RX_P1_20261104_235208.iperf3.json": "b95cb77f3c2d6003412d5e9a87b96f7ae5b9d3ce59be9afe570bda73bd95f3c7",
+      "ROUND_03/T03_TCP_TX_P4_20261104_235218.iperf3.json": "0787831f70049905c6238c64cfe07ee456afeee66b5e48dcf430733546bca806",
+      "ROUND_03/T04_TCP_RX_P4_20261104_235229.iperf3.json": "17bce34244f0d7c6176c29eaefd02366c9d8752683cc429a5eb9fa4c392b8b6c",
+      "ROUND_03/T05_UDP_TX100_20261104_235239.iperf3.json": "007821f38ae04f3b35b0884310ea76ea878d40fee682eed238480bd99e90f934",
+      "ROUND_03/T06_UDP_RX100_20261104_235247.iperf3.json": "15a854668d4b9a723bb8f2de31a6574ba38ef0f94df47c57d09f42bf6c4f4206",
+      "ROUND_03/T07_UDP_TX250_20261104_235255.iperf3.json": "71e1ea282cab4269e74da140dd85c793ccca208c5f186fbe711d708448c9985a",
+      "ROUND_03/T08_UDP_RX250_20261104_235302.iperf3.json": "3140ab20d693a92463dc212c18a253897cbd229876f1435e58d06152ed1f2f60",
+      "ROUND_03/T09_UDP_TX400_20261104_235310.iperf3.json": "dbff7c64d64bdce20880e72b089b975e9a5ba0c473beb1700fa75a8ab52f5912",
+      "ROUND_03/T10_UDP_RX400_20261104_235317.iperf3.json": "bdbc4ab0643fbfc803d05285e43bc6d3859fb4a27f37d48a8e1ef1c63e373230",
+      "ROUND_03/T11_UDP_TX500_20261104_235325.iperf3.json": "5d639374eb5171add57e86042e38a220867e494e93b1623529fe46f46d9f3ab7",
+      "ROUND_03/T12_UDP_RX500_20261104_235332.iperf3.json": "17d05a03a2176bbe238dddd1ba8bdecd7ab92965dd0d4a09a868f65f334efac6",
+      "ROUND_03/T13_UDP_TX600_20261104_235340.iperf3.json": "d2fc98b631ecb19b59a04f5f94b0013dd7a3302f31632bae38676f9ad4838037",
+      "ROUND_03/T14_UDP_RX600_20261104_235348.iperf3.json": "83d6787eef13cf0e1f1b66f78ac6eed65a37fb2329c18d0bddd046af1b9e9888",
+      "ROUND_03/T15_UDP_TX700_20261104_235355.iperf3.json": "040912df9fe631fc7e31d05501b9639c461ff074e690259fb90e38f5a6c632e9",
+      "ROUND_03/T16_UDP_RX700_20261104_235403.iperf3.json": "f9dda09e509d0949118a06beb7aaa356e7f65d5d213d8c2d19cf7c4a4900716f",
+      "ROUND_03/T17_UDP_TX800_20261104_235410.iperf3.json": "0aebfd2e9dd3ad235ad61f28ac62641df3890ce2b754de688e899df135eb22d5",
+      "ROUND_03/T18_UDP_RX800_20261104_235418.iperf3.json": "a8511a97a82d028b83889b3d18b8d24f70c2917560e2ea3d5bae8b9516be72c8",
+      "ROUND_03/T19_UDP_TX900_20261104_235426.iperf3.json": "ba27e610ba784123064d16ddfd5f23b3056bda142d9ff1eb0bcb00c3bd7c4da7",
+      "ROUND_03/T20_UDP_RX900_20261104_235433.iperf3.json": "b86ed5d8d10b5948f653af18918515b04a02789c699b89ce57897aa5d58a2087"
+    },
+    "mode_evidence_note": "VHT: KGP comparison mapping; absent HE property is not independent bootarg proof."
+  },
+  {
+    "id": "BE200_HE_STANDARD",
+    "device": "BE200",
+    "mode": "HE",
+    "archive": "BE200-P10_BE200_3X20_mapped_20261105_000828_UVz8gn.zip",
+    "original_archive_sha256": "857173a9f12c002029ff08f677bd7ef4af3e52e6b6a9cef9840c4a5828bcc189",
+    "verified_manifest_files": 382,
+    "uuid": "2613EF21-BC57-3685-B252-AC94CFF4928B",
+    "executable_sha256": "eff556fb4846a7651bff02d0c6e38479c0d1d1493aaa8de958b6f6bbd336a270",
+    "tests_completed": 60,
+    "online": "PASS",
+    "macos": "26.7.2 / 25G332",
+    "dma_mode": "mapped",
+    "applevtd": "enabled as recorded and reported",
+    "protocol": "AIRPORTITLWM_3X20_NO_PROFILER_V1",
+    "rx_stages": [
+      100,
+      250,
+      400,
+      500,
+      600,
+      700,
+      800,
+      900
+    ],
+    "tx_stages": [
+      100,
+      250,
+      400,
+      500,
+      600,
+      700,
+      800,
+      900
+    ],
+    "tcp": {
+      "TCP_TX_P1": {
+        "receiver_mbps_mean": 362.3770838530422,
+        "receiver_mbps_by_round": [
+          353.94509927358,
+          363.20939871266415,
+          369.97675357288256
+        ],
+        "retransmits_by_round": [
+          485,
+          533,
+          704
+        ]
+      },
+      "TCP_TX_P4": {
+        "receiver_mbps_mean": 436.52596168512036,
+        "receiver_mbps_by_round": [
+          423.61424048007416,
+          429.87386621113933,
+          456.0897783641476
+        ],
+        "retransmits_by_round": [
+          4299,
+          4581,
+          4520
+        ]
+      },
+      "TCP_RX_P1": {
+        "receiver_mbps_mean": 931.7262107884999,
+        "receiver_mbps_by_round": [
+          935.7039430321606,
+          920.2329310311424,
+          939.2417583021967
+        ],
+        "retransmits_by_round": [
+          0,
+          549,
+          0
+        ]
+      },
+      "TCP_RX_P4": {
+        "receiver_mbps_mean": 931.8120581383245,
+        "receiver_mbps_by_round": [
+          930.9551555004851,
+          932.6968098769777,
+          931.7842090375107
+        ],
+        "retransmits_by_round": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "tcp_full_zero_sum_intervals": 0,
+    "mode_properties": {
+      "ItlwmHeBeamformee": "off",
+      "ItlwmHeLink": 67044375,
+      "ItlwmHeSetup": "on",
+      "ItlwmRxBaWinsize": 256
+    },
+    "bluetooth": {
+      "com.zxystd.IntelBluetoothFirmware": "2.5.1",
+      "com.zxystd.IntelBTPatcher": "2.5.1",
+      "as.acidanthera.BlueToolFixup": "2.7.2"
+    },
+    "raw_files": {
+      "ROUND_01/T01_TCP_TX_P1_20261105_000835.iperf3.json": "fb0de64e440476b49c2d8ae67abce11dfc9f06ac5a9f9a46713a4f43d6e1cf74",
+      "ROUND_01/T02_TCP_RX_P1_20261105_000846.iperf3.json": "caa90c593eb5d8667d5b3ec69dabe309029a842443fece3b932a383602fc15d5",
+      "ROUND_01/T03_TCP_TX_P4_20261105_000856.iperf3.json": "94db119fa85cd2ce8c32f42fc5b534d60d09ea33f56b17f507901c90bb0b6247",
+      "ROUND_01/T04_TCP_RX_P4_20261105_000907.iperf3.json": "2504a1fa18e14e9f2f1c149c9d29ed470424b0f7ea0a8f83b65612d0bcea24f9",
+      "ROUND_01/T05_UDP_TX100_20261105_000917.iperf3.json": "ef014b8617732cf3fbb7424fdd6bcb53604f61e5c814de2a77458bc012d37d6f",
+      "ROUND_01/T06_UDP_RX100_20261105_000925.iperf3.json": "0cf2c4abec94ad371055872162c085ef28385495a5090c47cf0b6c533fc4ccbb",
+      "ROUND_01/T07_UDP_TX250_20261105_000933.iperf3.json": "bbf0d1756d81476b00036a4a8c26f48724f231509573d8c7e1d3c4e16a067e32",
+      "ROUND_01/T08_UDP_RX250_20261105_000940.iperf3.json": "56a05e79c3ef39c122b2e718ed5bcbf8a972b0ef104508bef13baf70d12afe88",
+      "ROUND_01/T09_UDP_TX400_20261105_000948.iperf3.json": "7a410b2d2affe8e0c03932988ddc086320892559b17e056181407fb70d09cce4",
+      "ROUND_01/T10_UDP_RX400_20261105_000955.iperf3.json": "0d594d61efbba8cd8f642c55d0fd05d00254fb5795081418fe280c81d71e21eb",
+      "ROUND_01/T11_UDP_TX500_20261105_001003.iperf3.json": "b3bc54042a76e4ff3df1115de0b29c704fcb92c8ce85ba28f203a1f119138a42",
+      "ROUND_01/T12_UDP_RX500_20261105_001011.iperf3.json": "d1bdbf706a43d8cbc4830cd6255a3153e791c2b84b4a7349dfb8141327f3deab",
+      "ROUND_01/T13_UDP_TX600_20261105_001018.iperf3.json": "c6ca05417bdcefd69b67fd473d50139514a85919c9e71376b121dc06ac884154",
+      "ROUND_01/T14_UDP_RX600_20261105_001026.iperf3.json": "47f7d8dddd1d7be3f6b0ac07be958a2022692952f56124a4125a3cb73c95ae96",
+      "ROUND_01/T15_UDP_TX700_20261105_001033.iperf3.json": "bc957607966615a82e69bc08fa8a94d112ed7f035faae6bbb3804224f4b5f27a",
+      "ROUND_01/T16_UDP_RX700_20261105_001041.iperf3.json": "4c8b7bb6300dd8dd85c4782ae0ea46c6506948987f2055970af9dcccceb49e4e",
+      "ROUND_01/T17_UDP_TX800_20261105_001049.iperf3.json": "c26b3a94ed8afd0e3be1c99e4be23c465f5c26c1a2e0ca0f7301af0d1fdcd6cd",
+      "ROUND_01/T18_UDP_RX800_20261105_001056.iperf3.json": "fdebb8a2b7ecdab8ac55151de76126d82cce3a1901e67260692eca0626c49959",
+      "ROUND_01/T19_UDP_TX900_20261105_001104.iperf3.json": "863afe7958ce5bf4b1c05b1912f1c5ce0418878b3c977f41f6bf0eacdfc44d7f",
+      "ROUND_01/T20_UDP_RX900_20261105_001111.iperf3.json": "0aa1d1c8d3bec66e35145cf53d0da18eef0fbeb9fc5ebd64962c90cfc85b459e",
+      "ROUND_02/T01_TCP_TX_P1_20261105_001122.iperf3.json": "ed7c77dd30a55288c27780d8b22d6a37e6e99d1be08aa2fa2f70ee096ad3d3ef",
+      "ROUND_02/T02_TCP_RX_P1_20261105_001132.iperf3.json": "104ee72267f0bfd77d68da1eb487e5a7a90bee27a94a95999da51fa55e398cc4",
+      "ROUND_02/T03_TCP_TX_P4_20261105_001143.iperf3.json": "1ff0c480e5b30a0a9d914ad26c67f6aa30ca6548a4074901511f98cd5feefd41",
+      "ROUND_02/T04_TCP_RX_P4_20261105_001153.iperf3.json": "fd77702b7b3bc8de2c06095205c5704aa3b46b9e73b281b4bd96882ecafef621",
+      "ROUND_02/T05_UDP_TX100_20261105_001204.iperf3.json": "94debb544e78b9e6bbbefc3abfc1fd539481923423a64ee9d8666a455df30112",
+      "ROUND_02/T06_UDP_RX100_20261105_001212.iperf3.json": "b79743ce0aee958a6e3bb439c07d234049fb684acae94bdffd76ba76001dc49c",
+      "ROUND_02/T07_UDP_TX250_20261105_001219.iperf3.json": "2fb813dc67ab5dc9736f9039f6e7a131e46c126792c94149cbe3a5d6ee62b983",
+      "ROUND_02/T08_UDP_RX250_20261105_001227.iperf3.json": "982c8f3d48fd47f4670916ee1afa746f1f775f85c749bc4382532957c8d8898e",
+      "ROUND_02/T09_UDP_TX400_20261105_001234.iperf3.json": "76c880ca2f4cb3b5e7c7dd2be50035468ec52255f38cdca129f626860d0af179",
+      "ROUND_02/T10_UDP_RX400_20261105_001242.iperf3.json": "fe61063e820c6c4f6b977c5770dcd53426370f1e6890d07231119aaa8476c2f0",
+      "ROUND_02/T11_UDP_TX500_20261105_001250.iperf3.json": "68dfd3a119a2b0b6b2869622ea601a80383dbad4d39441226b927cd1783380ab",
+      "ROUND_02/T12_UDP_RX500_20261105_001257.iperf3.json": "12feb7847924e6dcffc82c7c1be2148e82d5c17902efc36c406c30fae19df1a0",
+      "ROUND_02/T13_UDP_TX600_20261105_001305.iperf3.json": "0b75adccda546fb39014d4edae0e4670150106cd981458234c713b1b61f43b5b",
+      "ROUND_02/T14_UDP_RX600_20261105_001312.iperf3.json": "4f2022acc6276028baf91980c0e7400687fa49e1aea53bee1b4826b9e85b5634",
+      "ROUND_02/T15_UDP_TX700_20261105_001320.iperf3.json": "de3b52a564b1d9f5f1872627d4f2ab63f89aacf890f7af74ec4cb037be14196b",
+      "ROUND_02/T16_UDP_RX700_20261105_001328.iperf3.json": "721be1a0d1f69a03ad6693f8ad1333c9a96b789bc171d02072444993836529b7",
+      "ROUND_02/T17_UDP_TX800_20261105_001335.iperf3.json": "344f318d9edc06f5188966f8fb0ea87654ca2fb1b21aa82fcf081cf93099ba00",
+      "ROUND_02/T18_UDP_RX800_20261105_001343.iperf3.json": "129075e3877573e2b482f3199efb58b2824489bd59d155e4ea4ab65fbef68093",
+      "ROUND_02/T19_UDP_TX900_20261105_001350.iperf3.json": "8a792b41ceae71d394c888970efc4d3efe54ac0d8bfd17084f01a3bfe40ae985",
+      "ROUND_02/T20_UDP_RX900_20261105_001358.iperf3.json": "7512af9c562a61821ea3e6d74b16f8814a4ce396bc6809e01c4ea949adc1e6cb",
+      "ROUND_03/T01_TCP_TX_P1_20261105_001408.iperf3.json": "d438e98c33260285538f8587f0bb8ac6e4dea430132a1943e98fc837682cf0a0",
+      "ROUND_03/T02_TCP_RX_P1_20261105_001419.iperf3.json": "7e0482d692c08559ad411185d37011c9456284542b6e78130c487a7b97003506",
+      "ROUND_03/T03_TCP_TX_P4_20261105_001429.iperf3.json": "14a8dcbcba29344808df4423db1c5fec1dbf5a16a30d321fa74f2c99c1e96a19",
+      "ROUND_03/T04_TCP_RX_P4_20261105_001440.iperf3.json": "ecab2b614efb7aaa65f11c066d2de4f91f1be05a862da866d4883d9ab714a6b2",
+      "ROUND_03/T05_UDP_TX100_20261105_001451.iperf3.json": "3feffbb618334f396fcf89dea5308b46fa9a4769fd8acb908c23902df80e560e",
+      "ROUND_03/T06_UDP_RX100_20261105_001458.iperf3.json": "56c5a8fa88ec55e2ad51a2d635f03c8ce635d8e8b0e73c22391cdd18454d797c",
+      "ROUND_03/T07_UDP_TX250_20261105_001506.iperf3.json": "ed072bb6dbad13e57bb5310690d2cc0fb9fe245a6974323357fbc13c4f7a5402",
+      "ROUND_03/T08_UDP_RX250_20261105_001513.iperf3.json": "323f26f718c05af55535db2f688d64fe9e9b491d0244c2c32cec6856ffaeeb64",
+      "ROUND_03/T09_UDP_TX400_20261105_001521.iperf3.json": "b9c0c8dbf20985518dc75bab7a3efcbae632f721c63a47fd9f00fd00e7ce459f",
+      "ROUND_03/T10_UDP_RX400_20261105_001528.iperf3.json": "0c85519aec1b8c5eda7ad9f076c5113bd474bb110d851782b918759b461db32a",
+      "ROUND_03/T11_UDP_TX500_20261105_001536.iperf3.json": "6d07ba62df1e731a402ce7a8ced183fc1ce7f24827ef7792e714fa595716bc04",
+      "ROUND_03/T12_UDP_RX500_20261105_001544.iperf3.json": "79f53a6c5a0fa06e3eabcb5ecfa854a8e2b887706d9abf719e134ea72a5b6392",
+      "ROUND_03/T13_UDP_TX600_20261105_001551.iperf3.json": "cf8c84a5a94b43f076ed3fe0813a08934c39cc71893b3847d7721754fd7ae245",
+      "ROUND_03/T14_UDP_RX600_20261105_001559.iperf3.json": "ab4dd27750348362541f2094332e19a5f55a7563c9474034c27a6762d3f31583",
+      "ROUND_03/T15_UDP_TX700_20261105_001606.iperf3.json": "d2484b898168414c5328311a1640c6f3c78b0ed785e2f01392a39a85f9a13057",
+      "ROUND_03/T16_UDP_RX700_20261105_001614.iperf3.json": "4f0f2b20cb5022dcbcb7f65ee12bf586a6e48379022560c80f0e95c099bdfb05",
+      "ROUND_03/T17_UDP_TX800_20261105_001622.iperf3.json": "4901f0321400bca7d1457a0f3a3445c0322b5b6c403afd0086b03d494bf96962",
+      "ROUND_03/T18_UDP_RX800_20261105_001629.iperf3.json": "096556c1feddfe21d320129164ea80a411ac44e864bb9aec53cc704b66e0eb38",
+      "ROUND_03/T19_UDP_TX900_20261105_001637.iperf3.json": "1cc44e051d44ee36ac03d79c2a52bee88897ce99b1b1e04ace900085a184f179",
+      "ROUND_03/T20_UDP_RX900_20261105_001644.iperf3.json": "f936dd1744c1b827ceec33bafa2d502c986f38c0cdd59e3ec625065ca5cd7340"
+    },
+    "mode_evidence_note": "BE200 provider HE/BF properties; AX HE runtime + KGP boot-mode association; R9 BF post-run sysctl confirmed. Screenshot alone is not build/BF-use proof."
+  },
+  {
+    "id": "BE200_BF_STANDARD_1",
+    "device": "BE200",
+    "mode": "HE+BF opt-in",
+    "archive": "BE200-P10_BE200_3X20_mapped_20261105_003136_jGbcco.zip",
+    "original_archive_sha256": "7cba45846e9425fd6d06c8c6655ed8bd3e03e5295e8e4b04695d2ffb6afccdec",
+    "verified_manifest_files": 382,
+    "uuid": "2613EF21-BC57-3685-B252-AC94CFF4928B",
+    "executable_sha256": "eff556fb4846a7651bff02d0c6e38479c0d1d1493aaa8de958b6f6bbd336a270",
+    "tests_completed": 60,
+    "online": "PASS",
+    "macos": "26.7.2 / 25G332",
+    "dma_mode": "mapped",
+    "applevtd": "enabled as recorded and reported",
+    "protocol": "AIRPORTITLWM_3X20_NO_PROFILER_V1",
+    "rx_stages": [
+      100,
+      250,
+      400,
+      500,
+      600,
+      700,
+      800,
+      900
+    ],
+    "tx_stages": [
+      100,
+      250,
+      400,
+      500,
+      600,
+      700,
+      800,
+      900
+    ],
+    "tcp": {
+      "TCP_TX_P1": {
+        "receiver_mbps_mean": 312.0334411385444,
+        "receiver_mbps_by_round": [
+          235.00160802510982,
+          348.7815273345906,
+          352.3171880559327
+        ],
+        "retransmits_by_round": [
+          362,
+          496,
+          708
+        ]
+      },
+      "TCP_TX_P4": {
+        "receiver_mbps_mean": 431.8577257665913,
+        "receiver_mbps_by_round": [
+          429.6526605901179,
+          433.5431369488423,
+          432.3773797608137
+        ],
+        "retransmits_by_round": [
+          4533,
+          4738,
+          4303
+        ]
+      },
+      "TCP_RX_P1": {
+        "receiver_mbps_mean": 934.4952953430944,
+        "receiver_mbps_by_round": [
+          936.312006886512,
+          928.496290508444,
+          938.6775886343273
+        ],
+        "retransmits_by_round": [
+          0,
+          690,
+          0
+        ]
+      },
+      "TCP_RX_P4": {
+        "receiver_mbps_mean": 933.5267025897441,
+        "receiver_mbps_by_round": [
+          935.8476460474335,
+          931.2850501779346,
+          933.4474115438641
+        ],
+        "retransmits_by_round": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "tcp_full_zero_sum_intervals": 0,
+    "mode_properties": {
+      "ItlwmHeBeamformee": "on",
+      "ItlwmHeLink": 67044375,
+      "ItlwmHeSetup": "on",
+      "ItlwmRxBaWinsize": 256
+    },
+    "bluetooth": {
+      "com.zxystd.IntelBluetoothFirmware": "2.5.1",
+      "com.zxystd.IntelBTPatcher": "2.5.1",
+      "as.acidanthera.BlueToolFixup": "2.7.2"
+    },
+    "raw_files": {
+      "ROUND_01/T01_TCP_TX_P1_20261105_003143.iperf3.json": "57bf6259273e73ff691a945b4b0585256a5fb37a7a634ce564a67f8ab6f09819",
+      "ROUND_01/T02_TCP_RX_P1_20261105_003153.iperf3.json": "a3cf0f2a41dcc3314ecea87e0c028feb3293c4f484de68043f77923932ffabe4",
+      "ROUND_01/T03_TCP_TX_P4_20261105_003204.iperf3.json": "e4535a7911e3cede120eeb5ff1681917c34fc3561f74be12b6aac7a2f4b055fb",
+      "ROUND_01/T04_TCP_RX_P4_20261105_003215.iperf3.json": "30a275db0d7d66cce50e31548ffcb8f93adb4da763e4f43b9c893003b7db4d28",
+      "ROUND_01/T05_UDP_TX100_20261105_003225.iperf3.json": "4200e246493289a879757bf885321b4f31313dd124d739fa229784f7e1ba2604",
+      "ROUND_01/T06_UDP_RX100_20261105_003233.iperf3.json": "437476da170e2244d5c25947cfc28fdbc3d7981a4e4733a7f591e31ff57798e3",
+      "ROUND_01/T07_UDP_TX250_20261105_003240.iperf3.json": "a9a8d37ed0820c326d70ed34fdd08b99b1ba336a2e1f39c8a2015957e7c1589e",
+      "ROUND_01/T08_UDP_RX250_20261105_003248.iperf3.json": "925d2357033f6e4d4a4cb33581aafbfe8c84469f1b41f1a297df92ed5f999062",
+      "ROUND_01/T09_UDP_TX400_20261105_003256.iperf3.json": "dfa725f0152e98352fe9ba1e6ea37f96f6614fd89a654fe208ed52d4d7c58e3a",
+      "ROUND_01/T10_UDP_RX400_20261105_003303.iperf3.json": "54030e66d2139245ac11203f5ccef3875cc9d2efd2612115c7b9ed5046145d87",
+      "ROUND_01/T11_UDP_TX500_20261105_003311.iperf3.json": "b96246b4e1c76c6c1e68cd03932fba142f4f156783bba5b82cdbf10858b1ea3c",
+      "ROUND_01/T12_UDP_RX500_20261105_003318.iperf3.json": "6a173d09e469bdc0624f6078ebae03e3ccd4a965d26160b3326548f6bd2bad2f",
+      "ROUND_01/T13_UDP_TX600_20261105_003326.iperf3.json": "3d79532ff0acb75ad080a3f34ee4272122321758d8de48146cca67cf4adf4a0a",
+      "ROUND_01/T14_UDP_RX600_20261105_003333.iperf3.json": "da095420fd34d64ba4608f6656858d5c31e2d8ef8019578e21a9797c1e1db947",
+      "ROUND_01/T15_UDP_TX700_20261105_003341.iperf3.json": "e7222b99b29e26f2ce5176876690fb82765819a5c3cba66e9b4f62e1584f9531",
+      "ROUND_01/T16_UDP_RX700_20261105_003349.iperf3.json": "7876dc7d9a6099de133fbc8d5c1a7afa0b6201caddebd3265efe52171379dfcd",
+      "ROUND_01/T17_UDP_TX800_20261105_003356.iperf3.json": "25ecd6ac19d7838fb7b3f71cba836cedabb28adf83d697a430f4aa5cfd92da58",
+      "ROUND_01/T18_UDP_RX800_20261105_003404.iperf3.json": "b1525074b1707395f60b70a644f978d6f36c9b0ec4cb3887f6923bc282c1767e",
+      "ROUND_01/T19_UDP_TX900_20261105_003411.iperf3.json": "8c8bb6f8af3bbba0bbe5923958b781bab835e264a356a0d27884e66968d0104a",
+      "ROUND_01/T20_UDP_RX900_20261105_003419.iperf3.json": "854fbe70539f9d3ecab307c009167d463d823ea847a4a80bb1ff10da9465b477",
+      "ROUND_02/T01_TCP_TX_P1_20261105_003429.iperf3.json": "a3eae288709d34633502dba77f053fa28a65eadcbf9e3498aa1966aed733364d",
+      "ROUND_02/T02_TCP_RX_P1_20261105_003440.iperf3.json": "29f846a5b8faabee3d253f17cfc5a0684305ed6f68de845266975ace3d19d08e",
+      "ROUND_02/T03_TCP_TX_P4_20261105_003450.iperf3.json": "b68e009da42e5c682713f8b9897c79db657ab9d814ce7e71234894398e4b8788",
+      "ROUND_02/T04_TCP_RX_P4_20261105_003501.iperf3.json": "b62e2b02feafccf554afc3b36136fe7152463b4584aadafe24887d503f528833",
+      "ROUND_02/T05_UDP_TX100_20261105_003512.iperf3.json": "0ee3a6495fd5344a10dc3a847cb78eb46e96a7f0bf78d772f8307b120b9033a0",
+      "ROUND_02/T06_UDP_RX100_20261105_003519.iperf3.json": "68924f892a97544d84ec31f49b6a0b088a4dff6394450b452f1ed62c7ae7f630",
+      "ROUND_02/T07_UDP_TX250_20261105_003527.iperf3.json": "a19218515b87faeb3bd75e0d0fef5553487ed49aaa9e5c8a07944a97f02bb1be",
+      "ROUND_02/T08_UDP_RX250_20261105_003534.iperf3.json": "f48a268a538b80324ac8b6c95fc56841d77d83da6e7abed91d8ff252fb061d7e",
+      "ROUND_02/T09_UDP_TX400_20261105_003542.iperf3.json": "45859729d6113900d80fa0b7eda561b7a709a781baff7f0fee7b2fe240b00a13",
+      "ROUND_02/T10_UDP_RX400_20261105_003549.iperf3.json": "a9fdaf202a7d22dd427ab02d2403ee5476c82660ffd8ea5cecfa9d3fcedf4f18",
+      "ROUND_02/T11_UDP_TX500_20261105_003557.iperf3.json": "676af832c1463201090ffdcd66532cc3c725b2151b6a901a047d4f766533dda5",
+      "ROUND_02/T12_UDP_RX500_20261105_003605.iperf3.json": "dd79757e928d57aec39c04409e8acc326be680992b648c881ef94d89bf5f79e7",
+      "ROUND_02/T13_UDP_TX600_20261105_003612.iperf3.json": "039e7794d5cf213854ffb92b503f85a5e61eb56c9a16c6e635fe7e7a836dfb6f",
+      "ROUND_02/T14_UDP_RX600_20261105_003620.iperf3.json": "c96e6aae3b008f9fb46875d96ab5ae87027bfe12f913f818148f0e067c096d99",
+      "ROUND_02/T15_UDP_TX700_20261105_003627.iperf3.json": "c5e7cb322783f83c9b0999487bf8af9b23ab955a98d86b5ebfa199199044ee7f",
+      "ROUND_02/T16_UDP_RX700_20261105_003635.iperf3.json": "58440b063c7fe286fd2672d3cff818bc922070026da20507e9831bd0232fbedd",
+      "ROUND_02/T17_UDP_TX800_20261105_003643.iperf3.json": "57fca8e1083afc0040e640d74c189189a95fa87c30d83cd009b822c24995aefc",
+      "ROUND_02/T18_UDP_RX800_20261105_003650.iperf3.json": "d024b3c2d0c84ff8ea888e6e67b14161d9a30a3a3e0855f26cf743403dd88a7d",
+      "ROUND_02/T19_UDP_TX900_20261105_003658.iperf3.json": "bf1d9cbfaf7b0ea73730ab125939f2f26f54fa981901db982d48f7e7ab3b4fd0",
+      "ROUND_02/T20_UDP_RX900_20261105_003705.iperf3.json": "389e2975370e4263d707dad4645e0793cf5d6b5bbb021733c60a7c880937b7fb",
+      "ROUND_03/T01_TCP_TX_P1_20261105_003716.iperf3.json": "b8eea16e0358beccff850ef204e1f1d3f8d810c41bbf8bce21faf4763aafad7b",
+      "ROUND_03/T02_TCP_RX_P1_20261105_003726.iperf3.json": "2892b831875fe3140e338e7fe0a0013fe93a8cf96c5fa3687803b04b49ab072e",
+      "ROUND_03/T03_TCP_TX_P4_20261105_003737.iperf3.json": "ef72fb870f4dc25cb3e073f29c28fc7f2041ce6a6a7226f6b7e11a97c37488c5",
+      "ROUND_03/T04_TCP_RX_P4_20261105_003747.iperf3.json": "4de23e9d2c1b24e4f097b9c756dbd8df869633cbce2b0124e4a38028a57e3a01",
+      "ROUND_03/T05_UDP_TX100_20261105_003758.iperf3.json": "f570d31d6e8f138f777cd10072e81df87a9178525a7d00864e1d20dd4dbbc28a",
+      "ROUND_03/T06_UDP_RX100_20261105_003806.iperf3.json": "4d65ab7038b10b10d2fc15cbcee5cc1b034f6e63c9bc1622253bbfa83306a3b5",
+      "ROUND_03/T07_UDP_TX250_20261105_003813.iperf3.json": "8700e2db20849b7a015e1fb847fe9aa0dce0f048b843a2e0a3872433c3e36058",
+      "ROUND_03/T08_UDP_RX250_20261105_003821.iperf3.json": "b9984836d3084b4ccc5ffa907bac161b0e16e5cac3cd65499c793fb747515571",
+      "ROUND_03/T09_UDP_TX400_20261105_003828.iperf3.json": "456788e85a83083d43f8c249a7dde11175db7a012d01ddf533eceded6aa0a307",
+      "ROUND_03/T10_UDP_RX400_20261105_003836.iperf3.json": "51010128ff24a3d2aab57d5b5985af89ec11908f51bbf825e68add60d29bdd60",
+      "ROUND_03/T11_UDP_TX500_20261105_003843.iperf3.json": "081c15da863f19d9981110351d313f143eedd464c0d6f17bb543acaf1a0baf91",
+      "ROUND_03/T12_UDP_RX500_20261105_003851.iperf3.json": "3294e7b4e4d8b6f3a0c1dfce434bb55f7b3397ca538ca60e4162e66e77301178",
+      "ROUND_03/T13_UDP_TX600_20261105_003859.iperf3.json": "5217141ca270741c2ac146fa43df218c16433d5e91aacaf592cc1d7ea3e681f4",
+      "ROUND_03/T14_UDP_RX600_20261105_003906.iperf3.json": "a488b1ae895173627592ddf2b167aed794ed7c80c427bba5987f1ee1cbaa2441",
+      "ROUND_03/T15_UDP_TX700_20261105_003914.iperf3.json": "2bcabe3a3172bf5668c09654d1a9f71e0faa693a54c3a40d1ef12211c6852fc5",
+      "ROUND_03/T16_UDP_RX700_20261105_003921.iperf3.json": "4c4c59400880328f720f7041c0b17983a8a9555a403a183719ee320bb8f5ddc2",
+      "ROUND_03/T17_UDP_TX800_20261105_003929.iperf3.json": "70605d90e042e5ff11bcb7b75844babe95ace4d6425ec99598e794fec09e45c5",
+      "ROUND_03/T18_UDP_RX800_20261105_003937.iperf3.json": "2bef910e2feb23c827e5ebb68b539c13f73cfb04a1c8dbb15128e73775d1e035",
+      "ROUND_03/T19_UDP_TX900_20261105_003944.iperf3.json": "abb085f51bc58863d4ce0bd2c6ba394b9f59b63cfd27791fb1b295cdb68344bd",
+      "ROUND_03/T20_UDP_RX900_20261105_003952.iperf3.json": "e31149d85c38bc964d0f94cfed222e11234767262f971bdf8671e0874f596e81"
+    },
+    "mode_evidence_note": "BE200 provider HE/BF properties; AX HE runtime + KGP boot-mode association; R9 BF post-run sysctl confirmed. Screenshot alone is not build/BF-use proof."
+  },
+  {
+    "id": "BE200_BF_STANDARD_2",
+    "device": "BE200",
+    "mode": "HE+BF opt-in",
+    "archive": "BE200-P10_BE200_3X20_mapped_20261105_004905_2CcSY7.zip",
+    "original_archive_sha256": "9a010793f818eac787084017ff679d6d91cc4bb8d5152bbae07826252eac1a42",
+    "verified_manifest_files": 382,
+    "uuid": "2613EF21-BC57-3685-B252-AC94CFF4928B",
+    "executable_sha256": "eff556fb4846a7651bff02d0c6e38479c0d1d1493aaa8de958b6f6bbd336a270",
+    "tests_completed": 60,
+    "online": "PASS",
+    "macos": "26.7.2 / 25G332",
+    "dma_mode": "mapped",
+    "applevtd": "enabled as recorded and reported",
+    "protocol": "AIRPORTITLWM_3X20_NO_PROFILER_V1",
+    "rx_stages": [
+      100,
+      250,
+      400,
+      500,
+      600,
+      700,
+      800,
+      900
+    ],
+    "tx_stages": [
+      100,
+      250,
+      400,
+      500,
+      600,
+      700,
+      800,
+      900
+    ],
+    "tcp": {
+      "TCP_TX_P1": {
+        "receiver_mbps_mean": 699.361527762631,
+        "receiver_mbps_by_round": [
+          699.8792189552287,
+          700.0630976322444,
+          698.1422667004198
+        ],
+        "retransmits_by_round": [
+          0,
+          0,
+          0
+        ]
+      },
+      "TCP_TX_P4": {
+        "receiver_mbps_mean": 677.6471849925073,
+        "receiver_mbps_by_round": [
+          678.0828328422098,
+          679.516738781786,
+          675.3419833535262
+        ],
+        "retransmits_by_round": [
+          2406,
+          3216,
+          3233
+        ]
+      },
+      "TCP_RX_P1": {
+        "receiver_mbps_mean": 1687.9803130529463,
+        "receiver_mbps_by_round": [
+          1686.8088272468128,
+          1689.0530459210413,
+          1688.0790659909846
+        ],
+        "retransmits_by_round": [
+          0,
+          0,
+          0
+        ]
+      },
+      "TCP_RX_P4": {
+        "receiver_mbps_mean": 1867.7930577151867,
+        "receiver_mbps_by_round": [
+          1867.4630837822167,
+          1879.4712234878345,
+          1856.4448658755086
+        ],
+        "retransmits_by_round": [
+          232,
+          2281,
+          1123
+        ]
+      }
+    },
+    "tcp_full_zero_sum_intervals": 0,
+    "mode_properties": {
+      "ItlwmHeBeamformee": "on",
+      "ItlwmHeLink": 67044375,
+      "ItlwmHeSetup": "on",
+      "ItlwmRxBaWinsize": 256
+    },
+    "bluetooth": {
+      "com.zxystd.IntelBluetoothFirmware": "2.5.1",
+      "com.zxystd.IntelBTPatcher": "2.5.1",
+      "as.acidanthera.BlueToolFixup": "2.7.2"
+    },
+    "raw_files": {
+      "ROUND_01/T01_TCP_TX_P1_20261105_004911.iperf3.json": "2149958a94ae6dab2018c592ad4db8c515cd18047c4689dbadac7f080b4c25dc",
+      "ROUND_01/T02_TCP_RX_P1_20261105_004921.iperf3.json": "c27bde3149eafdbceaaa75afd010b4340b78e0897820ab982fca355e9f391f6c",
+      "ROUND_01/T03_TCP_TX_P4_20261105_004932.iperf3.json": "31bb7fd025aed3c32395aadae45d706ba4e2bfc76305941187fee266852821b4",
+      "ROUND_01/T04_TCP_RX_P4_20261105_004943.iperf3.json": "83935342a2462176f002ee2dcd335fb46869bdee44470f1059e9c16873db7179",
+      "ROUND_01/T05_UDP_TX100_20261105_004953.iperf3.json": "879e9d219342919cf15372556c870a813446072c5ba7cf7ea743bfd223713fa6",
+      "ROUND_01/T06_UDP_RX100_20261105_005001.iperf3.json": "085d9f433b331acd483d8b8b357c56eb97132ebbd5a12bb44a363f7e763cc676",
+      "ROUND_01/T07_UDP_TX250_20261105_005009.iperf3.json": "b4235bfa8306c9db6412941a9e00399b48c86cd7c8217e796ec1ab1413dbeb33",
+      "ROUND_01/T08_UDP_RX250_20261105_005016.iperf3.json": "acdf0c676a994467434189d21b77f36385684e3a66bc1a7bab67c40fcba8e157",
+      "ROUND_01/T09_UDP_TX400_20261105_005024.iperf3.json": "9b84239958373b20d8c6753bf5f79bfd52b825aee52d5f21ff14b7ee8f8f5bb1",
+      "ROUND_01/T10_UDP_RX400_20261105_005031.iperf3.json": "f15209c19d6b9bdb1bedb94763eb05f2e67a24e4b2226a807a0accc1c3ecc173",
+      "ROUND_01/T11_UDP_TX500_20261105_005039.iperf3.json": "621ee861145a29bcfaf474053108eeb23ab13aee0d7bcea12a822702fc7bab35",
+      "ROUND_01/T12_UDP_RX500_20261105_005046.iperf3.json": "ceca8658886e462798b9dd4aa2a6d875622fafc142c9d34587415b0173ec8b19",
+      "ROUND_01/T13_UDP_TX600_20261105_005054.iperf3.json": "b195fbc5541b6504ea49fde8dd0233dbef866f5dbe157268337d7a8ffd76a60c",
+      "ROUND_01/T14_UDP_RX600_20261105_005102.iperf3.json": "c745551086d231e6496f601eca1049c780ca8ccc476821a0ee21e7fa2c627df5",
+      "ROUND_01/T15_UDP_TX700_20261105_005109.iperf3.json": "939fe5005af62bcaa2c7e10ccc25c1a2c4d80e803d1fdc76928090aaf907d32b",
+      "ROUND_01/T16_UDP_RX700_20261105_005117.iperf3.json": "8259d883e378c5f9f9a6370dfe2d9d14b83ebf0fff71a590eb265fa5df8897ab",
+      "ROUND_01/T17_UDP_TX800_20261105_005124.iperf3.json": "1d33977b3ee8b3c524f9dd4cf4d8b76858ff24027653c2b457c7482962988a67",
+      "ROUND_01/T18_UDP_RX800_20261105_005132.iperf3.json": "d8c6b06b4e46ee7fc87402cec4171dbfdd492c8d30c1e37cde4c252286c922f8",
+      "ROUND_01/T19_UDP_TX900_20261105_005140.iperf3.json": "de6114aec8e5dca4620b0eedc2ff75e929901fcfb249a6debb474bf61cd56bc9",
+      "ROUND_01/T20_UDP_RX900_20261105_005147.iperf3.json": "0e804093f4f659670f2d630fc3283e57d82aac05379756a3f191bf96ca7f42a4",
+      "ROUND_02/T01_TCP_TX_P1_20261105_005157.iperf3.json": "e28a97b341ad64024236854dfb64b3c7712ffcb3253875ea37024e5c74d6e2ab",
+      "ROUND_02/T02_TCP_RX_P1_20261105_005208.iperf3.json": "9fbdad9a78c93512d750587cb3bedb863a71d39d596945bf2d0340c675d724f2",
+      "ROUND_02/T03_TCP_TX_P4_20261105_005219.iperf3.json": "61cd08bdcec8881d417754f6950251c1dd9b6eddec65126ac65645a9c7af7b88",
+      "ROUND_02/T04_TCP_RX_P4_20261105_005229.iperf3.json": "a9b7a597357bf8d533808ab577b729c0140d171f05f880950bee16ccd1d59464",
+      "ROUND_02/T05_UDP_TX100_20261105_005240.iperf3.json": "3a18586b15cf822cdc0e916ade921c1dface098ec4141c4a525b87fc607e6411",
+      "ROUND_02/T06_UDP_RX100_20261105_005248.iperf3.json": "a8562b90bb3cf813a45f4430616343af3fcd581f2177278a5e91857d6d8fa4af",
+      "ROUND_02/T07_UDP_TX250_20261105_005255.iperf3.json": "ff3b72f6e8f1f8c70d27203e269bc9d3731a7fad17d27bfc42629d9eb91e51b3",
+      "ROUND_02/T08_UDP_RX250_20261105_005303.iperf3.json": "258c69c0dfc88df52a10ad26caefa74554119dbb8205323584fb1d0afdca52c2",
+      "ROUND_02/T09_UDP_TX400_20261105_005310.iperf3.json": "589d8cfa9c567319bbb017ac4ae0e6cdda03e90068c2c8be187c4e148f4df1db",
+      "ROUND_02/T10_UDP_RX400_20261105_005318.iperf3.json": "20bc94209061a217961b1708dca04c15b7f72b4ae7eb7ec192d8d59434ed0b06",
+      "ROUND_02/T11_UDP_TX500_20261105_005325.iperf3.json": "4f2196ec7c159eed4cfcdf5f1757c6d31a52d9d81fcf17022e73e5a5ab858b17",
+      "ROUND_02/T12_UDP_RX500_20261105_005333.iperf3.json": "5563f042798fca0b85bbc4b50738fc832b19266824b61948ad52c2a3fae0eb04",
+      "ROUND_02/T13_UDP_TX600_20261105_005341.iperf3.json": "af7743365e64381583ee3878ce49371c4dcde5597bf6dbc726b83f876499b05e",
+      "ROUND_02/T14_UDP_RX600_20261105_005348.iperf3.json": "75f24209c0d22698f555b9b8f33778c862e81dc6d53516263f6ba146b2d0e7a8",
+      "ROUND_02/T15_UDP_TX700_20261105_005356.iperf3.json": "82a122e0aff1ac866a6b5b4d75f078a14267876bd1e0558df31ee40e6a44286b",
+      "ROUND_02/T16_UDP_RX700_20261105_005403.iperf3.json": "982b0ebc3023992d2aa49c49f5ce0b11c1eee40b5ffa9ba408e3280ec997172b",
+      "ROUND_02/T17_UDP_TX800_20261105_005411.iperf3.json": "60c86db11da23e8cfaa7a5f653f2a0d62416ab3df620a7625fe590b3f86ffd71",
+      "ROUND_02/T18_UDP_RX800_20261105_005419.iperf3.json": "52dd273e360668daf25e31f28ef7bfac6c04acce8822e086899271cad3c44721",
+      "ROUND_02/T19_UDP_TX900_20261105_005426.iperf3.json": "b86224545522328280d693f178a6411830978ed5a084b79691989a8d99fc27e5",
+      "ROUND_02/T20_UDP_RX900_20261105_005434.iperf3.json": "72990a42fb1d8f5525c92598b5e75b5295f59ca0e2fa12d8c7c391b67995fefe",
+      "ROUND_03/T01_TCP_TX_P1_20261105_005444.iperf3.json": "2fafc8eddfc4fab8d25305f7ad525f2ab7ad92b60beb4a33adb77d115b43a2e3",
+      "ROUND_03/T02_TCP_RX_P1_20261105_005454.iperf3.json": "e254dc9af38d3c7e98b14835185ac859d347e572d8b2dbc83be63ef0081a124e",
+      "ROUND_03/T03_TCP_TX_P4_20261105_005505.iperf3.json": "f1267d98958ce65a61fd969564f8945655e70b9ec312622c949212b5524ebe18",
+      "ROUND_03/T04_TCP_RX_P4_20261105_005516.iperf3.json": "dc8538558f2d11272cc1900c4ba82754ddea866e5a1d0bd6442b4258c68f3111",
+      "ROUND_03/T05_UDP_TX100_20261105_005526.iperf3.json": "ab01dd6a9d760fba6651c91fff3ae7e62bf1e5dd3bd0a90a133da1a8e45b4022",
+      "ROUND_03/T06_UDP_RX100_20261105_005534.iperf3.json": "fd5f43eede690745d6bc33af25e05ad413976bb70b1dedbcb0994c221c8747fe",
+      "ROUND_03/T07_UDP_TX250_20261105_005541.iperf3.json": "b0dfc4dfe2ba82083c00379de84657421a589802ba7906b65d6c0cc5a7835696",
+      "ROUND_03/T08_UDP_RX250_20261105_005549.iperf3.json": "45c3f63353d3a5037cdd4e93748826afc8738cfedcdb6794a746d1aeadaf8122",
+      "ROUND_03/T09_UDP_TX400_20261105_005557.iperf3.json": "1864bc91b9f82734948bb0ab973f1fea3667abf33f921f153c1d69f73218aa01",
+      "ROUND_03/T10_UDP_RX400_20261105_005604.iperf3.json": "3806ef7fbba07af4d2633921fb0575b4698bbfe1db1f3041228fcd902577eeb4",
+      "ROUND_03/T11_UDP_TX500_20261105_005612.iperf3.json": "3b5dfb24a92276d534370c57eceb64b2ad71ca18f5eec52f2337364729448f70",
+      "ROUND_03/T12_UDP_RX500_20261105_005619.iperf3.json": "a80ed4a781e1aa115028428625532fcb2778acc243899c1cd07e706ed7a7d559",
+      "ROUND_03/T13_UDP_TX600_20261105_005627.iperf3.json": "b8f84737d6455640fe63f046b81b076e3e0c2151f31bb1128d2c14b176e7ef0c",
+      "ROUND_03/T14_UDP_RX600_20261105_005635.iperf3.json": "03e7f7c0e7ca49bf2e23a432e3fc8ad1c04e23e55423cdec5c7516c224cc034f",
+      "ROUND_03/T15_UDP_TX700_20261105_005642.iperf3.json": "031125a83c8c68829af77c76542d9a3979bf0aa8cfd0c3ee76fcaa0bfdb36f11",
+      "ROUND_03/T16_UDP_RX700_20261105_005650.iperf3.json": "d39788c8552b282d621c50394e390dcac3085f4509065b4fdc1e5ee971870379",
+      "ROUND_03/T17_UDP_TX800_20261105_005657.iperf3.json": "080b6128783ab8414923bd4e736cd455c87369c5a3977c8ea0264fbd42406b6e",
+      "ROUND_03/T18_UDP_RX800_20261105_005705.iperf3.json": "7b87724c4f8e0f5ff4681a64a259b73d108df51fd78d564acdaefee19c1da62a",
+      "ROUND_03/T19_UDP_TX900_20261105_005713.iperf3.json": "c3870e922e33a94cebbf291fe295af3ed3f779c49aea82927bb991675e13734f",
+      "ROUND_03/T20_UDP_RX900_20261105_005720.iperf3.json": "f4a5da263957a6398295165dd0728368f6304c843a44cb82ba412c398a99da66"
+    },
+    "mode_evidence_note": "BE200 provider HE/BF properties; AX HE runtime + KGP boot-mode association; R9 BF post-run sysctl confirmed. Screenshot alone is not build/BF-use proof."
+  },
+  {
+    "id": "BE200_BF_UDP1700",
+    "device": "BE200",
+    "mode": "HE+BF opt-in",
+    "archive": "BE200-P10_BE200_3X20_TX600_RX1700_mapped_20261105_011314_OSq3w9.zip",
+    "original_archive_sha256": "e347f1b626c74ef6090fc8b1887dc1aaa20bd0c1b597663ecfe6b7cd0a2b6878",
+    "verified_manifest_files": 382,
+    "uuid": "2613EF21-BC57-3685-B252-AC94CFF4928B",
+    "executable_sha256": "eff556fb4846a7651bff02d0c6e38479c0d1d1493aaa8de958b6f6bbd336a270",
+    "tests_completed": 60,
+    "online": "PASS",
+    "macos": "26.7.2 / 25G332",
+    "dma_mode": "mapped",
+    "applevtd": "enabled as recorded and reported",
+    "protocol": "AIRPORTITLWM_3X20_TX600_RX1700_NO_PROFILER_V2",
+    "rx_stages": [
+      300,
+      500,
+      700,
+      900,
+      1100,
+      1300,
+      1500,
+      1700
+    ],
+    "tx_stages": [
+      300,
+      500,
+      600,
+      600,
+      600,
+      600,
+      600,
+      600
+    ],
+    "tcp": {
+      "TCP_TX_P1": {
+        "receiver_mbps_mean": 696.913487025605,
+        "receiver_mbps_by_round": [
+          692.4201092504843,
+          700.3213456690963,
+          697.9990061572344
+        ],
+        "retransmits_by_round": [
+          0,
+          0,
+          0
+        ]
+      },
+      "TCP_TX_P4": {
+        "receiver_mbps_mean": 678.693796435206,
+        "receiver_mbps_by_round": [
+          679.0976057739385,
+          676.514911342723,
+          680.4688721889564
+        ],
+        "retransmits_by_round": [
+          3391,
+          2996,
+          3137
+        ]
+      },
+      "TCP_RX_P1": {
+        "receiver_mbps_mean": 1702.02289658394,
+        "receiver_mbps_by_round": [
+          1704.3524877051527,
+          1703.3523075882727,
+          1698.3638944583947
+        ],
+        "retransmits_by_round": [
+          0,
+          0,
+          0
+        ]
+      },
+      "TCP_RX_P4": {
+        "receiver_mbps_mean": 1883.7124404562821,
+        "receiver_mbps_by_round": [
+          1877.2276332332854,
+          1876.3138897022743,
+          1897.5957984332865
+        ],
+        "retransmits_by_round": [
+          1337,
+          1683,
+          3
+        ]
+      }
+    },
+    "tcp_full_zero_sum_intervals": 0,
+    "mode_properties": {
+      "ItlwmHeBeamformee": "on",
+      "ItlwmHeLink": 67044375,
+      "ItlwmHeSetup": "on",
+      "ItlwmRxBaWinsize": 256
+    },
+    "bluetooth": {
+      "com.zxystd.IntelBluetoothFirmware": "2.5.1",
+      "com.zxystd.IntelBTPatcher": "2.5.1",
+      "as.acidanthera.BlueToolFixup": "2.7.2"
+    },
+    "raw_files": {
+      "ROUND_01/T01_TCP_TX_P1_20261105_011320.iperf3.json": "af2a486018f8e179bf2e44ff6d8d3bfeeb1a1507e781c44ce6159520edb820b2",
+      "ROUND_01/T02_TCP_RX_P1_20261105_011330.iperf3.json": "c1e65950614a38ada337351b6a68a0c8fbe295497fe2f148953f796907a459fc",
+      "ROUND_01/T03_TCP_TX_P4_20261105_011341.iperf3.json": "b499ae4e78f8af243630379d61a6b6739d93e498e8604fe3cce077257ad4b179",
+      "ROUND_01/T04_TCP_RX_P4_20261105_011352.iperf3.json": "c341efbdcfcd5d33d9767436ddaef550d7ccf64c5758825156824dc101f132da",
+      "ROUND_01/T05_UDP_TX300_20261105_011402.iperf3.json": "d4083bf8725f8abea18bfa77d51ca5e5e2c393f40e5a8b51f96a21ea7210f591",
+      "ROUND_01/T06_UDP_RX300_20261105_011410.iperf3.json": "1f6f9ddba728080b35f6fdf1072125dbc61efae732e95246b611d44120e9f114",
+      "ROUND_01/T07_UDP_TX500_20261105_011417.iperf3.json": "2e9488a6e1138e29ba35174af0f989bdf96cabab7c7b57eb0223851b4a3568a9",
+      "ROUND_01/T08_UDP_RX500_20261105_011425.iperf3.json": "04e6458b605e241ce6ed9333dcd02aeb538f73a37f1845fdc82809afac1a356f",
+      "ROUND_01/T09_UDP_TX600_20261105_011432.iperf3.json": "32a26f536f343b94e3ad2fa3880665caef16764b00b78a81a4dd7cbf386e1890",
+      "ROUND_01/T10_UDP_RX700_20261105_011440.iperf3.json": "1eb1167d112d58d98a6ce0c29d529b2a10b1541a79bb35af1bbbaedbbf8c945f",
+      "ROUND_01/T11_UDP_TX600_20261105_011448.iperf3.json": "9976f6ff2b28be9e5b2a85ac93db15878bd1c5a2818c4ce5d60468773d622b2f",
+      "ROUND_01/T12_UDP_RX900_20261105_011455.iperf3.json": "a2a831f33ec25e0608f210da0aad6fdf3b3ae3ad24db75949e4c10daedc8e19f",
+      "ROUND_01/T13_UDP_TX600_20261105_011503.iperf3.json": "8b1fe9e8975d9433be7db95c618e68843a269584596335264c0f9073e23a5a17",
+      "ROUND_01/T14_UDP_RX1100_20261105_011510.iperf3.json": "e29b69257150b595af0d2a577a6c64a2c3b92c8e5d7f1cbea7c7f6d875a7c320",
+      "ROUND_01/T15_UDP_TX600_20261105_011518.iperf3.json": "2a424d96a90fcef4c00af016d705b57c42288a35b60018e38dafabc56e54663f",
+      "ROUND_01/T16_UDP_RX1300_20261105_011526.iperf3.json": "59cac625f0a4bdd7cd27edb8d74642d4f554657a09e1a7922a56eb918034ff8f",
+      "ROUND_01/T17_UDP_TX600_20261105_011533.iperf3.json": "55fdf5fe7ece1ee099122b0a3e74cfd9ee08b2239a0206c70b7a31ae34763d07",
+      "ROUND_01/T18_UDP_RX1500_20261105_011541.iperf3.json": "2ff50e67fc48fce6444042e024b2ebeea389467e8146b01c20e22bd3d5a9fb96",
+      "ROUND_01/T19_UDP_TX600_20261105_011548.iperf3.json": "ec0d2552df2d2150b7217fa3108254ee90553fb9fc5bcd1705e9b6ac23480b74",
+      "ROUND_01/T20_UDP_RX1700_20261105_011556.iperf3.json": "2a181733c9d3b5153356cea4a6f0858ad4119c2a747cf11c48d447400d15ce54",
+      "ROUND_02/T01_TCP_TX_P1_20261105_011606.iperf3.json": "151c4eef82e8a1e2e5c1ae01b146bb7f87c90435413a8c08c833590e7f7d04f3",
+      "ROUND_02/T02_TCP_RX_P1_20261105_011617.iperf3.json": "f961a3f11981acd5f3ac8b164a86bfc5c8f5c7fa9049944171d002353de26675",
+      "ROUND_02/T03_TCP_TX_P4_20261105_011627.iperf3.json": "da375b0ee54c529ee07eeda67d4a5198e90a09cb2d559e9609a8007cc8e444f9",
+      "ROUND_02/T04_TCP_RX_P4_20261105_011638.iperf3.json": "b4c917ed19a70c97014539b42d36710c30185a6ea5fe90e949c84738dc5666d4",
+      "ROUND_02/T05_UDP_TX300_20261105_011649.iperf3.json": "d09073692e9671b7ff3c02677d31bb1120d3cbba01eff77076032c9988f5b93b",
+      "ROUND_02/T06_UDP_RX300_20261105_011656.iperf3.json": "159fab14146b74ea7106f64fba54fb6138f46d71976b3e9fe80a636b0b4d5db4",
+      "ROUND_02/T07_UDP_TX500_20261105_011704.iperf3.json": "e5d96cd9e75280f74a154d77a86763f7b900620f89836278ae4fbe835b8c6de7",
+      "ROUND_02/T08_UDP_RX500_20261105_011711.iperf3.json": "7bb194b9a4202c1320135fed88ccac230b30b1db4740417ca503bef8a659ea99",
+      "ROUND_02/T09_UDP_TX600_20261105_011719.iperf3.json": "48a06e6447c18019bb59033948853a3387cdc835f673e25571b22a698858bf30",
+      "ROUND_02/T10_UDP_RX700_20261105_011727.iperf3.json": "7516c59483b54c7ced9c6472807e14b84bfbe9fb14a20b0cbc31c5265ae35ad5",
+      "ROUND_02/T11_UDP_TX600_20261105_011734.iperf3.json": "9effc3dbaae92757539802f69df459ce9be4cf4d5658734a7663a4510920a8f2",
+      "ROUND_02/T12_UDP_RX900_20261105_011742.iperf3.json": "fdabccb63583f5b492834a4e8d5766794e080de140974d393543afd6226b498a",
+      "ROUND_02/T13_UDP_TX600_20261105_011749.iperf3.json": "961545b7a46512a6af47975bf71dfe525c8731713449638299c906c434cad5ba",
+      "ROUND_02/T14_UDP_RX1100_20261105_011757.iperf3.json": "496a81f0c60ff005cb83e26cb35a19428cbc71d530815e4d08764a4b4c87c231",
+      "ROUND_02/T15_UDP_TX600_20261105_011805.iperf3.json": "630f4dbd21cfaa0187903f089046f5ff49638510f43d1f3c9cac2bc41e56e57f",
+      "ROUND_02/T16_UDP_RX1300_20261105_011812.iperf3.json": "7c61cb281886f0aa365f81f07ddde06538a212e8c827eaffd749adc5c8fffb61",
+      "ROUND_02/T17_UDP_TX600_20261105_011820.iperf3.json": "614c3d80dd19b7bdf771a467931120aa319057d1145c645c96077bf0c07953a2",
+      "ROUND_02/T18_UDP_RX1500_20261105_011827.iperf3.json": "200957c1e12ecaa14a178b10a7329bfa08e1e4fc58a427e601576d0c54317c54",
+      "ROUND_02/T19_UDP_TX600_20261105_011835.iperf3.json": "1e97a351b167ae8f842d83c14860e1e198b30a03e0fba8bf78308e47d894eaa7",
+      "ROUND_02/T20_UDP_RX1700_20261105_011843.iperf3.json": "b54202086e25c446b0693410b50f6625f28686c4efecebe521bf0dce02c25dad",
+      "ROUND_03/T01_TCP_TX_P1_20261105_011853.iperf3.json": "51a0b6965376d8fed44e600862568f5fbc073673664e0813b19b9b5cb6554a17",
+      "ROUND_03/T02_TCP_RX_P1_20261105_011903.iperf3.json": "98f8f362eee0fa74f46784fdbf8aec72d7a77a92c918804c534496c17c485658",
+      "ROUND_03/T03_TCP_TX_P4_20261105_011914.iperf3.json": "7d37e5365958cdc7daf948a6197a46ad69dbd1ffdbb98ac0b2a6bddf39ab4e35",
+      "ROUND_03/T04_TCP_RX_P4_20261105_011925.iperf3.json": "da893ea5df964c187e4865cf61e5484450296a34f08e6a9a3e68d00844788b21",
+      "ROUND_03/T05_UDP_TX300_20261105_011935.iperf3.json": "ea1526b14feeff3173e4a33f89fb8e7f93ae0a899d1cfd9d717b993f73eef3dd",
+      "ROUND_03/T06_UDP_RX300_20261105_011943.iperf3.json": "7997558dc05c0e24b3b5e56e799e2e151ba41aa4f419a502be1388a7618b72a4",
+      "ROUND_03/T07_UDP_TX500_20261105_011950.iperf3.json": "56f50c73ae740c4f0b224bb878314512dac56f120cef22c58f0bc402d7919943",
+      "ROUND_03/T08_UDP_RX500_20261105_011958.iperf3.json": "5f3da9dce5db2fc6d8c1ddb534a36cfe1cce12e8f6de19af077898c612f29c4b",
+      "ROUND_03/T09_UDP_TX600_20261105_012006.iperf3.json": "72e709852d7a788dff5be9a5cb368aa15073d90042b4c378418d4f782ccf847d",
+      "ROUND_03/T10_UDP_RX700_20261105_012013.iperf3.json": "fb428e7cd33c9babda790747fffdb32a75ac331276ab57df861a92afb3707818",
+      "ROUND_03/T11_UDP_TX600_20261105_012021.iperf3.json": "46f3286dde62296d0d07446ed3af3f7fca6dbb4f11bbd3dd5dcc9cf0abaa1565",
+      "ROUND_03/T12_UDP_RX900_20261105_012028.iperf3.json": "c2187d3193a5d77bc91d269743578cbcdba0ac81973c9477fa062eb361247da3",
+      "ROUND_03/T13_UDP_TX600_20261105_012036.iperf3.json": "9e2b1ff1361a8e49cb4fece7975b972417982b763dcdf6519f330b575f497a68",
+      "ROUND_03/T14_UDP_RX1100_20261105_012044.iperf3.json": "1112acf376ece9f2fc3f5a755b02d78f40e270c140b7d1ae49d2bb251a430a2d",
+      "ROUND_03/T15_UDP_TX600_20261105_012051.iperf3.json": "9b8415f8d65e57969fcfab0ab1a00cd334c2bd32c86d6f347833058294786c88",
+      "ROUND_03/T16_UDP_RX1300_20261105_012059.iperf3.json": "886fde70b84e43f81befe92652ca540c57d594cff8faba06c798c1cc9083898b",
+      "ROUND_03/T17_UDP_TX600_20261105_012106.iperf3.json": "1acab2046426d8d5b69dc721cd94dbc8dc56f3448dadd4063fe408d926130ad3",
+      "ROUND_03/T18_UDP_RX1500_20261105_012114.iperf3.json": "c19b5d0c4683f90a9b5f92fd6839c82ea84c3d3d4aaad7d1c637bfc86048bb24",
+      "ROUND_03/T19_UDP_TX600_20261105_012122.iperf3.json": "d313d4dd063daf5b9cfd1a58052d2aa1ff2afac5029fe55a882277d116b599da",
+      "ROUND_03/T20_UDP_RX1700_20261105_012129.iperf3.json": "2da4adbdafe8d54f4d1718d847d33f6e247d51fa2d23c77d38377222fc40a853"
+    },
+    "mode_evidence_note": "BE200 provider HE/BF properties; AX HE runtime + KGP boot-mode association; R9 BF post-run sysctl confirmed. Screenshot alone is not build/BF-use proof."
+  },
+  {
+    "id": "BE200_HE_UDP1700",
+    "device": "BE200",
+    "mode": "HE",
+    "archive": "BE200-P10_BE200_3X20_TX600_RX1700_mapped_20261105_013222_0lIH0l.zip",
+    "original_archive_sha256": "19f1ece25011dc141b40430bd5ebb6c199ce5dc4c07a8b4b51eb8c6eb6929ea7",
+    "verified_manifest_files": 382,
+    "uuid": "2613EF21-BC57-3685-B252-AC94CFF4928B",
+    "executable_sha256": "eff556fb4846a7651bff02d0c6e38479c0d1d1493aaa8de958b6f6bbd336a270",
+    "tests_completed": 60,
+    "online": "PASS",
+    "macos": "26.7.2 / 25G332",
+    "dma_mode": "mapped",
+    "applevtd": "enabled as recorded and reported",
+    "protocol": "AIRPORTITLWM_3X20_TX600_RX1700_NO_PROFILER_V2",
+    "rx_stages": [
+      300,
+      500,
+      700,
+      900,
+      1100,
+      1300,
+      1500,
+      1700
+    ],
+    "tx_stages": [
+      300,
+      500,
+      600,
+      600,
+      600,
+      600,
+      600,
+      600
+    ],
+    "tcp": {
+      "TCP_TX_P1": {
+        "receiver_mbps_mean": 694.1820118322765,
+        "receiver_mbps_by_round": [
+          693.9224548814726,
+          697.292153345787,
+          691.33142726957
+        ],
+        "retransmits_by_round": [
+          0,
+          0,
+          0
+        ]
+      },
+      "TCP_TX_P4": {
+        "receiver_mbps_mean": 681.2674746021803,
+        "receiver_mbps_by_round": [
+          679.4450019355972,
+          680.1251547288523,
+          684.2322671420914
+        ],
+        "retransmits_by_round": [
+          1847,
+          5438,
+          2460
+        ]
+      },
+      "TCP_RX_P1": {
+        "receiver_mbps_mean": 1684.325069013391,
+        "receiver_mbps_by_round": [
+          1659.1274218117428,
+          1699.644590713697,
+          1694.2031945147328
+        ],
+        "retransmits_by_round": [
+          0,
+          0,
+          0
+        ]
+      },
+      "TCP_RX_P4": {
+        "receiver_mbps_mean": 1858.093434915464,
+        "receiver_mbps_by_round": [
+          1865.9817178403298,
+          1850.242585779075,
+          1858.0560011269877
+        ],
+        "retransmits_by_round": [
+          1880,
+          3615,
+          2253
+        ]
+      }
+    },
+    "tcp_full_zero_sum_intervals": 0,
+    "mode_properties": {
+      "ItlwmHeBeamformee": "off",
+      "ItlwmHeLink": 67044375,
+      "ItlwmHeSetup": "on",
+      "ItlwmRxBaWinsize": 256
+    },
+    "bluetooth": {
+      "com.zxystd.IntelBluetoothFirmware": "2.5.1",
+      "com.zxystd.IntelBTPatcher": "2.5.1",
+      "as.acidanthera.BlueToolFixup": "2.7.2"
+    },
+    "raw_files": {
+      "ROUND_01/T01_TCP_TX_P1_20261105_013229.iperf3.json": "59bf478c69c355ffe57956d0cdade141830ab2172ec8ce92f64cde652d511b7f",
+      "ROUND_01/T02_TCP_RX_P1_20261105_013239.iperf3.json": "588171114561304e0c10da09511563315f8b35a91dd4175cdb295a97d1a3a83c",
+      "ROUND_01/T03_TCP_TX_P4_20261105_013250.iperf3.json": "e3fbe83cafdc82ff83081564836b8902ec9d75bcefb9a67bdc1f846e5b68ec94",
+      "ROUND_01/T04_TCP_RX_P4_20261105_013300.iperf3.json": "9f4904befc8a16a756a2f65fd1711f71b5ae6357944049a867fa828692b8c9bb",
+      "ROUND_01/T05_UDP_TX300_20261105_013311.iperf3.json": "ce601acf2496478a36d3f031a005bd2e8b2135341d6fa93fd115120078b6aec5",
+      "ROUND_01/T06_UDP_RX300_20261105_013319.iperf3.json": "d5c6c85d4576e52afd14b8d5e0c30c833db43820c7d20f3da4811dbadefb1af5",
+      "ROUND_01/T07_UDP_TX500_20261105_013326.iperf3.json": "2bf84702066acb65aebb119e22af732cdb81478db6c8a4eaefac91f4fe1d7ad0",
+      "ROUND_01/T08_UDP_RX500_20261105_013334.iperf3.json": "1032cb55ec3857604cc5f5aae90baa0a0c8c61c7438c2149276b9b60a5120a63",
+      "ROUND_01/T09_UDP_TX600_20261105_013341.iperf3.json": "93a7eecbde6d57b00db4a2a2354cb5932f6ca955b79493dad1365d0e921a274c",
+      "ROUND_01/T10_UDP_RX700_20261105_013349.iperf3.json": "7d44cedd7e2f095353b1957caa3a05654565322ba98b5a757038bbddc01c6ac1",
+      "ROUND_01/T11_UDP_TX600_20261105_013357.iperf3.json": "773f037e88cf72febfeac9fb8db9375d7397b1585023dbddf0e062a9a14cd892",
+      "ROUND_01/T12_UDP_RX900_20261105_013404.iperf3.json": "252a099839dd57fba3dcb69caa6bad862b1cc08686a0e0f4502237d5458772e7",
+      "ROUND_01/T13_UDP_TX600_20261105_013412.iperf3.json": "3c57f1b4c2e150320eb231778a77d2a78da7e75e058d3f75df953c3218713509",
+      "ROUND_01/T14_UDP_RX1100_20261105_013419.iperf3.json": "c79d497840ca6e5a1c2f3e91d777415888be036465bc647173d1a063c4671ab8",
+      "ROUND_01/T15_UDP_TX600_20261105_013427.iperf3.json": "4f68f580581c1ee9a5ef981f959bd874de78e76339f526a07b19d0845082851c",
+      "ROUND_01/T16_UDP_RX1300_20261105_013435.iperf3.json": "10411cece9f1581dd3e9f17edc3e4c531cf2a0ee484db401c709eceb9ee1564d",
+      "ROUND_01/T17_UDP_TX600_20261105_013442.iperf3.json": "7290c75d37d7316524682e8aa7c1357d71a16d29ab4c75c915dbb03f3c056529",
+      "ROUND_01/T18_UDP_RX1500_20261105_013450.iperf3.json": "fd163197fe15b2ef595aff0b54ee682f715a213b979f37baa7bf98bcc1b3c232",
+      "ROUND_01/T19_UDP_TX600_20261105_013457.iperf3.json": "72abd962a5334a73dcebc70a1a77ec41ae4efb6e968c00bebc10ef55ec3195bc",
+      "ROUND_01/T20_UDP_RX1700_20261105_013505.iperf3.json": "8965a9e0c64b50e119a2fef3ea46f09152232d3509689d47faa0008098ee1a89",
+      "ROUND_02/T01_TCP_TX_P1_20261105_013515.iperf3.json": "dd98df50d211f72222157633efbabd8af2b0bfc54b46edbbb8a9ea02bddf6989",
+      "ROUND_02/T02_TCP_RX_P1_20261105_013526.iperf3.json": "ce0ac3a6a6b093d99c99cdc263c357ea6feab43a81f3cbca4cf4925fe9255cb8",
+      "ROUND_02/T03_TCP_TX_P4_20261105_013536.iperf3.json": "9937068ed483aecd8f1f64511640330404229020bb4da77a4c71811a19853fe8",
+      "ROUND_02/T04_TCP_RX_P4_20261105_013547.iperf3.json": "6455f7f50fcfd6cf79cf7fea97875f1bf139e4fc211852de405175cb6f44bb83",
+      "ROUND_02/T05_UDP_TX300_20261105_013558.iperf3.json": "8cb34e3202b6ffe9e9c39ef64a73ae7dd13149ee47dc540b77d342935586a340",
+      "ROUND_02/T06_UDP_RX300_20261105_013605.iperf3.json": "d615988c58661815000e88ad92f0cb4077e57999ac323cf6e7e421ebe9108dc9",
+      "ROUND_02/T07_UDP_TX500_20261105_013613.iperf3.json": "67e62dcd0809a921767d6c40d51c8ec11990241fcc7fcc0ffb81e49e5a2f1ac9",
+      "ROUND_02/T08_UDP_RX500_20261105_013621.iperf3.json": "67146c3971636e1e479cd8eab4b242b11ea2c98dffbea28cfb4bc65195dbf75d",
+      "ROUND_02/T09_UDP_TX600_20261105_013628.iperf3.json": "88aa4af93eb04145a7c3570c5679285a1b31c478babd4f648037217e212172da",
+      "ROUND_02/T10_UDP_RX700_20261105_013636.iperf3.json": "8aed9bda66c23abc9bb2439565d56f53b23d8dc7520e58b0084b2cd2aadb550f",
+      "ROUND_02/T11_UDP_TX600_20261105_013643.iperf3.json": "aeca1bc6bc2f837c31c0ddb53373b0536b208e0f9322b668ade887b706a5c46f",
+      "ROUND_02/T12_UDP_RX900_20261105_013651.iperf3.json": "411a8d1b84775be319ced1d027fb4b38d1ce418b4265a87171947b9c8eda23a0",
+      "ROUND_02/T13_UDP_TX600_20261105_013658.iperf3.json": "104fc1da9edd6ea5984b091bd316b3a94da65e5499417dd6de61a37644388793",
+      "ROUND_02/T14_UDP_RX1100_20261105_013706.iperf3.json": "c090a911bc1c74b00ecc9f8c3acd547029116e33b457966e79ebed606e12dd32",
+      "ROUND_02/T15_UDP_TX600_20261105_013714.iperf3.json": "f6acb9b5f963970aeab527aa9814e7fadee7679ee98b09e811c81b206ec32823",
+      "ROUND_02/T16_UDP_RX1300_20261105_013721.iperf3.json": "b1a98af084e80ec2e79262293c7758fee85b2a2ad711dd94205642ecffe3181f",
+      "ROUND_02/T17_UDP_TX600_20261105_013729.iperf3.json": "e5c5df5ccd15ba27bb1f67139deac3e0fafb8b749f8d889eef2dd528893053d4",
+      "ROUND_02/T18_UDP_RX1500_20261105_013737.iperf3.json": "773325603378c819d1c70ecd8a3756271a26f1514d569c787e8a635fd872a79c",
+      "ROUND_02/T19_UDP_TX600_20261105_013744.iperf3.json": "18d98442fbb5f953c4c201396ff2d1971aa741627dae6955dd89a3da60cce571",
+      "ROUND_02/T20_UDP_RX1700_20261105_013752.iperf3.json": "fda8f25db22a2484defe73e93e1a6d28243478a4940e54dd4260463725974657",
+      "ROUND_03/T01_TCP_TX_P1_20261105_013802.iperf3.json": "344a3cb38d7f3762ff3d8271dadbd556cc12075e9cb2c95d86bcafebec30ff16",
+      "ROUND_03/T02_TCP_RX_P1_20261105_013813.iperf3.json": "6b4c53d29b40c63ab15d44b387be364aa82bcda87207205fd6cd929b87f551e8",
+      "ROUND_03/T03_TCP_TX_P4_20261105_013823.iperf3.json": "676f8cd791874afcd7e98339af2c2e8748694b8da327aca296a6c4295d6e29a2",
+      "ROUND_03/T04_TCP_RX_P4_20261105_013834.iperf3.json": "7ef33edc6b43e433dba6ddacb76d728d1f9bb4e52dbdaf46f4411a44316b1565",
+      "ROUND_03/T05_UDP_TX300_20261105_013844.iperf3.json": "8cbe1dd416a44fa64b3ee5ccc48520519ff3c6ca12e732a93b134644c4a9c757",
+      "ROUND_03/T06_UDP_RX300_20261105_013852.iperf3.json": "cb4b53ecd8703cce950161ff167cb3bf47dbc8f1e0ff613ccb2ff19a99dac431",
+      "ROUND_03/T07_UDP_TX500_20261105_013900.iperf3.json": "552b50dc8914c7ebc33a7fa70facea23431115e609965e3ca0199711916133df",
+      "ROUND_03/T08_UDP_RX500_20261105_013907.iperf3.json": "5cdeb54e9696313e7707efda56ff6582c588e37bcd369947f89d82b051196573",
+      "ROUND_03/T09_UDP_TX600_20261105_013915.iperf3.json": "3a329712ae19d7ec63c855fc1a1917f2c4a39dbe1239fcb28768bf2ebb86dc5d",
+      "ROUND_03/T10_UDP_RX700_20261105_013922.iperf3.json": "1014f07be24066533f1cbf7d55e5775f2e5e92747149ce237429ad1a9e332c34",
+      "ROUND_03/T11_UDP_TX600_20261105_013930.iperf3.json": "9fe28c6ee71002c1a999c2a8680b89cdffef1d398668ec244507a644bf75eb21",
+      "ROUND_03/T12_UDP_RX900_20261105_013938.iperf3.json": "2cb8f6ea8fc85d0494c0870450dd45f2a3e5439d0c4ba94652aa682424b4676b",
+      "ROUND_03/T13_UDP_TX600_20261105_013945.iperf3.json": "79b6a955fab2e14f6e95be766162e90ec3eeea47df1f051fb5b7ecb1babdd8fe",
+      "ROUND_03/T14_UDP_RX1100_20261105_013953.iperf3.json": "89da429d2185e76358f39a2974b93fef826778cf29514dfde9bf2ca3c474b552",
+      "ROUND_03/T15_UDP_TX600_20261105_014000.iperf3.json": "ba2d5210746de446e12482bd0df54265de8cd048f7b35a19f2e0dd1c6b82b984",
+      "ROUND_03/T16_UDP_RX1300_20261105_014008.iperf3.json": "06e78a093f9d36d6b669038e947a785ce1d4de26b00fc8d5f56f44e94582258f",
+      "ROUND_03/T17_UDP_TX600_20261105_014016.iperf3.json": "4faa9a91e8d3fccef0258172ceb8e3799370436c5f9f23d28309927611b6b93f",
+      "ROUND_03/T18_UDP_RX1500_20261105_014023.iperf3.json": "1e61015f7da887cadcbe07eb3475d1eff60450738c5ffb4fb08213732f655a04",
+      "ROUND_03/T19_UDP_TX600_20261105_014031.iperf3.json": "b49d2c25422be6115c30e238f23731c922e2480917efdb102277003088909413",
+      "ROUND_03/T20_UDP_RX1700_20261105_014039.iperf3.json": "20efc55ba38b593d88d4f0dc0858cfd7f08a53743d7a71b49b8d02782c2eafaf"
+    },
+    "mode_evidence_note": "BE200 provider HE/BF properties; AX HE runtime + KGP boot-mode association; R9 BF post-run sysctl confirmed. Screenshot alone is not build/BF-use proof."
+  },
+  {
+    "id": "BE200_HE_UDP1600",
+    "device": "BE200",
+    "mode": "HE",
+    "archive": "BE200-P10_BE200_3X20_TX600_RX1600_mapped_20261105_014909_mgPRwL.zip",
+    "original_archive_sha256": "d0273103c17b366641c162381c0a3a295de3cd1e68e1eb813bea1a35f2fca70d",
+    "verified_manifest_files": 382,
+    "uuid": "2613EF21-BC57-3685-B252-AC94CFF4928B",
+    "executable_sha256": "eff556fb4846a7651bff02d0c6e38479c0d1d1493aaa8de958b6f6bbd336a270",
+    "tests_completed": 60,
+    "online": "PASS",
+    "macos": "26.7.2 / 25G332",
+    "dma_mode": "mapped",
+    "applevtd": "enabled as recorded and reported",
+    "protocol": "AIRPORTITLWM_3X20_TX600_RX1600_NO_PROFILER_V2",
+    "rx_stages": [
+      300,
+      500,
+      700,
+      900,
+      1100,
+      1300,
+      1500,
+      1600
+    ],
+    "tx_stages": [
+      300,
+      500,
+      600,
+      600,
+      600,
+      600,
+      600,
+      600
+    ],
+    "tcp": {
+      "TCP_TX_P1": {
+        "receiver_mbps_mean": 697.4834362788783,
+        "receiver_mbps_by_round": [
+          697.7949392593533,
+          698.2023663995917,
+          696.45300317769
+        ],
+        "retransmits_by_round": [
+          0,
+          0,
+          0
+        ]
+      },
+      "TCP_TX_P4": {
+        "receiver_mbps_mean": 679.3830113636213,
+        "receiver_mbps_by_round": [
+          678.9588417312531,
+          678.7701066295,
+          680.420085730111
+        ],
+        "retransmits_by_round": [
+          4090,
+          1496,
+          3140
+        ]
+      },
+      "TCP_RX_P1": {
+        "receiver_mbps_mean": 1660.797714505505,
+        "receiver_mbps_by_round": [
+          1679.671858728475,
+          1679.51042146341,
+          1623.21086332463
+        ],
+        "retransmits_by_round": [
+          0,
+          0,
+          506
+        ]
+      },
+      "TCP_RX_P4": {
+        "receiver_mbps_mean": 1825.4052919283617,
+        "receiver_mbps_by_round": [
+          1826.744527080287,
+          1837.4748588077177,
+          1811.9964898970804
+        ],
+        "retransmits_by_round": [
+          2259,
+          1473,
+          1960
+        ]
+      }
+    },
+    "tcp_full_zero_sum_intervals": 0,
+    "mode_properties": {
+      "ItlwmHeBeamformee": "off",
+      "ItlwmHeLink": 67044375,
+      "ItlwmHeSetup": "on",
+      "ItlwmRxBaWinsize": 256
+    },
+    "bluetooth": {
+      "com.zxystd.IntelBluetoothFirmware": "2.5.1",
+      "com.zxystd.IntelBTPatcher": "2.5.1",
+      "as.acidanthera.BlueToolFixup": "2.7.2"
+    },
+    "raw_files": {
+      "ROUND_01/T01_TCP_TX_P1_20261105_014916.iperf3.json": "4d66cad6c8a7a7411db1dfd8610b39674e97195ca00f7ef2051143f67b963c6d",
+      "ROUND_01/T02_TCP_RX_P1_20261105_014926.iperf3.json": "56badc2b010e37d6a6948280394b924ad0563ed4be8aa771dea140109b11eeae",
+      "ROUND_01/T03_TCP_TX_P4_20261105_014937.iperf3.json": "116cf099dc5873b8ca00badec70a2c866eb218038f8ddb999ad2998a2d86cfea",
+      "ROUND_01/T04_TCP_RX_P4_20261105_014947.iperf3.json": "d35e9be5aa17dfaaf6dd641e82697616b79e284faf7a25850b244fdcf7634d3e",
+      "ROUND_01/T05_UDP_TX300_20261105_014958.iperf3.json": "8095cb0d419be2d3fc9877cd6698a579fb96a41664a6f33ca02a60ed5197414c",
+      "ROUND_01/T06_UDP_RX300_20261105_015006.iperf3.json": "05b4eda2d46633b1c2613f7528fdfd79ebf642f4514404be5f9918a668eb7868",
+      "ROUND_01/T07_UDP_TX500_20261105_015013.iperf3.json": "87b646d9623c886c86d61b611e217ba3190b93e35c46a12c6fca9bfa43588106",
+      "ROUND_01/T08_UDP_RX500_20261105_015021.iperf3.json": "4a7a618e835d3d01fc9e0e7a4b18ea00cfc61cdb6493d64c2f93ce61e186bee9",
+      "ROUND_01/T09_UDP_TX600_20261105_015028.iperf3.json": "bb99b44e0ca7242dcb63eb3b8a757b9da2bbc9b711f93f045314579d8e928879",
+      "ROUND_01/T10_UDP_RX700_20261105_015036.iperf3.json": "b7eaa14be548d6c492c320f754371214b16c34786dad0daf47e72410562c760a",
+      "ROUND_01/T11_UDP_TX600_20261105_015044.iperf3.json": "b37dab5975f2b1acfe32ad4f28dd78cf284ac091a8625d22d7c5a63088f5d1f2",
+      "ROUND_01/T12_UDP_RX900_20261105_015051.iperf3.json": "4f94615f25068f467214b8f307759fcc40c5db7bbd816b3a4d1cef9645b8ea8b",
+      "ROUND_01/T13_UDP_TX600_20261105_015059.iperf3.json": "d15440b7f6a8a9a72c8f472009661dd5fd18cfe03c514662b47d58ae09c87cb0",
+      "ROUND_01/T14_UDP_RX1100_20261105_015106.iperf3.json": "cbee24bb1b4d1099012cfd9135d14003a25c7db72378070ed23c3bf2e1830e91",
+      "ROUND_01/T15_UDP_TX600_20261105_015114.iperf3.json": "bfd6a3cbde43b59742a23482d446a518d9d648904bfcc88b71fa3b59d28f78ba",
+      "ROUND_01/T16_UDP_RX1300_20261105_015122.iperf3.json": "9c390c4a4d1db9052634187d6f50554d034a75fb54151467c26c390d8b2d46e4",
+      "ROUND_01/T17_UDP_TX600_20261105_015129.iperf3.json": "ddb6df91593b799c2ada2e982ee69a2410e5656693a646c49fd6a8883c588a12",
+      "ROUND_01/T18_UDP_RX1500_20261105_015137.iperf3.json": "a9afb066908f92ecd00f29f160882cdeaebfa23fc7b7371e6c7513c45c51383b",
+      "ROUND_01/T19_UDP_TX600_20261105_015145.iperf3.json": "bb1c052b42d39547f183114071e7ec0d421cf4fb0d01bcb050429e372b396cfd",
+      "ROUND_01/T20_UDP_RX1600_20261105_015152.iperf3.json": "d945681cb39e0474311cf00f06e103bf8a656f655ef0835d510dd5779bdda260",
+      "ROUND_02/T01_TCP_TX_P1_20261105_015203.iperf3.json": "68bfe9ed2617af9d83154a4832e413f7bcab53f1c384a28a1e61011582af5518",
+      "ROUND_02/T02_TCP_RX_P1_20261105_015213.iperf3.json": "20aff32d6363a3c5e816278d2ff76949fc8afe9fa9683524ea565268b7efeb4e",
+      "ROUND_02/T03_TCP_TX_P4_20261105_015224.iperf3.json": "2439235044e40105ce0dfb6391b4edeb4eb52e4dc3d23049cbe11a0c826a6bdf",
+      "ROUND_02/T04_TCP_RX_P4_20261105_015235.iperf3.json": "e9832ab3564dbc8001e13f3a622af64be4df11b42337a32562570ef3fbcb80df",
+      "ROUND_02/T05_UDP_TX300_20261105_015245.iperf3.json": "c186446d5daec975e1b8f41734177c4c814b5d11e4fc9488cb46a725960223dd",
+      "ROUND_02/T06_UDP_RX300_20261105_015253.iperf3.json": "b2c91e667aa4028ea76193a8a9c413a4688b7b3914e0ef9e616b68d312a6a5e0",
+      "ROUND_02/T07_UDP_TX500_20261105_015300.iperf3.json": "a7b3c3917b16775296f5ea914cc0f1566ec65c47465060b45b3b30abcc3a300c",
+      "ROUND_02/T08_UDP_RX500_20261105_015308.iperf3.json": "2945aa67ed0718f152445a959a3c7ec28ed887428af2eaf375211929ff7655df",
+      "ROUND_02/T09_UDP_TX600_20261105_015316.iperf3.json": "539e5255033a3634a929a00f7c1cf6c1e8ebcd6cbfb7acd1f447efbe79c1e83a",
+      "ROUND_02/T10_UDP_RX700_20261105_015323.iperf3.json": "d55f542af4ade38b05447b1ebf5bd715dcd60af6bae718ecd65d7e4c0c12a5a5",
+      "ROUND_02/T11_UDP_TX600_20261105_015331.iperf3.json": "208ddfe84448e4723ac3df4bd08fdfee568ed23b5de5b3dff429ae7dcf548620",
+      "ROUND_02/T12_UDP_RX900_20261105_015338.iperf3.json": "2700dc772d3e45a380ddf6f526eded31bf63eab1e694495e922958ece289851e",
+      "ROUND_02/T13_UDP_TX600_20261105_015346.iperf3.json": "6d3156188d17dd7774ab8aee7830b753b32faec9ba13870ccc4d7f1735c9aee0",
+      "ROUND_02/T14_UDP_RX1100_20261105_015354.iperf3.json": "68bae9950d98dac197612561159bf08dbc0809b1f74943d221a2863e3a1b0663",
+      "ROUND_02/T15_UDP_TX600_20261105_015401.iperf3.json": "251199e1c3d83199ecbe967840f9c491a456638bb593bebaba937e26d57a1bae",
+      "ROUND_02/T16_UDP_RX1300_20261105_015409.iperf3.json": "ed62f7a9c9773a0d3c760115052c060d4c9cc323a9643c6390c5feb9ae174cd1",
+      "ROUND_02/T17_UDP_TX600_20261105_015417.iperf3.json": "e3665d09d4541d60be7e0368cc2f7f6081176abd57d5e4f8368cbe4d9abaee73",
+      "ROUND_02/T18_UDP_RX1500_20261105_015424.iperf3.json": "38d15cb63a8730a57c1047de74e9d6e45926940f314c7b6b04b3798674bff380",
+      "ROUND_02/T19_UDP_TX600_20261105_015432.iperf3.json": "a77c34f86afb96da2ccfe4a293af22110d6dcfce92d53962e804b03792c7346e",
+      "ROUND_02/T20_UDP_RX1600_20261105_015440.iperf3.json": "92b93450ef8430bcab523ff1f30f74026d6f2036b7f6bb25d1103f3c32da1c65",
+      "ROUND_03/T01_TCP_TX_P1_20261105_015450.iperf3.json": "f8105efa6dcae5bd43ad2ed6e79f95a97a0cffdf4d9797344ef7533115c0135b",
+      "ROUND_03/T02_TCP_RX_P1_20261105_015500.iperf3.json": "e752e5157fd3dbb8cb7df87f805467523952b2a0918c897e3f1d34764861532f",
+      "ROUND_03/T03_TCP_TX_P4_20261105_015511.iperf3.json": "b8b5822307b31e9cc3b66a402c74e7d95b506d0360f98f8de24634ea2788e8fc",
+      "ROUND_03/T04_TCP_RX_P4_20261105_015522.iperf3.json": "c764353a8adaf014ce468c7c88de9e6828f9959c02ad4e67bc2d7a25510e7810",
+      "ROUND_03/T05_UDP_TX300_20261105_015532.iperf3.json": "6eadc75e2339e29788f6653b1ce70fc5f5a6ef06647ca0d62923321e34f23f4e",
+      "ROUND_03/T06_UDP_RX300_20261105_015540.iperf3.json": "21b5a413f903b2be9a4071c2bc9ede46c38681776358ade00484674e31e2bc06",
+      "ROUND_03/T07_UDP_TX500_20261105_015548.iperf3.json": "b080519bbeed5f8fb66e050cd86cc1269541529a60a8c0a2da34b6bc156e52f9",
+      "ROUND_03/T08_UDP_RX500_20261105_015555.iperf3.json": "4627014d90e070f6a2d894bcbc8180a412ae80c87266bd762be2b64c14eaa082",
+      "ROUND_03/T09_UDP_TX600_20261105_015603.iperf3.json": "9643fb66ec4d57df4cb88355d65e1f4dfa0ae1c1c07fc26377a2171c9da6c8dd",
+      "ROUND_03/T10_UDP_RX700_20261105_015610.iperf3.json": "012450d78a8368e27d55221e052a71ac17a81551515d9270fe28651cc84b6995",
+      "ROUND_03/T11_UDP_TX600_20261105_015618.iperf3.json": "4d595bdb3938467a2321befb37d7390136eeb4f37c00d29f10300d111f4f7ef5",
+      "ROUND_03/T12_UDP_RX900_20261105_015626.iperf3.json": "ebe7fcf39d5961a8411fff148ef478fc26b9566ce70e518669029a002410c86c",
+      "ROUND_03/T13_UDP_TX600_20261105_015633.iperf3.json": "dbed051f857beb10e9adfc4ce6ac10934370435e2dbb53df6ca3816a2423a96d",
+      "ROUND_03/T14_UDP_RX1100_20261105_015641.iperf3.json": "e4010ea72afa1436f77bcc17ba1e469ba934ec8bba090828e5d781a9deea3f6e",
+      "ROUND_03/T15_UDP_TX600_20261105_015648.iperf3.json": "0aad38d05e993150b57c6cecc7eb739fcb6e46d32ee356eab5072a4fcaadaa62",
+      "ROUND_03/T16_UDP_RX1300_20261105_015656.iperf3.json": "71a26654cda5862c7a4759342dc99e5224d82c4766eb5b0ebaed9c6e526f8f83",
+      "ROUND_03/T17_UDP_TX600_20261105_015704.iperf3.json": "ec4f7a5184423a307b1d2b2a706271ef8a3fef2c0b42e1e3d39d970c27af7d69",
+      "ROUND_03/T18_UDP_RX1500_20261105_015711.iperf3.json": "3488dcbfb1a3bd54d8bc9343cbea228d785c0b051876aade3fd196f67d160fc0",
+      "ROUND_03/T19_UDP_TX600_20261105_015719.iperf3.json": "f69d8cc60a86f8a96658a96ffe54a8966f327f255eb399c826689109d5c65066",
+      "ROUND_03/T20_UDP_RX1600_20261105_015726.iperf3.json": "c47cd12a1aa0167db6c0034fa29a852e62b212e4a114b4c9c584716db52a1de7"
+    },
+    "mode_evidence_note": "BE200 provider HE/BF properties; AX HE runtime + KGP boot-mode association; R9 BF post-run sysctl confirmed. Screenshot alone is not build/BF-use proof."
+  },
+  {
+    "id": "AX210_P10_VHT",
+    "device": "AX210",
+    "mode": "VHT",
+    "archive": "AX210-P10_AX210_3X20_mapped_20261105_023901_GqkZKX.zip",
+    "original_archive_sha256": "2df1f6c17e70189354b77c3ddc511e9cd85aa5ebe907bcd6ffcbec354b07c6e7",
+    "verified_manifest_files": 373,
+    "uuid": "2613EF21-BC57-3685-B252-AC94CFF4928B",
+    "executable_sha256": "eff556fb4846a7651bff02d0c6e38479c0d1d1493aaa8de958b6f6bbd336a270",
+    "tests_completed": 60,
+    "online": "PASS",
+    "macos": "26.7.2 / 25G332",
+    "dma_mode": "mapped",
+    "applevtd": "enabled as recorded and reported",
+    "protocol": "AIRPORTITLWM_3X20_NO_PROFILER_V1",
+    "rx_stages": [
+      100,
+      250,
+      400,
+      500,
+      600,
+      700,
+      800,
+      900
+    ],
+    "tx_stages": [
+      100,
+      250,
+      400,
+      500,
+      600,
+      700,
+      800,
+      900
+    ],
+    "tcp": {
+      "TCP_TX_P1": {
+        "receiver_mbps_mean": 387.58834185126216,
+        "receiver_mbps_by_round": [
+          368.7948765098795,
+          406.78200014620825,
+          387.1881488976987
+        ],
+        "retransmits_by_round": [
+          198,
+          202,
+          249
+        ]
+      },
+      "TCP_TX_P4": {
+        "receiver_mbps_mean": 440.37398309101565,
+        "receiver_mbps_by_round": [
+          445.60098713785663,
+          443.192955040291,
+          432.3280070948993
+        ],
+        "retransmits_by_round": [
+          276,
+          511,
+          759
+        ]
+      },
+      "TCP_RX_P1": {
+        "receiver_mbps_mean": 854.486691257555,
+        "receiver_mbps_by_round": [
+          854.662679770751,
+          851.8545897327467,
+          856.9428042691674
+        ],
+        "retransmits_by_round": [
+          0,
+          1108,
+          0
+        ]
+      },
+      "TCP_RX_P4": {
+        "receiver_mbps_mean": 896.256045791573,
+        "receiver_mbps_by_round": [
+          916.0290019486795,
+          906.3075952366905,
+          866.4315401893491
+        ],
+        "retransmits_by_round": [
+          0,
+          0,
+          1571
+        ]
+      }
+    },
+    "tcp_full_zero_sum_intervals": 0,
+    "mode_properties": {
+      "ItlwmAxHeSetup": "off:no-opt-in"
+    },
+    "bluetooth": {
+      "com.zxystd.IntelBluetoothFirmware": "2.5.1",
+      "com.zxystd.IntelBTPatcher": "2.5.1",
+      "as.acidanthera.BlueToolFixup": "2.7.2"
+    },
+    "raw_files": {
+      "ROUND_01/T01_TCP_TX_P1_20261105_023907.iperf3.json": "6655b06d8b06539280a4002d451bc96ef92238b4d39c8a798e9aa159d5c6a26f",
+      "ROUND_01/T02_TCP_RX_P1_20261105_023918.iperf3.json": "ef5a4e30066d28dc03160ad8e09045c1f2353392cbdcaeb2ac73c7838afa78a6",
+      "ROUND_01/T03_TCP_TX_P4_20261105_023928.iperf3.json": "a75eada4a321cecdab7170188938e2a7c82aec012a4c212aed22076bc380f9f8",
+      "ROUND_01/T04_TCP_RX_P4_20261105_023939.iperf3.json": "d7ff1c95a1bad142fde220d96cd37c98dd936cff6e2851b1bc7cf1477305b589",
+      "ROUND_01/T05_UDP_TX100_20261105_023950.iperf3.json": "5a1b67758214c15f7f6eb9e551bb17330d5a935094b84c1a8f25b1fb1cf4f94b",
+      "ROUND_01/T06_UDP_RX100_20261105_023957.iperf3.json": "91610ca31829962eda56833200bab0797c9cefa24c7a10faa04c5fd964ea73e9",
+      "ROUND_01/T07_UDP_TX250_20261105_024005.iperf3.json": "116f4e82a4182bb884f0991f60c66b7452df3f5bca04fe1fb22c49be10228602",
+      "ROUND_01/T08_UDP_RX250_20261105_024013.iperf3.json": "ae93ecea97b4c8603f32907f180521c8073a4550355f4045cdb1a47d74b80b9b",
+      "ROUND_01/T09_UDP_TX400_20261105_024020.iperf3.json": "f6d8a97f07fa47e19c166eadbdd49ab1cbd49da83acb6372bcdc6a02eeec04d0",
+      "ROUND_01/T10_UDP_RX400_20261105_024028.iperf3.json": "cfdd2c935289c0efea440dc984c107b81c1c14dd12ee14aaecba8947b1fe0101",
+      "ROUND_01/T11_UDP_TX500_20261105_024035.iperf3.json": "61547b3099193b761e043c44ab0bec252a83c313b9c08694e20db386b9c80efa",
+      "ROUND_01/T12_UDP_RX500_20261105_024043.iperf3.json": "dd0abd10cf5debd300a0fbb391eed76b220b0204a327e84ffdc8068de5233a1e",
+      "ROUND_01/T13_UDP_TX600_20261105_024050.iperf3.json": "ae7054d186e8745b26608649a44517e4959d2671ff06178ccf31f7e922b85275",
+      "ROUND_01/T14_UDP_RX600_20261105_024058.iperf3.json": "6ee851412a93ee16d71652761c194b47ceb27109202360c4bfd2132636b70108",
+      "ROUND_01/T15_UDP_TX700_20261105_024106.iperf3.json": "4df0a5cfb63a41d75828307a02606e03e5c29a3634c6dbc39cab56defd8d5da7",
+      "ROUND_01/T16_UDP_RX700_20261105_024113.iperf3.json": "ed9ecf9edaa967a0089e5b18dba816849c8df001dfacb8a8b5f94fe7dfd140ba",
+      "ROUND_01/T17_UDP_TX800_20261105_024121.iperf3.json": "68f6569406ec41514c995cc50c574a00ce58f3ade82d772bcb491f4ce932e703",
+      "ROUND_01/T18_UDP_RX800_20261105_024129.iperf3.json": "4c60c1a7fe6b9ce997304193f350fe5f87dfad17cfb8caf8a1c479767d492080",
+      "ROUND_01/T19_UDP_TX900_20261105_024136.iperf3.json": "e03073fc4dc61c5e12b70d6e3df44e5bedddb595a8f8d34371cbb8c38d159a96",
+      "ROUND_01/T20_UDP_RX900_20261105_024144.iperf3.json": "a05db3334dd2c5ff7a3d6ecf72e9f78619f40fef4d6ea80bba20e12d09f54040",
+      "ROUND_02/T01_TCP_TX_P1_20261105_024153.iperf3.json": "420d14c67cc6e259fad1bb7d725d30214bbfcba86c7f4b055307b1c22d14e3d7",
+      "ROUND_02/T02_TCP_RX_P1_20261105_024204.iperf3.json": "397056f410a9154d7af52605e342e8e624d67f544273dc64a9078e9543c8b595",
+      "ROUND_02/T03_TCP_TX_P4_20261105_024215.iperf3.json": "dfa21435f03d483ba8be42ebe86b3a0872f6cf03ea291fb3b0656489325ee4a6",
+      "ROUND_02/T04_TCP_RX_P4_20261105_024225.iperf3.json": "7f3794076f534d7170fd2927f4e394eedf9726acbb84aaad61e6f01da0ec8dd6",
+      "ROUND_02/T05_UDP_TX100_20261105_024236.iperf3.json": "4a8f16f7a9ff597cff62d277d604284055071cfd1f52f5b40c5da309545a6fe5",
+      "ROUND_02/T06_UDP_RX100_20261105_024244.iperf3.json": "5c564a9874202bdbcd7b9d6db6494a6e5b15a539305e4a3e03a3bb8758ee8046",
+      "ROUND_02/T07_UDP_TX250_20261105_024251.iperf3.json": "e8443f5bf256b5daf1d91a9ed23c26314eba3234e3ba86e759cd0537aedc49fe",
+      "ROUND_02/T08_UDP_RX250_20261105_024259.iperf3.json": "250614ee5f0d3798bc28609e962ef4d1c0a5553e5669bbbb15248ff86724feaf",
+      "ROUND_02/T09_UDP_TX400_20261105_024306.iperf3.json": "ab9d1f9b27c26badbd1ca8f16b6e1b8c122ff54819b93dad01dab3af77924c65",
+      "ROUND_02/T10_UDP_RX400_20261105_024314.iperf3.json": "78df1a4d7a936196e0fbe738e067a99b5eecd0eaaceb15c4caddf886d458c50b",
+      "ROUND_02/T11_UDP_TX500_20261105_024321.iperf3.json": "fd65718a40536fe5436398cfded553c451a0485552ed64ee515bcc0c36c06489",
+      "ROUND_02/T12_UDP_RX500_20261105_024329.iperf3.json": "9988617ed83a691edb5255236cfd27f1115df280776053dbce701d6229127daa",
+      "ROUND_02/T13_UDP_TX600_20261105_024337.iperf3.json": "b15b5469df83fe044a2b0597596a4226293bebd551d706566eceb06621721a48",
+      "ROUND_02/T14_UDP_RX600_20261105_024344.iperf3.json": "8e18afa71819fac7eddf57cedc4e13597262d21377a09c06364955b0682534eb",
+      "ROUND_02/T15_UDP_TX700_20261105_024352.iperf3.json": "e32dfd044803578f57b0465fad657d57ef552857ef29c6b2dac752d37ec2c5da",
+      "ROUND_02/T16_UDP_RX700_20261105_024359.iperf3.json": "1cb07681fe2abdc79b312e80b08f1604f20b88d45556726eb2ebdb0bc78dda5a",
+      "ROUND_02/T17_UDP_TX800_20261105_024407.iperf3.json": "7239ddac1a5ef7119c2c02ffe9045cd9db02c7705743b3545e3e6c59d999efcf",
+      "ROUND_02/T18_UDP_RX800_20261105_024415.iperf3.json": "f3d592cb521f9b16cf13eade119bfae36c84d2234bd26d25321abb474b42bcef",
+      "ROUND_02/T19_UDP_TX900_20261105_024422.iperf3.json": "ec3037190e3d7eb4d2076c5c992b8aa8f18b4d1868dad43e590c6b2a3c8ca097",
+      "ROUND_02/T20_UDP_RX900_20261105_024430.iperf3.json": "06315f5b8b510eb1304db60887d6b4dd6c58c97ef229a9d81515aa936c6e40c3",
+      "ROUND_03/T01_TCP_TX_P1_20261105_024440.iperf3.json": "5d0fad066c92b8ccde4d70baef4094dd903cda6160b7ea2890912133f5088b3b",
+      "ROUND_03/T02_TCP_RX_P1_20261105_024450.iperf3.json": "b7a8c865f9cd37530ac529298bb8e27846c501d34a8db8f9274c0af27cb73df6",
+      "ROUND_03/T03_TCP_TX_P4_20261105_024501.iperf3.json": "ecafbab51faef1d476135f7483c04b1253412f2f217da4eac67273dc6a2dc798",
+      "ROUND_03/T04_TCP_RX_P4_20261105_024512.iperf3.json": "2b118224d1e182dd8e6c585a60e1c780b7640fc623034783702e8cb6e8ebdacf",
+      "ROUND_03/T05_UDP_TX100_20261105_024522.iperf3.json": "8fa7e04000d763f4ce266011b6ae644b8b8a2381e609f98534013aef217f7793",
+      "ROUND_03/T06_UDP_RX100_20261105_024530.iperf3.json": "7e175b2917578fff72bbdbd4c59babe6fa18e457521fa996e832089756070da5",
+      "ROUND_03/T07_UDP_TX250_20261105_024537.iperf3.json": "791d963cb2a731ae655e8cec87c02b84bdca0a7377f2e8d6908f590e837bc3ce",
+      "ROUND_03/T08_UDP_RX250_20261105_024545.iperf3.json": "556af8bfeeda88f593b0eec31a77a16769bbade4808fd073e9a86f102d324234",
+      "ROUND_03/T09_UDP_TX400_20261105_024553.iperf3.json": "e20184f34dcc3134ea7c4e89fcdc36aba79dbf655523980940be7d9b4bcd1b49",
+      "ROUND_03/T10_UDP_RX400_20261105_024600.iperf3.json": "5a6528a9661bfbcd9fd8a407e42f54784f3b04f2c7750ba941716c51144fd767",
+      "ROUND_03/T11_UDP_TX500_20261105_024608.iperf3.json": "b9babaf2f5dd8527184942aa89dd7581629b7732616a0758201aa755951facce",
+      "ROUND_03/T12_UDP_RX500_20261105_024615.iperf3.json": "31612b98e1a1a467012c221ad8504d3b8794b7da362735a962682558648162f2",
+      "ROUND_03/T13_UDP_TX600_20261105_024623.iperf3.json": "3f15a877cea02f70df859165b8ec1e5dc0076f4674de3147f5af0995a953eb96",
+      "ROUND_03/T14_UDP_RX600_20261105_024631.iperf3.json": "5ccea48801a560f3788e06de3751a425ea425fec0a971af338f6290a66cd3d16",
+      "ROUND_03/T15_UDP_TX700_20261105_024638.iperf3.json": "247b0bb729419837b4eb3f5035d0bf37ee6125f8615fec3be8127fc541cc8555",
+      "ROUND_03/T16_UDP_RX700_20261105_024646.iperf3.json": "73570c59ebd626d9e3820a76928c0be8add23a39c4d443a67c2bc550186b824a",
+      "ROUND_03/T17_UDP_TX800_20261105_024653.iperf3.json": "8c21dd3dc9c472f2b98dd7820047b4bd11ea02c12df876a1b725f1eec4a5e0bb",
+      "ROUND_03/T18_UDP_RX800_20261105_024701.iperf3.json": "46d0ca27e20401fa8c1a19c7606bcc7358b4d7621f6b19a1e6ab50735fa1d58e",
+      "ROUND_03/T19_UDP_TX900_20261105_024709.iperf3.json": "fa9d05de6d13769f7b8456383e935e90708ae72fc7958e255d35eed0e90d2245",
+      "ROUND_03/T20_UDP_RX900_20261105_024716.iperf3.json": "91ae6d300f962cb4ecd1b2d3bee99fb57051763bbb2f91f2b28be322de5ac4f3"
+    },
+    "mode_evidence_note": "VHT: KGP comparison mapping; absent HE property is not independent bootarg proof."
+  },
+  {
+    "id": "AX210_R9_HE_UDP1300",
+    "device": "AX210",
+    "mode": "HE",
+    "archive": "AX210-P10R9_AX210_3X20_TX600_RX1300_mapped_20261105_225651_lHxjLV.zip",
+    "original_archive_sha256": "acbab9fa69c8abd766d6f1ec2feecdde0562508c06562ef4ff31ff121c8fdef3",
+    "verified_manifest_files": 373,
+    "uuid": "174E07B7-AF8E-34DF-A260-9F71DCDEF0A4",
+    "executable_sha256": "a62e8eda1fa223d84f473d93e0c155d20c60e0ec0be3a0f1895bab67a9e6e874",
+    "tests_completed": 60,
+    "online": "PASS",
+    "macos": "26.7.2 / 25G332",
+    "dma_mode": "mapped",
+    "applevtd": "enabled as recorded and reported",
+    "protocol": "AIRPORTITLWM_3X20_TX600_RX1300_NO_PROFILER_V2",
+    "rx_stages": [
+      300,
+      500,
+      700,
+      900,
+      1000,
+      1100,
+      1200,
+      1300
+    ],
+    "tx_stages": [
+      300,
+      500,
+      600,
+      600,
+      600,
+      600,
+      600,
+      600
+    ],
+    "tcp": {
+      "TCP_TX_P1": {
+        "receiver_mbps_mean": 697.7137321625838,
+        "receiver_mbps_by_round": [
+          695.5307021384423,
+          700.1928584344993,
+          697.4176359148099
+        ],
+        "retransmits_by_round": [
+          0,
+          0,
+          0
+        ]
+      },
+      "TCP_TX_P4": {
+        "receiver_mbps_mean": 689.3510065838775,
+        "receiver_mbps_by_round": [
+          690.0780052207223,
+          690.3864125701043,
+          687.5886019608058
+        ],
+        "retransmits_by_round": [
+          3369,
+          3084,
+          3185
+        ]
+      },
+      "TCP_RX_P1": {
+        "receiver_mbps_mean": 1668.2247622063994,
+        "receiver_mbps_by_round": [
+          1593.0111016968324,
+          1690.9066886342005,
+          1720.7564962881654
+        ],
+        "retransmits_by_round": [
+          0,
+          1764,
+          0
+        ]
+      },
+      "TCP_RX_P4": {
+        "receiver_mbps_mean": 1876.649084476927,
+        "receiver_mbps_by_round": [
+          1866.8385402905014,
+          1881.2522079284288,
+          1881.8565052118513
+        ],
+        "retransmits_by_round": [
+          2042,
+          2201,
+          2275
+        ]
+      }
+    },
+    "tcp_full_zero_sum_intervals": 0,
+    "mode_properties": {
+      "ItlwmAxHeSetup": "on"
+    },
+    "bluetooth": {
+      "com.zxystd.IntelBluetoothFirmware": "2.5.1",
+      "com.zxystd.IntelBTPatcher": "2.5.1",
+      "as.acidanthera.BlueToolFixup": "2.7.2"
+    },
+    "raw_files": {
+      "ROUND_01/T01_TCP_TX_P1_20261105_225656.iperf3.json": "7cd05186c45286e8a9d8fafdac3ed660a7ca4b7c69dda094d594aede8cadc7f8",
+      "ROUND_01/T02_TCP_RX_P1_20261105_225707.iperf3.json": "93fb832485e94978f91d4517152b8f4850ff91847e0e70154f39a51747607d9a",
+      "ROUND_01/T03_TCP_TX_P4_20261105_225718.iperf3.json": "d69851b2b5a73f560319a764ec6e70ad4478be1685eead1a789bf5cf23426a2c",
+      "ROUND_01/T04_TCP_RX_P4_20261105_225728.iperf3.json": "c1b25b479927e8db58fba34c465aa25e170f70da2c326e3e4cc6c2be3c887226",
+      "ROUND_01/T05_UDP_TX300_20261105_225739.iperf3.json": "65f1edcabf67ea9832fe6e1187c1d5d25c90b6c5b841752c85a6e88aa7cbda54",
+      "ROUND_01/T06_UDP_RX300_20261105_225747.iperf3.json": "aeaf0188eff20105838e5d22b8a0a10f31a570a72a3e6d7cb7513d26ce76c050",
+      "ROUND_01/T07_UDP_TX500_20261105_225754.iperf3.json": "4daf8e6bb1d7c43383da5ee21148cac0c669b9fa2f9fc3f082c35ccc635ee287",
+      "ROUND_01/T08_UDP_RX500_20261105_225802.iperf3.json": "a11b6ddeba8f21c7bca514ddfd5e6add4df1e708da5362a8e668b293958cbea5",
+      "ROUND_01/T09_UDP_TX600_20261105_225809.iperf3.json": "92217f6c76137c423c1d2c86f2f55681c8324a2c297551f854720d2167dc0993",
+      "ROUND_01/T10_UDP_RX700_20261105_225817.iperf3.json": "eb22121a6ad6f36a645f5caf8864ab1abafa4dc55aec0683e084788b64345d9a",
+      "ROUND_01/T11_UDP_TX600_20261105_225824.iperf3.json": "96aa01e0f24eb7ab4ca1cf5306e845183b3e3caaefd060115d59ebf682bcf20e",
+      "ROUND_01/T12_UDP_RX900_20261105_225832.iperf3.json": "9cf84d9aa2d3e12520385dd8865cb148353d5ed463ea12f4872dfd26a36d17a1",
+      "ROUND_01/T13_UDP_TX600_20261105_225840.iperf3.json": "82200fd5c5c766384e6ce35939a5240f1627ab7c7e30b31e2c8d071c7d5a1cfc",
+      "ROUND_01/T14_UDP_RX1000_20261105_225847.iperf3.json": "f725a47f76c9c455b740e442da81862c8a1fb38c742208e9d3600d69709e4cbc",
+      "ROUND_01/T15_UDP_TX600_20261105_225855.iperf3.json": "516536bc6de60510f952098e1ba42859fba7782be8b2886b33941be50518b517",
+      "ROUND_01/T16_UDP_RX1100_20261105_225902.iperf3.json": "353e92070f0ee0c0e7c7a59a3c3afcee0d23bfcc9084c7c592578c0ba231183b",
+      "ROUND_01/T17_UDP_TX600_20261105_225910.iperf3.json": "d923d5018f0ffd68fae70a23ad3b7841baced037955c657d9baa67a03a0c9494",
+      "ROUND_01/T18_UDP_RX1200_20261105_225918.iperf3.json": "c6e2a5cfcdbef9b82b8d867d1ec99d9ea1c24138fd1f1a92426f8bf1f5c9ecd1",
+      "ROUND_01/T19_UDP_TX600_20261105_225925.iperf3.json": "ef5e3c0ab7bc3ea152d4a7beb19a8ca7fe33fdb63c402412b9b3c7726a055201",
+      "ROUND_01/T20_UDP_RX1300_20261105_225933.iperf3.json": "2490b0b13339c29f73d627846ead4cea739c2d3d83619edd8c09d95711b8b35f",
+      "ROUND_02/T01_TCP_TX_P1_20261105_225943.iperf3.json": "d8929e3d22d5b5e354f026f2e5b5e492cbb9ed0c2d0d544cae2bfac1d6e50466",
+      "ROUND_02/T02_TCP_RX_P1_20261105_225953.iperf3.json": "2b584787ff1d59d480ea69efeb0abdeb4c80925232e326b95899293f50acc18b",
+      "ROUND_02/T03_TCP_TX_P4_20261105_230004.iperf3.json": "694dd4f037cf030522f9c565138370e64de72f5a860d51656b79e4e925b5e9f3",
+      "ROUND_02/T04_TCP_RX_P4_20261105_230014.iperf3.json": "9fdd8aab6024043eacb21d3f70c49e3fd28ed402aebf30c26dcc6a94449b6058",
+      "ROUND_02/T05_UDP_TX300_20261105_230025.iperf3.json": "150e64ea5e0552cdb73d5c1f0a5c862dcf99d0218aadb4357b0363e9b8cba968",
+      "ROUND_02/T06_UDP_RX300_20261105_230033.iperf3.json": "9bb22deed162864f02c25b275d08b558b49c34d2643ee1be08af2b58c0c49e43",
+      "ROUND_02/T07_UDP_TX500_20261105_230040.iperf3.json": "8b16380b2c2747e9cb1f2d0f554a9947c8bc11155751913bf0c59b885eac7c20",
+      "ROUND_02/T08_UDP_RX500_20261105_230048.iperf3.json": "9f4344ba515131efa816ba0b22f162d25201a8487c52b0c19ff3404277714caa",
+      "ROUND_02/T09_UDP_TX600_20261105_230055.iperf3.json": "654974079eb1da64389a3a1172d34f991e36882a49fc270b79f3020c7b51841f",
+      "ROUND_02/T10_UDP_RX700_20261105_230103.iperf3.json": "6a19c7d5b661f95a0edfd19ff92d25106bf55d4bc11b321f6f9a728da2a3dc23",
+      "ROUND_02/T11_UDP_TX600_20261105_230111.iperf3.json": "21b757d63cd463c2a44b225bba683d54a91ced4d44c89564fa2895c8d46c4288",
+      "ROUND_02/T12_UDP_RX900_20261105_230118.iperf3.json": "4aead2cb68e6d3a93f920b167550dd4b65d45c87845c0a0bc2669761da5743a0",
+      "ROUND_02/T13_UDP_TX600_20261105_230126.iperf3.json": "53b4ad7b98519ac07ef3f3a95d6083db827617e5cae93c83ffd2fdf0546cfbdd",
+      "ROUND_02/T14_UDP_RX1000_20261105_230134.iperf3.json": "bf6db4163a0d3489927a3304984291d6fc5345ee3ba2fa09e91eae6ad2c4d63c",
+      "ROUND_02/T15_UDP_TX600_20261105_230141.iperf3.json": "d9a1d1767b6299036aa4a1826d3c8666a236dc7d0ae5c31349d778544f1aa963",
+      "ROUND_02/T16_UDP_RX1100_20261105_230149.iperf3.json": "efe04843a544228be877e2c6fc713877fccf45bdba6f9b6b3edc5705ada2aa8c",
+      "ROUND_02/T17_UDP_TX600_20261105_230157.iperf3.json": "24b3d1daf5db77e17b683100901bb6f5acaa3885160d9c3675e06a0d23b5b1b2",
+      "ROUND_02/T18_UDP_RX1200_20261105_230204.iperf3.json": "4c23cf5c256285d2b34a0de71dcb876d6dcb97ae829a092caa9cc8c5d3c52da2",
+      "ROUND_02/T19_UDP_TX600_20261105_230212.iperf3.json": "d677125fc13f6e68d13ecf45d36a0648dcd99618ff6eb31fc6be6a241f85636b",
+      "ROUND_02/T20_UDP_RX1300_20261105_230219.iperf3.json": "b0877b926ada9e23cbf9fb9c228aa018053254e7dbdaec058cf65032ab70c21b",
+      "ROUND_03/T01_TCP_TX_P1_20261105_230229.iperf3.json": "68368a8447c706dace014484233c974a7ac5271086057e38ecf2790f74965b46",
+      "ROUND_03/T02_TCP_RX_P1_20261105_230240.iperf3.json": "8ea4d1095e1377eeffb74d253311591a65b473c69377e250ac069390e488f809",
+      "ROUND_03/T03_TCP_TX_P4_20261105_230250.iperf3.json": "f17b3e0d44fbb4306d72beb4d5eb5901ad86ef97bf58ba73c652c8c7002e914e",
+      "ROUND_03/T04_TCP_RX_P4_20261105_230301.iperf3.json": "f4ca3794643a0f121e9a48b01d365258b2daf1573cfed43b0cd58d0dd35e6291",
+      "ROUND_03/T05_UDP_TX300_20261105_230312.iperf3.json": "aebe97ee6e55ed8f406659323a5d98d12bd5d24b51cfab7e0f9f8bf16e3eeeee",
+      "ROUND_03/T06_UDP_RX300_20261105_230319.iperf3.json": "630ec7922aed6d89fd80b80e52c29b8d8bf82841bbce986cf9dca226b0f0b33f",
+      "ROUND_03/T07_UDP_TX500_20261105_230327.iperf3.json": "e80d6869afc509ca271edde7210168356681017c3691b4280d99cbe25262a31c",
+      "ROUND_03/T08_UDP_RX500_20261105_230334.iperf3.json": "4a70d367559d3e4340d53f5b4b6649002e3e2d2a110aeefc20acd1e6287b86a0",
+      "ROUND_03/T09_UDP_TX600_20261105_230342.iperf3.json": "7d0747928d911ff26280047e54889a0df7d7478a4d0def6357e864779e0e864e",
+      "ROUND_03/T10_UDP_RX700_20261105_230350.iperf3.json": "dd1cc91a0a8ee91af8eac1ed94d0df68c1543517260ff27afab375d069cad531",
+      "ROUND_03/T11_UDP_TX600_20261105_230357.iperf3.json": "26e836b56dc01c2f6a5c1bfbf8309d6b5cd2fbe51a499ea974b5acba8bbd7d08",
+      "ROUND_03/T12_UDP_RX900_20261105_230405.iperf3.json": "b767620f8c7198be890d19c9b7c6c28b06487b80f6bd3cd5951ec0710cefd5b7",
+      "ROUND_03/T13_UDP_TX600_20261105_230412.iperf3.json": "0a1fac5925e27c0d3dcd88a0f338e1a6463c66a326dda634cccd76f841161bf8",
+      "ROUND_03/T14_UDP_RX1000_20261105_230420.iperf3.json": "d7a7d28516351c9737aada601977495a1f7381e12ec17d46f3b3152b4d6a7c9f",
+      "ROUND_03/T15_UDP_TX600_20261105_230428.iperf3.json": "352a60e9c7e498119faf432da38cee9d3dfd91c967bc788ee67851c8d75d1b47",
+      "ROUND_03/T16_UDP_RX1100_20261105_230435.iperf3.json": "18e8c85011ecf496e9d36acc7eaa9f02892f26c8df01a2f0329a51c691cb2c70",
+      "ROUND_03/T17_UDP_TX600_20261105_230443.iperf3.json": "493aa72d46cdc635e6c79684d295aadb4b272292d067b4dbb310283dbc324dff",
+      "ROUND_03/T18_UDP_RX1200_20261105_230450.iperf3.json": "555928d25617dc186562c6414edf36d6c3d4a7082caf09323dbd82e0b608e2c5",
+      "ROUND_03/T19_UDP_TX600_20261105_230458.iperf3.json": "0c028dc745f3fed5010701ebd74fc89de7f6100af898e47d9f93297a02c7bab4",
+      "ROUND_03/T20_UDP_RX1300_20261105_230506.iperf3.json": "5edf716c5480966bc3d751137d4dadc562b2f94c5bfae569431c82ff8f6920e6"
+    },
+    "mode_evidence_note": "BE200 provider HE/BF properties; AX HE runtime + KGP boot-mode association; R9 BF post-run sysctl confirmed. Screenshot alone is not build/BF-use proof."
+  },
+  {
+    "id": "AX210_R9_HE_UDP1700",
+    "device": "AX210",
+    "mode": "HE",
+    "archive": "AX210-P10R9_AX210_3X20_TX600_RX1700_mapped_20261105_230902_OI1ALs.zip",
+    "original_archive_sha256": "441879bb584ef74d29f846d84c32c9dabb2c6b6befb64415fb5012a89f75d6f6",
+    "verified_manifest_files": 373,
+    "uuid": "174E07B7-AF8E-34DF-A260-9F71DCDEF0A4",
+    "executable_sha256": "a62e8eda1fa223d84f473d93e0c155d20c60e0ec0be3a0f1895bab67a9e6e874",
+    "tests_completed": 60,
+    "online": "PASS",
+    "macos": "26.7.2 / 25G332",
+    "dma_mode": "mapped",
+    "applevtd": "enabled as recorded and reported",
+    "protocol": "AIRPORTITLWM_3X20_TX600_RX1700_NO_PROFILER_V2",
+    "rx_stages": [
+      300,
+      500,
+      700,
+      900,
+      1100,
+      1300,
+      1500,
+      1700
+    ],
+    "tx_stages": [
+      300,
+      500,
+      600,
+      600,
+      600,
+      600,
+      600,
+      600
+    ],
+    "tcp": {
+      "TCP_TX_P1": {
+        "receiver_mbps_mean": 697.23062402944,
+        "receiver_mbps_by_round": [
+          696.6428365923047,
+          695.1452568112902,
+          699.9037786847254
+        ],
+        "retransmits_by_round": [
+          0,
+          0,
+          0
+        ]
+      },
+      "TCP_TX_P4": {
+        "receiver_mbps_mean": 687.3932455073519,
+        "receiver_mbps_by_round": [
+          690.9977847274092,
+          692.366848727774,
+          678.8151030668727
+        ],
+        "retransmits_by_round": [
+          2625,
+          2630,
+          2897
+        ]
+      },
+      "TCP_RX_P1": {
+        "receiver_mbps_mean": 1700.3228566194869,
+        "receiver_mbps_by_round": [
+          1710.815024954636,
+          1683.8978579382765,
+          1706.2556869655477
+        ],
+        "retransmits_by_round": [
+          0,
+          2,
+          0
+        ]
+      },
+      "TCP_RX_P4": {
+        "receiver_mbps_mean": 1861.8987148131375,
+        "receiver_mbps_by_round": [
+          1903.6330541900306,
+          1907.9026294974053,
+          1774.1604607519769
+        ],
+        "retransmits_by_round": [
+          0,
+          1,
+          1254
+        ]
+      }
+    },
+    "tcp_full_zero_sum_intervals": 0,
+    "mode_properties": {
+      "ItlwmAxHeSetup": "on"
+    },
+    "bluetooth": {
+      "com.zxystd.IntelBluetoothFirmware": "2.5.1",
+      "com.zxystd.IntelBTPatcher": "2.5.1",
+      "as.acidanthera.BlueToolFixup": "2.7.2"
+    },
+    "raw_files": {
+      "ROUND_01/T01_TCP_TX_P1_20261105_230908.iperf3.json": "23ee06867560dd2ff9ef483509989c9b43d3e898f4505453b03fe219781e967a",
+      "ROUND_01/T02_TCP_RX_P1_20261105_230918.iperf3.json": "63124e26063512840553f158f0c93285954b4452985131519c5aca0ac5459cf6",
+      "ROUND_01/T03_TCP_TX_P4_20261105_230929.iperf3.json": "d07de3bff98052f3dec26827c0ca269ff905c74b916ccb51b0189912c20b160b",
+      "ROUND_01/T04_TCP_RX_P4_20261105_230940.iperf3.json": "3d0388f99359ff69e677e4ec797aff164433303e1d56846ae84199793a584fb6",
+      "ROUND_01/T05_UDP_TX300_20261105_230950.iperf3.json": "9c1059d352000d501da4a89a7f1db181c46c1ef40339b95e81a1dee107e3aa3f",
+      "ROUND_01/T06_UDP_RX300_20261105_230958.iperf3.json": "7abc6da5d430fb0bcbce9eab2f5093a34cab76c50c1764872b168ea5c8602db5",
+      "ROUND_01/T07_UDP_TX500_20261105_231005.iperf3.json": "3ce007b2fcd9749e71d085d43816a97954fe7740d93a1ff58c0b7abdb0467d3b",
+      "ROUND_01/T08_UDP_RX500_20261105_231013.iperf3.json": "f0f40482dbfa1289f031a94c5aa5a786e3b8fa5f014310085f099b19d24222af",
+      "ROUND_01/T09_UDP_TX600_20261105_231021.iperf3.json": "ca9f8a3ffc8cdab8b34cd1f0889c3b51f1b6212a71342904501d66030504bdac",
+      "ROUND_01/T10_UDP_RX700_20261105_231028.iperf3.json": "9c8a4d5716178bb320c7381577af5d26214336fbfbf934145d529c0854c292a1",
+      "ROUND_01/T11_UDP_TX600_20261105_231036.iperf3.json": "3161c68c8b2f40670041e8286c58e06ed664d8747b83550d690fee29742e8733",
+      "ROUND_01/T12_UDP_RX900_20261105_231043.iperf3.json": "38176b074ad634bb2dc1f18154d532a3553b23211fef0b82bc66896720d91c3e",
+      "ROUND_01/T13_UDP_TX600_20261105_231051.iperf3.json": "fbfb9ed6437a28cc57b11200ff52bbf62312f0a9eb1d988f18f1d1286596b1d0",
+      "ROUND_01/T14_UDP_RX1100_20261105_231059.iperf3.json": "516f3657add3dd38a85d42812a29ce0c41519c28fc765751c16b854d4b984707",
+      "ROUND_01/T15_UDP_TX600_20261105_231106.iperf3.json": "8a2432d3aedcf8dbfb0fb76e90846ed657cff4523d875810bc404ac127363a8d",
+      "ROUND_01/T16_UDP_RX1300_20261105_231114.iperf3.json": "b09398b3432ec9adc792bf1e413c8fe4f0bad7e543b3e74894e1b96ee22a01fa",
+      "ROUND_01/T17_UDP_TX600_20261105_231121.iperf3.json": "20ce63bbf6cf659121bc3e963b87ab38162c55fd2f999c49c2c76bb90f65e0f2",
+      "ROUND_01/T18_UDP_RX1500_20261105_231129.iperf3.json": "58d5bff33ac5e5ed118c3bb549d3d395b7d5696ec9cc78ea3af39abcfb6db0a2",
+      "ROUND_01/T19_UDP_TX600_20261105_231137.iperf3.json": "564751c5c70dfea8cd86bbcecc711ecc8b03f5b2ec3bdb75ff6c1a98db0397b3",
+      "ROUND_01/T20_UDP_RX1700_20261105_231144.iperf3.json": "ee55566bc26aea8e9c66667b99f3c781327451ab9a648c803136b3f0b06ff09c",
+      "ROUND_02/T01_TCP_TX_P1_20261105_231154.iperf3.json": "38bcd21fabc2774488b9cce57e862abd14fef89fda035c55f7808effbdfd26a2",
+      "ROUND_02/T02_TCP_RX_P1_20261105_231205.iperf3.json": "f42276691cdce6b50741b96cc92757b81a0bfc5cd4f102a6e1a0cf538a7b794d",
+      "ROUND_02/T03_TCP_TX_P4_20261105_231215.iperf3.json": "d52ac11cad71f2491527e33a5936c20c301a0fc457d718f83cb91ee93915c8fd",
+      "ROUND_02/T04_TCP_RX_P4_20261105_231226.iperf3.json": "fa87606ea61b41a11762b2f8253f4422b10c1b4d600fb4393f23b9642ca8c8b8",
+      "ROUND_02/T05_UDP_TX300_20261105_231237.iperf3.json": "fd37c564a57930884997971c580baf2e2c17414390b19187fddc9c57d51355ab",
+      "ROUND_02/T06_UDP_RX300_20261105_231244.iperf3.json": "fd33b28e5c5bf55c0492a3d03e2cccaad26c469e4751b52a9db9313dcc486170",
+      "ROUND_02/T07_UDP_TX500_20261105_231252.iperf3.json": "7780b5533ba5e952e4617136e9dff3e551a8db5c528e3f1b59f5bea9c70622be",
+      "ROUND_02/T08_UDP_RX500_20261105_231259.iperf3.json": "d4a03b565b0da4ad38e0ba2f23e03e6ce5cd226721abb1a58c3453bd94c76d69",
+      "ROUND_02/T09_UDP_TX600_20261105_231307.iperf3.json": "37057ac9cc19bf81849434911b8a91f6c0fae82eff6e5f07c50e2a8ef7357270",
+      "ROUND_02/T10_UDP_RX700_20261105_231314.iperf3.json": "5f1615e5e22e4680abebea417883fe5cf742e46a8d8ee46f226cdf19111ce0c8",
+      "ROUND_02/T11_UDP_TX600_20261105_231322.iperf3.json": "c6ff4103c2ab19448b27d7e81bd10eb4b9e426fa334e081e6f121929f173738f",
+      "ROUND_02/T12_UDP_RX900_20261105_231330.iperf3.json": "d03d4c53e148db218f1df7e1c43a295f2e0c55261d94e7cf38208b992a9a5f5b",
+      "ROUND_02/T13_UDP_TX600_20261105_231337.iperf3.json": "5aa6b6264f91e68a8d7ed953941187bd55050cb57f886ea1eda025769fdd1170",
+      "ROUND_02/T14_UDP_RX1100_20261105_231345.iperf3.json": "0e6e11bd60d243d8e89abc6464e19980e7c038b32a31dd8f33c75f8036cec1a6",
+      "ROUND_02/T15_UDP_TX600_20261105_231352.iperf3.json": "863a81a8b33b2a1f883d4cdcf4ff467386948c9a7f94c8ecf5bb253a6f8c0598",
+      "ROUND_02/T16_UDP_RX1300_20261105_231400.iperf3.json": "b157fd7e22aee991f13717f4d65ed9f200ae6edb0c1ba3e12e65c291bbb83d03",
+      "ROUND_02/T17_UDP_TX600_20261105_231408.iperf3.json": "f5be88ea2844333235932a2a9b1d589a7c6d0f8f0a1025edb76b56228300dd56",
+      "ROUND_02/T18_UDP_RX1500_20261105_231415.iperf3.json": "07159ab182452ab7db02e8aa46abdaea9310b63a9d2332eb53aed1ac84d2d92a",
+      "ROUND_02/T19_UDP_TX600_20261105_231423.iperf3.json": "dbe5fb047fba7e53c74e5a697e70ae48ecfffdd0f7cbf9450d589cd4aa4e28ed",
+      "ROUND_02/T20_UDP_RX1700_20261105_231431.iperf3.json": "e38c5b1fd1adc13d8c9196d19d8732cd61f534e73d5f92b9f4fb578414655ec5",
+      "ROUND_03/T01_TCP_TX_P1_20261105_231440.iperf3.json": "e5388aae91b310c47809aa65863c7f1e6edf3eb6aeb00de6879496b5d980c539",
+      "ROUND_03/T02_TCP_RX_P1_20261105_231451.iperf3.json": "56f144d61f61946f08854f884e02a24b95be885697f8db5b1935994326f6ebae",
+      "ROUND_03/T03_TCP_TX_P4_20261105_231502.iperf3.json": "210831529b4dd5c61fba03fad3314891fa8512ae948b8fa6a8765fbdccca3025",
+      "ROUND_03/T04_TCP_RX_P4_20261105_231512.iperf3.json": "0ebab122df727d53598879dd2a78ca68942b6ff787c928b89ceb091e8adf00a0",
+      "ROUND_03/T05_UDP_TX300_20261105_231523.iperf3.json": "40ad2ccc66e59a12d60fc405df2a6269b4c8fe24fb3a9cec69cbd5babd98aad7",
+      "ROUND_03/T06_UDP_RX300_20261105_231530.iperf3.json": "e04920a32d766f307a03ab837b00f40358585d3557875db08581275392a16fe4",
+      "ROUND_03/T07_UDP_TX500_20261105_231538.iperf3.json": "8e36109cf6011697789c156cb04b3299389860392f37b709a8934a6850194237",
+      "ROUND_03/T08_UDP_RX500_20261105_231546.iperf3.json": "77f38e0c445d3bfddef7f6ff0b6c2a9f2ce5c3f265b69d352dc31d9e0be90ad1",
+      "ROUND_03/T09_UDP_TX600_20261105_231553.iperf3.json": "08b3bb7daeec8bd985d8e2b2f193748a5d77bbeb1779f6c756794a679bb81826",
+      "ROUND_03/T10_UDP_RX700_20261105_231601.iperf3.json": "b2d1fe1174a5a8d5d04ae0ffba849e2b510f06e5b8f3c8e6691bd1e8cbb1b621",
+      "ROUND_03/T11_UDP_TX600_20261105_231608.iperf3.json": "412c3a2b81117265ee983f9cb954ba2dcba23eb95685e65d56d9d52d7adcbbcd",
+      "ROUND_03/T12_UDP_RX900_20261105_231616.iperf3.json": "50aa0621dc0485de01f75353b5060736553e248d4898fdf4cbd3837d882be5e1",
+      "ROUND_03/T13_UDP_TX600_20261105_231624.iperf3.json": "538940c417e04d9454228933e1e0dc0d04483470e0d253dffcde384aeec3a37a",
+      "ROUND_03/T14_UDP_RX1100_20261105_231631.iperf3.json": "a2e192cf45a49cc083120f0a3b537c3c60528a3a642eb68b3dcefda130b7493d",
+      "ROUND_03/T15_UDP_TX600_20261105_231639.iperf3.json": "1dbc44256309f150fb4d74168e63a997a9044f97a6b72d6c558d25e6efa5bd10",
+      "ROUND_03/T16_UDP_RX1300_20261105_231646.iperf3.json": "3d19a45058d2e2973781f882e7152885457ef70de70b7f8c45b3294ab969e872",
+      "ROUND_03/T17_UDP_TX600_20261105_231654.iperf3.json": "f185944c93ccd283176b416d874daffbde354f08ec1fba11a631297c11971b34",
+      "ROUND_03/T18_UDP_RX1500_20261105_231702.iperf3.json": "c77f81430c58ca53cb3f8fa51fb82a749daaebc272d04e3d6d2fdfb84da4da39",
+      "ROUND_03/T19_UDP_TX600_20261105_231709.iperf3.json": "1d8ec11e043da14e4dfa09c780e36cb5b4bf3a55c78e5ac335b317700e67d28c",
+      "ROUND_03/T20_UDP_RX1700_20261105_231717.iperf3.json": "333ada5127737443e5c7357a1a48ea424584a83558455fea3ac2f70180e1f395"
+    },
+    "mode_evidence_note": "BE200 provider HE/BF properties; AX HE runtime + KGP boot-mode association; R9 BF post-run sysctl confirmed. Screenshot alone is not build/BF-use proof."
+  },
+  {
+    "id": "AX210_R9_BF_UDP1700",
+    "device": "AX210",
+    "mode": "HE+BF opt-in",
+    "archive": "AX210-P10R9_AX210_3X20_TX600_RX1700_mapped_20261105_232902_FkClDD.zip",
+    "original_archive_sha256": "1796bdaab7ed1d95dd1cc8a8fcf2f71b6ae291e8be2e377ffd4dafb24bce06a6",
+    "verified_manifest_files": 373,
+    "uuid": "174E07B7-AF8E-34DF-A260-9F71DCDEF0A4",
+    "executable_sha256": "a62e8eda1fa223d84f473d93e0c155d20c60e0ec0be3a0f1895bab67a9e6e874",
+    "tests_completed": 60,
+    "online": "PASS",
+    "macos": "26.7.2 / 25G332",
+    "dma_mode": "mapped",
+    "applevtd": "enabled as recorded and reported",
+    "protocol": "AIRPORTITLWM_3X20_TX600_RX1700_NO_PROFILER_V2",
+    "rx_stages": [
+      300,
+      500,
+      700,
+      900,
+      1100,
+      1300,
+      1500,
+      1700
+    ],
+    "tx_stages": [
+      300,
+      500,
+      600,
+      600,
+      600,
+      600,
+      600,
+      600
+    ],
+    "tcp": {
+      "TCP_TX_P1": {
+        "receiver_mbps_mean": 696.8502966275777,
+        "receiver_mbps_by_round": [
+          693.8403803378617,
+          698.415309967026,
+          698.2951995778452
+        ],
+        "retransmits_by_round": [
+          0,
+          0,
+          0
+        ]
+      },
+      "TCP_TX_P4": {
+        "receiver_mbps_mean": 688.4383353045517,
+        "receiver_mbps_by_round": [
+          688.2419010764753,
+          687.5069830775553,
+          689.5661217596245
+        ],
+        "retransmits_by_round": [
+          3287,
+          3097,
+          2859
+        ]
+      },
+      "TCP_RX_P1": {
+        "receiver_mbps_mean": 1693.3355737774837,
+        "receiver_mbps_by_round": [
+          1669.2551629780262,
+          1702.2810009417044,
+          1708.4705574127204
+        ],
+        "retransmits_by_round": [
+          1058,
+          0,
+          0
+        ]
+      },
+      "TCP_RX_P4": {
+        "receiver_mbps_mean": 1887.6124305602293,
+        "receiver_mbps_by_round": [
+          1874.4476520763892,
+          1891.6342542335574,
+          1896.7553853707414
+        ],
+        "retransmits_by_round": [
+          2711,
+          812,
+          2
+        ]
+      }
+    },
+    "tcp_full_zero_sum_intervals": 0,
+    "mode_properties": {
+      "ItlwmAxHeSetup": "on"
+    },
+    "bluetooth": {
+      "com.zxystd.IntelBluetoothFirmware": "2.5.1",
+      "com.zxystd.IntelBTPatcher": "2.5.1",
+      "as.acidanthera.BlueToolFixup": "2.7.2"
+    },
+    "raw_files": {
+      "ROUND_01/T01_TCP_TX_P1_20261105_232908.iperf3.json": "a6b7f690851c1bc5d4ac413012ce5424eb6615375f60b16337e0450884498df7",
+      "ROUND_01/T02_TCP_RX_P1_20261105_232919.iperf3.json": "053850d69082a59d95f2641be9d73734f283a19e56267f301ec41687bbf2cb9b",
+      "ROUND_01/T03_TCP_TX_P4_20261105_232929.iperf3.json": "540f1638cfb8c360dd028d52faaae99572fe96612e99c4b302e39c574317b85c",
+      "ROUND_01/T04_TCP_RX_P4_20261105_232940.iperf3.json": "05dcce22ebcadd5ecd1281c7f6094f85b17865bcce5cf2e30c292212b89dab66",
+      "ROUND_01/T05_UDP_TX300_20261105_232951.iperf3.json": "3b53f592a031032fd2ecf56dc684ed6b795514770f6975c6809eb5acec0cd32e",
+      "ROUND_01/T06_UDP_RX300_20261105_232958.iperf3.json": "b9fdd6ebfbb18c1f2ec1c4e8fdfe3d0347b104284469c17ac014efe893980a41",
+      "ROUND_01/T07_UDP_TX500_20261105_233006.iperf3.json": "d88a8b76a08f60584502c403eaece50918123f773f42befc5680b8787d7fe282",
+      "ROUND_01/T08_UDP_RX500_20261105_233013.iperf3.json": "64ee7ec4e09e7f65155a413af4f3c809d4a7529e04bb78b7743b855071a44cf3",
+      "ROUND_01/T09_UDP_TX600_20261105_233021.iperf3.json": "29f8d3c046f67911717e232654673ccca842114ecef325f5062d164ac3bb354f",
+      "ROUND_01/T10_UDP_RX700_20261105_233029.iperf3.json": "6187867c5ccdc5467ec3055b27055803606a0848b06c11a781edffa5f667f77a",
+      "ROUND_01/T11_UDP_TX600_20261105_233036.iperf3.json": "100e59e6ba83af42fe04d64a41330207107590b1b4758700bc9c2bcd42f34b8c",
+      "ROUND_01/T12_UDP_RX900_20261105_233044.iperf3.json": "04890b8bcb3e584249e1c0d3ddc9ae8c50bc3bb8d6a569f14c4c03872073562d",
+      "ROUND_01/T13_UDP_TX600_20261105_233051.iperf3.json": "4a35e2ec9647fc78db40d38ef8b32d35353eaf6105d30cc4ccbaae7b60d8546b",
+      "ROUND_01/T14_UDP_RX1100_20261105_233059.iperf3.json": "9ca3cbe862dd97ed8ca3aab415eb7b65fde58ff0fad2a06b6ee049f1f1d99a13",
+      "ROUND_01/T15_UDP_TX600_20261105_233107.iperf3.json": "924d1b0151f84375c00ff5fed604af27f1b36270e283a33e6ebe3ece5f2bc3f7",
+      "ROUND_01/T16_UDP_RX1300_20261105_233114.iperf3.json": "8fc474bb85c1ef63353e492a168787380b5d32b47cde9a08af9224b2d1eb54a9",
+      "ROUND_01/T17_UDP_TX600_20261105_233122.iperf3.json": "211ce55dea010aafb478aebc8f2906c2747151f433445c1d55c16e279399c809",
+      "ROUND_01/T18_UDP_RX1500_20261105_233129.iperf3.json": "1be26abfa55c7de357210de012f440ce97a6667c0cfdb372dccfcfe3f15a0187",
+      "ROUND_01/T19_UDP_TX600_20261105_233137.iperf3.json": "4e535b4cbcc4cef18d0924338500e1ed581dc7015f70cfb0ff45150cc8249828",
+      "ROUND_01/T20_UDP_RX1700_20261105_233145.iperf3.json": "2c74d7260923ae21f414321a08a696946e6ff9954994cefe2ca469ad7055c626",
+      "ROUND_02/T01_TCP_TX_P1_20261105_233155.iperf3.json": "5339991fa765da74701510ab9085e70fb667ef93dab5434964f902d96989aa7e",
+      "ROUND_02/T02_TCP_RX_P1_20261105_233205.iperf3.json": "e1d3738803caebdd013fce637bdecb300b68a25910f524ce6886d099ecc83675",
+      "ROUND_02/T03_TCP_TX_P4_20261105_233216.iperf3.json": "6b2281c1c1390c7432086157bd5e0381931e21301b02c4e0983eb2f9a265a67d",
+      "ROUND_02/T04_TCP_RX_P4_20261105_233226.iperf3.json": "3bd19fe10f94a056c646fe152ed0409c9c2989e1124c0cda996d54bbd41cc21c",
+      "ROUND_02/T05_UDP_TX300_20261105_233237.iperf3.json": "854e56fb5c00c30eedbe7cadbb085b12bf9876bc8c4b56661e88f1ec992b3ba3",
+      "ROUND_02/T06_UDP_RX300_20261105_233245.iperf3.json": "b86757f65c524647993fd090984b5aeaaf531824d69f2f5885549bf99cf5a628",
+      "ROUND_02/T07_UDP_TX500_20261105_233252.iperf3.json": "a5fb21d6d05cf2b3b9c27617a55fee055145485c07902c94fcfa1bf046904cde",
+      "ROUND_02/T08_UDP_RX500_20261105_233300.iperf3.json": "894f7fc9714ef264b9a100b4cb9d9ea65500549812ec6e21bce0c3de55bb60a8",
+      "ROUND_02/T09_UDP_TX600_20261105_233307.iperf3.json": "4521922a54c50a270a5a22664482412ee7cbcb40123ecfb8280df82bff1d12e1",
+      "ROUND_02/T10_UDP_RX700_20261105_233315.iperf3.json": "b4a246d2f6916fdffd7ff588a22d69f7b132f06aa548a6358fc264a6a559b2b9",
+      "ROUND_02/T11_UDP_TX600_20261105_233323.iperf3.json": "6048f28ac804b59c8dd1b2f81ef23c3a11249e1b459c20762a9d46588fdb2401",
+      "ROUND_02/T12_UDP_RX900_20261105_233330.iperf3.json": "afdf7c9f2f11f650bb2b4e4bb08dd6399c20de7cf74a93e06d3bcf6e0720f42a",
+      "ROUND_02/T13_UDP_TX600_20261105_233338.iperf3.json": "0505e99ab09ef101ad4c5c10930c54499c9f99ee9b3bb0d0e980a0ff5ca5e501",
+      "ROUND_02/T14_UDP_RX1100_20261105_233345.iperf3.json": "7d1ca42502533322c9f6e51dbacc2ea9339ff5529b1e59d7a6e93a5263e40349",
+      "ROUND_02/T15_UDP_TX600_20261105_233353.iperf3.json": "638c4ce941dd48f9ac5cb096c0aa2fe75eca77f23b0ea95ef5490a3f6b8a9cd6",
+      "ROUND_02/T16_UDP_RX1300_20261105_233401.iperf3.json": "18f56c38c82e3d3af3b0cda9c0091a7e134580743fbc0894fb6f634d9d3e8f2e",
+      "ROUND_02/T17_UDP_TX600_20261105_233408.iperf3.json": "fa6a7596ebc9b27ce03319b8138402b91b8b3caedd20255c084d1b5ec260ef57",
+      "ROUND_02/T18_UDP_RX1500_20261105_233416.iperf3.json": "71157cafee8b5c317d593550a49bc7ea55335cebc4647d7513906f8b059a94f9",
+      "ROUND_02/T19_UDP_TX600_20261105_233423.iperf3.json": "b020b9b4bc6cee473b42ee9c4021ec3352d1b11556e1a9d0959df05079b6f781",
+      "ROUND_02/T20_UDP_RX1700_20261105_233431.iperf3.json": "f8370266e57f0a6bcd4edce05a4aebeecd2591d22c5b233fd2a22ad18a8ddcbc",
+      "ROUND_03/T01_TCP_TX_P1_20261105_233441.iperf3.json": "16b14b197232b740d66b0b115772fb612456d0207fe935b3f5ec2ba3b167ff82",
+      "ROUND_03/T02_TCP_RX_P1_20261105_233452.iperf3.json": "dea8cb6722b5769919432cedf9912178b1cb4341dba5a75ebbd317e142816754",
+      "ROUND_03/T03_TCP_TX_P4_20261105_233502.iperf3.json": "81966e13ee4e05b7dfe811dbd05fb5740e1b4c296a77696c51dec958cac66fca",
+      "ROUND_03/T04_TCP_RX_P4_20261105_233513.iperf3.json": "33e38c95999031711c3795b5f3d0908c50ceecfe2e1abfa612f21c6c4c4e6863",
+      "ROUND_03/T05_UDP_TX300_20261105_233523.iperf3.json": "f53d5ce63b8d6a2ebff5766299f80eaf349af1e601607ddafd24abae3ad3d5e3",
+      "ROUND_03/T06_UDP_RX300_20261105_233531.iperf3.json": "f95ac7d5a4ad9e0242dd76fb012ad4692224055e7d53623941269ca5eb2ed31c",
+      "ROUND_03/T07_UDP_TX500_20261105_233539.iperf3.json": "342d3cd6c9d2d42f3a7729a52c7155858fec7be3c4e44a75232c390419bd76af",
+      "ROUND_03/T08_UDP_RX500_20261105_233546.iperf3.json": "48baef6badaea55e4cb3e6481068b2aecb694c253d89fa13eaccb4f6f8513b43",
+      "ROUND_03/T09_UDP_TX600_20261105_233554.iperf3.json": "1189c93f501cc798b6944d283ed9fdb7ea42ce8395ab5bac1100e8d4ffb07ff8",
+      "ROUND_03/T10_UDP_RX700_20261105_233601.iperf3.json": "4dc75548e3b2d4b26dab8789c04019a2ef997ce07c481745ecb0973edc5dc285",
+      "ROUND_03/T11_UDP_TX600_20261105_233609.iperf3.json": "dcf1280b267890404b34bdf135dc03212b6ad750f1b8c6ddaa730059c7bc9bcd",
+      "ROUND_03/T12_UDP_RX900_20261105_233617.iperf3.json": "e069be37bd4caeb2d5496395012eb1e14f94afff68c1d7a3e0020951cbfba8fa",
+      "ROUND_03/T13_UDP_TX600_20261105_233624.iperf3.json": "0fdc4cf3340a0467fe6747f5e977ef582965b97441f2134afa7a5e8ff266d808",
+      "ROUND_03/T14_UDP_RX1100_20261105_233632.iperf3.json": "ad54892fab3d6e55982cfd846d7fa2cba848cbc1bd693fe4fd9392b0dbebfbcf",
+      "ROUND_03/T15_UDP_TX600_20261105_233639.iperf3.json": "2d7b1b5852b3a63dd59cb21b01954f2d63d95fc7d350830f423d7d47fab7ef2c",
+      "ROUND_03/T16_UDP_RX1300_20261105_233647.iperf3.json": "160e417267e20eccb8d7c694c0ef2bc85b43d36254117f19eb2b266d66117e83",
+      "ROUND_03/T17_UDP_TX600_20261105_233655.iperf3.json": "67715ecbe4178eb390e10aeb9e5a96e6a4b4dac5ab86eb9550fe87f7eacffb07",
+      "ROUND_03/T18_UDP_RX1500_20261105_233702.iperf3.json": "7191241dbf941d160a492c80a8938c3f17917adcb9db09541ee76c07899357bc",
+      "ROUND_03/T19_UDP_TX600_20261105_233710.iperf3.json": "dcc1f432a4b80eb1d61cbc38fdfef9eb0d070d5d8ab1b83bc79deaabee970119",
+      "ROUND_03/T20_UDP_RX1700_20261105_233717.iperf3.json": "b3c1d3b3b152aa3635513d01e4e73577cc29b0b3a7889106a4b1a0a67c44c137"
+    },
+    "mode_evidence_note": "BE200 provider HE/BF properties; AX HE runtime + KGP boot-mode association; R9 BF post-run sysctl confirmed. Screenshot alone is not build/BF-use proof."
+  }
+]

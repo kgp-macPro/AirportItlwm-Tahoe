@@ -1,41 +1,47 @@
-# Technical lineage and source provenance
+# 2.0.0 technical lineage and scope
 
-## Pinned foundation
+## Integration and attribution
 
-| Input | Commit | Tree |
-|---|---|---|
-| DexterSLamb/itlwm | `51543d6cfecf8aae3f66792b0699f5a1bb16a368` | `51f28a2669aaba21bc51cac645975dc7314555b8` |
-| acidanthera/MacKernelSDK | `05094e5e88cec7caedbfb35e8449ed0db94bf95b` | `fbcf7dd1826765b762b40f88b77fc37e1fb93e33` |
+The published 1.0.0 mapper-aware foundation, subsequent BE200 Alpha 2/P8R1 development and the final AX210 R9 implementation are integrated in one source tree. The original [gsfront PR #5](https://github.com/kgp-macPro/AirportItlwm-Tahoe/pull/5) was regularly merged into its original **be200-alpha** target as [999d71fafb4788702b527572932dcc9768fb122e](https://github.com/kgp-macPro/AirportItlwm-Tahoe/commit/999d71fafb4788702b527572932dcc9768fb122e). Both original commits, afc3752384355d6fae594fac0e8f9799f32f15bd and 94a9a7fab992646b7a4fb43811f3aef97cd7b530, and authorship are in main's ancestry. Overlapping files were resolved to the reviewed final implementation, not replayed twice.
 
-The public tree is a clean export of the pinned Dexter source with the exact frozen 1.0.0 source patch and qualification-documentation overlay applied, followed only by publication documentation/CI/tooling changes. No canonical Git history was copied into the new repository and no runtime source was manually reconstructed.
+The public integration transfers the exact protected final R9 source inputs; it does not import private handovers, chat logs or unrelated experimental branches. The release build source is `4b948ae16a7cbe82699dc7078cf4c917456eff89`. The production manifest records every protected input and its R9 hash, including the version-only project difference. [Build identity](BUILD.md) distinguishes this rebuild from the hardware-tested candidates.
 
-The preserved upstream baseline has **no `.gitmodules` and no MacKernelSDK gitlink**. It uses an ignored standalone `MacKernelSDK` directory. This relationship is preserved: dependency metadata and the setup tool acquire the exact pinned SDK; the SDK remains separately licensed and is not vendored as new driver source. Normal builds use the already materialized tree; no internal patches are required.
+AX HE uses the public [laobamac/itlwm v2.4.0-alpha reference](https://github.com/laobamac/itlwm/tree/7204c69d1bfa7f5cc0f7864e08fb03e55d0ec29e), commit **7204c69d1bfa7f5cc0f7864e08fb03e55d0ec29e**. GPL-2.0 attribution is retained. AX HE capability intersection, firmware-v68 command layouts, HE context, TLC and station sequencing were adapted to our Ventura Legacy frontend, rather than importing native Tahoe framework or DMA assumptions. BE200 instead uses BZ/GL92 station/link command formats. A successful BE200 command is not an AX wire-ABI reference. REA with local Ghidra was used to inspect built paths and legacy handoff behavior; static analysis was correlated with archived diagnostics and hardware measurements, not presented as runtime proof.
 
-## Functional lineage
+Historical mapper/TX/command ownership and PC1 recovery, NKN/maddog860 VIF setup, Mieze/IntelLucy foundations and existing licensing remain in [credits](../CREDITS.md) and [historical documentation](HISTORY.md).
 
-- **2H:** prepared mapper-aware RX backing.
-- **2I / 2J:** prepared ordinary-TX backing, retained through matching completion, and corrected idle-stop admission handling.
-- **2K:** prepared large-command backing; inline commands preserve their established path.
-- **2M:** coalesced same-workloop recovery from transient command-gate contention; management frames no longer remain stranded solely on a failed nonblocking gate acquisition.
-- **2P:** NorthKoreanNoodles / maddog860 direct VIF sequence: existing creation/init, checked `attach(this)`, `fAWDLInterface` assignment, then one `registerService()` publication.
-- **PC1 / 2Q:** checked power-cycle recovery with completion fencing and new-generation admission, retaining uncertain old mapped backing rather than reusing it.
+## Framework and DMA
 
-PC1 functionally changes only ItlIwx.cpp and ItlIwx.hpp relative to frozen 2P. NKN VIF and accepted mapper/drain mechanisms remain intact. Rejected 2N/2O lifecycle frameworks, later historical AirDrop experiments and diagnostic-only DIAG1 policy are not implementation inputs.
+The Tahoe target retains `USE_APPLE_SUPPLICANT`, `AIRPORT`, `__PRIVATE_SPI__`, `__IO80211_TARGET=__MAC_13_0`, `itlwm/PrivateSPI.pch` and IO80211FamilyLegacy. It requires OCLP-CustoMac 3.0.0+ with matching Ventura Legacy root patches. This is not laobamac's native Tahoe frontend or a new Skywalk mixture.
 
-NKN public reference commits: `bc71f590dee974ce9356a08c6572e00e08970d52` and `1cb855c6276ecd77f2ee1966b310006d89127b6f`, acquired tree `6bb8df3af09a6ed06f71d53d00e6eef299bc602f`. Historical narrow KGP VIF work was reviewed as independent prior art, not imported wholesale. Authorship is described in [CREDITS.md](../CREDITS.md) without priority claims.
+BE200/AX210 campaigns captured AppleVTD enabled and actual mapper-backed DMA. AX201/CNVW deliberately uses conventional DMA even with AppleVTD active. AX211's historical Alpha 2 mapped VHT capture does not establish new HE/BF qualification; follow the actual selected profile and runtime evidence. Firmware-63-dependent AX201/AX211 profiles remain a concrete availability limitation. Firmware-68 code paths and offline TLV checks are not universal firmware or hardware acceptance.
 
-## Product target and version
+## Rate and MCS: exact device/mode dispatch
 
-AirportItlwm-Tahoe clones the Ventura legacy target family: `USE_APPLE_SUPPLICANT`, `AIRPORT`, `__PRIVATE_SPI__`, `__IO80211_TARGET=__MAC_13_0`, `itlwm/PrivateSPI.pch`, and `IO80211FamilyLegacy`. No `__MAC_26_0` or Sonoma Skywalk hybrid is introduced. Target-local MODULE_VERSION is 1.0.0; bundle identifier, matching personality, executable and legacy dependency versions are preserved. Product output is `Release/Tahoe/AirportItlwm.kext`.
+The new implementation is in [`ItlIwx::getHeTxReport`](../itlwm/hal_iwx/ItlIwx.cpp), called through [`ItlDriverInfo`](../include/HAL/ItlDriverInfo.hpp) by Legacy [`getRATE`, `getMCS` and `getMCS_VHT`](../AirportItlwm/AirportSTAIOCTL.cpp). It covers **non-BZ ItlIwx devices with an HE BSS**, including the AX201/CNVW, AX210/Ty and AX211/So dispatch paths when their NVM/firmware/association prerequisites succeed. It is not a PCI-2725-only switch. AX201/AX211 remain hardware-unvalidated for this HE/BF implementation.
 
-High Sierra, Mojave, Catalina, Big Sur, Monterey, Ventura, Sonoma 14.0 and Sonoma 14.4 remain in the project. Their source families are preserved, not newly physically qualified. The inherited inert source-build-file entry without a fileRef is retained; target membership and fw_gen dependency remain equivalent to Ventura. The inherited deployment floor does not claim older-OS support for this Tahoe distribution.
+`axTxRateNote` records AX TLC and eligible compressed BA TX feedback only in the current HE RUN lifetime. `getHeTxReport` selects the newest coherent timestamped tuple matching generation, reset epoch and connection-rate epoch. Rate, MCS, NSS, bandwidth and GI are decoded together; unsupported HE formats remain unknown rather than reusing an older plausible SU rate. The latest supported tuple remains available at idle with its age/freshness diagnostic (freshness threshold five seconds). It is a **last firmware report**, not instantaneous PHY measurement of every packet. Legacy's short/long-GI ABI cannot express the complete HE GI code; diagnostics retain it. No fixed MCS11 or 2401-Mbit/s value is supplied.
 
-## Frozen build versus publication tooling
+**HE and HE with BF opt-in use the same reporting chain. VHT does not enter this new HE report branch:** it keeps its existing TLC/node and VHT-rate-table reporting. BE200's `bzDevice()` guard returns to its established reporting path and different firmware rate representation. Shared Legacy getters query the virtual report; the base/default and BZ result are false, preserving their original fallback. Source review therefore covers shared call sites, not just an unchanged GL92 file.
 
-The authoritative full source patch SHA-256 is `3c4b13ea572896ec6797dba1b90c58cd194f1b5a1cc729d468d8b76488ce6098`; the documentation overlay SHA-256 is `74dab5f7ce579e3dc94431ed7bcedc47a16d8628c4a655ac5bf15281021cc1a0`. These are archival provenance identifiers, not downloads required to build this tree. Raw patches and captures remain in separate project evidence.
+## RX service: exact device/mode scope
 
-Publication replaces the inherited auto-release workflow with contents-read validation CI, adds pinned dependency setup and source/target checks, and carries the existing host models with portable fixture paths. It does not rebuild or alter the qualified kext. The manifest in `tools/frozen_source_sha256.json` protects all inherited/materialized non-documentation source inputs, including firmware, headers, project and licenses.
+[`ItlIwx::iwx_notif_intr`](../itlwm/hal_iwx/ItlIwx.cpp) dispatches BZ to `bzNotif` first. The R9 service budget runs only in the **leased/mapped non-BZ RX branch**, when `axHeDiagActive` is true: current BSS exists, state RUN, HE node flag set. This includes HE with or without BF; the BF switch is not a service-budget condition. It can apply to eligible mapped AX201/AX210/AX211-family paths, but CNVW's conventional branch does not execute it. **AX VHT and conventional RX are outside this budget. It is not a general VHT performance fix.**
 
-The retained single release build used Xcode 26.5 / 17F42, Apple clang 21.0.0 (clang-2100.1.1.101), MacOSX26.5 SDK, and generated FwBinary.cpp SHA-256 `ea888268197043f2b987db320c953ac8dbf2bdbd04f19bb34be986d0849d82cc`. Generated source is not stored in this tree. See [BUILD.md](BUILD.md) for direct build commands and the CI/release distinction.
+At a completion boundary, after replacement backing passes `rxZcRepost`, ready RFH credits are published with the existing AX cur-minus-one/aligned-to-eight rule. Delivery occurs after **32 completion entries or at least 64 ready packets**. A completion can release several packets, and reordering can atomically release a larger group; the limit is a trigger, not a packet truncation or a 32-packet limit. Large atomic releases remain intact. After upper-stack callbacks, generation/reset/lifetime, HE state and cursor are rechecked before consuming the old snapshot or publishing credits. No old-generation write is issued after a reset/reentrant cursor change. The final handoff also follows safe credit publication.
 
-The exact frozen binary passed both 26.6.2 release gates and additional scoped 26.7 tests without rebuilding. [QUALIFICATION.md](QUALIFICATION.md) preserves the evidence grades; source equivalence and host models alone do not establish physical qualification of a new build.
+The measured R8 small-control-packet handoff call returned promptly, yet TCP ACK was delayed seconds. R9 earlier delivery/service intervals correlate with a 0.167-ms result-request ACK, complete result exchange and three complete AX210 campaigns. This supports the targeted service correction; it does not uniquely localize every prior downstream delay or all remaining high-rate packet loss.
+
+## 256-entry BA/reordering is separate
+
+The 256-entry HE RX capacity predates R9 (gsfront's integration). `IEEE80211_BA_MAX_RX_WINSZ` and `iwx_reorder_buf.entries` allow 256 entries; HE ADDBA admission, allocation, negotiated `buf_size`, modulo indexing and free/reset loops agree. `iwx_sta_rx_agg` sends the negotiated window in the 16-bit firmware field and records the returned BAID without a 64-entry HE clamp. A valid smaller AP request remains smaller. Remaining legacy/TX 64-window rules are separate policies.
+
+These are distinct quantities: **256 BA/reordering entries, 512 RX completion-ring slots, 32-completion service trigger, 64-ready-packet delivery trigger**. They are not bytes. R9 does not increase BA capacity or change the reorder algorithm.
+
+## BE200 boundary and BF meaning
+
+BE200 already services its completion path in bounded groups of 32; its GL92 protocols, credit ledger, aggregation, firmware-rate handling and BZ dispatch remain intact. P10-to-R9 review included shared getters/guards, 19 relevant firmware/BA/state/reorder functions and 113 BZ/net80211/interface files, rather than merely comparing the GL92 file. There is no evidenced need to copy the AX correction into BE200. Any future BE200 investigation is a separate evidence-driven task.
+
+For AX, `-itlwmbf` with `-itlwmhe` enables **HE SU-Beamformee capability advertisement** under the HE/NVM/firmware conditions; it does not promise beamformer, MU-BF or actual sounding use. The tested AX210 BF campaign has both boot arguments confirmed by KGP and HE runtime evidence. Association capabilities plus matching AP sounding/feedback telemetry or a suitable monitor capture would be a minimal additional on-air-use proof. No extra capture or campaign was required for this release.
+
+[All per-round results and residual losses](results/2.0.0.md) distinguish HE from BF opt-in and original P10/R9 identities. No AWDL/BLE experimental changes or Wi-Fi 7 implementation are included.

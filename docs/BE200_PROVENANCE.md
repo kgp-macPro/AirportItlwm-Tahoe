@@ -1,3 +1,5 @@
+> Historical BE200 port provenance. Current2.0.0 lineage is in [TECHNICAL_LINEAGE.md](TECHNICAL_LINEAGE.md).
+
 # Private GL/BE200 source port — P1–P5 private implementation history
 
 Baseline: exact frozen ZC28 `483940988c502379fb6d3dcde885dca83f00b7aa`.

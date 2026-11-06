@@ -1,54 +1,32 @@
 #!/usr/bin/env python3
-"""Deterministic tool-only ZIP. Never reads, builds or packages a kext."""
+"""Build the complete flat-layout r13 tool ZIP; no network or driver operation."""
 from pathlib import Path
-import argparse, hashlib, json, tempfile, shutil, zipfile
-
+import argparse,hashlib,json,tempfile,shutil,zipfile
 B=Path(__file__).resolve().parent
-REV='shared-2026-11-04-r12-local-udp900'
-NAME='AirportItlwm-Shared-Benchmark-r12'
-RUNNER='AirportItlwm_3x20_PORTABLE_IP_PROMPT.sh'
-HISTORICAL_RUNNER='AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh'
-GUIDE=B.parents[1]/'docs/benchmark/README.md'
-
+NAME='AirportItlwm-Tahoe-Benchmark-Tools-r13'
+REV='r13-release-2.0.0'
 def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
-
 def build(out):
-    out=Path(out);out.mkdir(parents=True,exist_ok=True)
-    profiles=json.loads((B/'runner_profiles/profiles.json').read_text())
-    identity={'revision':REV,'protocol':'AIRPORTITLWM_3X20_NO_PROFILER_V1','runner_sha256':sha(B/RUNNER),
-              'historical_3x14_runner_sha256':sha(B/HISTORICAL_RUNNER),
-              'resource_sha256':{p.name:sha(p)for p in sorted((B/'runner_profiles').glob('*'))if p.is_file()},
-              'server_sha256':sha(B/'AirportItlwm_IPERF3_WIRED_SERVER.sh'),
-              'frozen_references':{str(p.relative_to(B)):sha(p)for p in sorted((B/'reference').rglob('*'))if p.is_file()and '__pycache__'not in p.parts},
-              'public_alpha2_profile':profiles['BE200-ALPHA2'],
-              'scope':'Tool-only; separate 3x20 UDP extension and frozen 3x14 runner; no driver/binary/EFI/root-patch operations.'}
-    (B/'RUNNER_IDENTITY.json').write_text(json.dumps(identity,indent=2)+'\n')
-    with tempfile.TemporaryDirectory(prefix='airport-tool-package-')as tmp:
-        root=Path(tmp)/NAME;tools=root/'TOOLS';tools.mkdir(parents=True)
-        skip={'releases','__pycache__','.DS_Store'}
-        root_only={'install_tools.py','SETUP_AirportItlwm_Benchmark.command','build_package.py'}
-        for p in sorted(B.rglob('*')):
-            rel=p.relative_to(B)
-            if not p.is_file()or any(x in skip for x in rel.parts)or rel.name.endswith('.pyc')or (len(rel.parts)==1 and (p.name in root_only or p.name=='README.md')):continue
-            dest=tools/rel;dest.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(p,dest)
-        (tools/'README.md').write_bytes(GUIDE.read_bytes())
-        for name in ['install_tools.py','SETUP_AirportItlwm_Benchmark.command']:shutil.copy2(B/name,root/name)
-        (root/'SETUP_AirportItlwm_Benchmark.command').chmod(0o755)
-        (root/'README_START_HERE.txt').write_text('AIRPORTITLWM SHARED BENCHMARK r12 — TOOLS ONLY\n\nExtract this entire folder in Downloads. Paste:\n\n/bin/bash "$HOME/Downloads/'+NAME+'/SETUP_AirportItlwm_Benchmark.command"\n\nIt installs Desktop tools and opens TOOLS/README.md. Differing old files are backed up; TESTS is preserved. No kext, EFI, root patch or network setting is changed. No test starts automatically.\n\nThe 3x20 protocol extends UDP loads to 700/800/900 Mbps; the unchanged r11 3x14 runner remains available for historical comparisons. Read TOOLS/README.md for prerequisites, candidate commands, wired-server binding and return instructions. Python 3.9+, existing iperf3 and Command Line Tools are required.\n')
-        files=sorted(p for p in root.rglob('*')if p.is_file())
-        (root/'SHA256SUMS.txt').write_text(''.join(f'{sha(p)}  {p.relative_to(root)}\n'for p in files))
-        archive=out/(NAME+'.zip')
-        with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED,compresslevel=9)as z:
-            for p in sorted(root.rglob('*')):
-                if not p.is_file():continue
-                info=zipfile.ZipInfo(str(p.relative_to(root.parent)),date_time=(1980,1,1,0,0,0));info.create_system=3
-                mode=0o755 if p.suffix=='.command'else 0o644
-                info.external_attr=(0o100000|mode)<<16;info.compress_type=zipfile.ZIP_DEFLATED
-                z.writestr(info,p.read_bytes())
-        checksum=sha(archive);archive.with_suffix('.zip.sha256').write_text(checksum+'  '+archive.name+'\n')
-        with zipfile.ZipFile(archive)as z:assert z.testzip()is None
-        result={'revision':REV,'filename':archive.name,'bytes':archive.stat().st_size,'sha256':checksum,'runner_sha256':identity['runner_sha256'],'historical_3x14_runner_sha256':identity['historical_3x14_runner_sha256']}
-        print(json.dumps(result,indent=2));return result
-
+ out.mkdir(parents=True,exist_ok=True)
+ runners=sorted(B.glob('AirportItlwm_3x20*PORTABLE_IP_PROMPT.sh'));assert len(runners)==5
+ identity=dict(revision=REV,runners={p.name:sha(p)for p in runners},resources={str(p.relative_to(B)):sha(p)for p in (B/'runner_profiles').glob('*')if p.is_file()},historical_3x14_sha256=sha(B/'AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh'),binary_identity=json.loads((B/'BUILD_IDENTITY.json').read_text()),scope='Offline packaging only. Strict original and release identity profiles retained; AX diagnosis optional on BE200.')
+ (B/'RUNNER_IDENTITY.json').write_text(json.dumps(identity,indent=2)+'\n')
+ names=[p.name for p in runners]+['AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh','AirportItlwm_IPERF3_WIRED_SERVER.sh','AX_HE_DIAG_CAPTURE.py','VERIFY_TOOLS.py','BUILD_IDENTITY.json','RUNNER_IDENTITY.json','README.md','START_COMMANDS.txt','LICENSE','build_package.py','runner_profiles','evidence/PACKAGE_VALIDATION.json']
+ with tempfile.TemporaryDirectory(prefix='tahoe-r13-')as tmp:
+  root=Path(tmp)/NAME;root.mkdir()
+  for name in names:
+   src=B/name;dst=root/name;dst.parent.mkdir(parents=True,exist_ok=True)
+   if src.is_dir():shutil.copytree(src,dst,ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
+   else:shutil.copy2(src,dst)
+  files=sorted(p for p in root.rglob('*')if p.is_file());manifest={str(p.relative_to(root)):dict(sha256=sha(p),bytes=p.stat().st_size)for p in files}
+  (root/'BUNDLE_MANIFEST.json').write_text(json.dumps(dict(revision=REV,files=manifest),indent=2)+'\n')
+  (root/'SHA256SUMS.txt').write_text(''.join(sha(p)+'  '+str(p.relative_to(root))+'\n'for p in sorted(root.rglob('*'))if p.is_file()))
+  archive=out/(NAME+'.zip')
+  with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED,compresslevel=9)as z:
+   for p in sorted(root.rglob('*')):
+    if not p.is_file():continue
+    info=zipfile.ZipInfo(str(p.relative_to(root.parent)),(1980,1,1,0,0,0));info.create_system=3;info.external_attr=(0o100755 if p.suffix in ['.sh','.py']else 0o100644)<<16;info.compress_type=zipfile.ZIP_DEFLATED;z.writestr(info,p.read_bytes())
+  with zipfile.ZipFile(archive)as z:assert z.testzip()is None
+  result=dict(name=archive.name,sha256=sha(archive),bytes=archive.stat().st_size,revision=REV);print(json.dumps(result,indent=2));return result
 if __name__=='__main__':
-    ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('--output-dir',type=Path,default=B/'releases');build(ap.parse_args().output_dir)
+ ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('--output-dir',type=Path,default=B/'releases');build(ap.parse_args().output_dir)

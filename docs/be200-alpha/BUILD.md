@@ -1,3 +1,5 @@
+> Historical BE200 Alpha/P8R1 provenance. For current2.0.0 use [README](../../README.md), [installation](../../INSTALL.md) and the current technical lineage. Old pending/version statements below refer to their original date.
+
 # Building AirportItlwm-Tahoe 1.2.0 BE200 Alpha 1
 
 The tested executable was built from `e1c50b1bbc2c80f78f4fd93d48e548c0eb58a338`, after driver correction `80ad358b00f9473c33cf6ee08ffb8e94034c725d`. This public branch adds documentation, pinned offline test references, portable test-tool discovery and Alpha-specific CI. It does not alter the tested production source. The exact tested executable is supplied in the release; rebuilding creates a new, untested binary.

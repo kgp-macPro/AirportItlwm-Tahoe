@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Execute real qualified AX RX service versus frozen ZC28, mocked KPIs only.
-Check normal hardware credit values and callback/lifetime ordering. BZ is tested
+Check non-HE hardware credit values and callback/lifetime ordering. AX HE's
+bounded service is covered by P10R9_AX_RX_BUDGET_TEST. BZ is tested
 separately with its tagged ledger; no unqualified-AX/physical stability claims.
 """
 from pathlib import Path
@@ -50,6 +51,8 @@ struct ItlIwx{
  void iwx_rx_pkt(iwx_softc*,iwx_rx_data*d,mbuf_list*m){++parseCount;tags.push_back(d->tag);++m->count;if(onPacket){auto f=onPacket;onPacket={};f();}}
  bool rxZcRepost(unsigned){++repostCount;return fRxZcRunning&&!fault&&!fPc1Fault&&fRxZcGeneration==com.sc_generation&&fRxZcEpoch==fPc1ResetEpoch;}
  void bzNotif(iwx_softc*){++bz;}
+ bool axHeDiagActive(iwx_softc*){return false;}
+ void axInputHandoff(iwx_softc*s,mbuf_list*m,unsigned){if_input(&s->sc_ic.ic_if,m);}
  void dexterOriginal_iwx_notif_intr(iwx_softc*s){++legacy;native_notif(s);}
  void iwx_notif_intr(iwx_softc*);void old_notif(iwx_softc*);void native_notif(iwx_softc*);void old_native_notif(iwx_softc*);
 };
