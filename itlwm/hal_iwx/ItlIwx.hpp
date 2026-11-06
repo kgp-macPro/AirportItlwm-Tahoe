@@ -765,6 +765,12 @@ public:
     kgp_bz::CommandLedger fBzCommands;
     kgp_bz::RxLedger fBzRx;
     uint64_t fBzStats[32] = {}, fBzWire[48] = {};
+    uint32_t fFrameReleaseCount = 0; // firmware FRAME_RELEASE notifications handled
+    /*
+     * Received MPDU rate histogram: [0,24) HE nss*12+mcs, [24,44) VHT nss*10+mcs,
+     * 44 HT, 45 legacy, [46,51) bandwidth 20/40/80/160/320, 51 total.
+     */
+    uint32_t fRxRateHist[52] = {};
     int bzValidateFirmware();
     int bzWaitFailure(struct iwx_softc *, int, uint32_t);
     void bzPnvmComplete(struct iwx_softc *, const void *, size_t);

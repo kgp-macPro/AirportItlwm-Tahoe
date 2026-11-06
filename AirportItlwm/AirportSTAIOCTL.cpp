@@ -506,6 +506,32 @@ getRATE(OSObject *object, struct apple80211_rate_data *rd)
             index += 2 * (nss - 1);
             const struct ieee80211_vht_rateset *rs = &ieee80211_std_ratesets_11ac[index];
             rd->rate[0] = rs->rates[ic->ic_bss->ni_txmcs % rs->nrates] / 2;
+        } else if (ic->ic_curmode == IEEE80211_MODE_11AX) {
+            /*
+             * HE data rate = data subcarriers * coded bits * NSS / 13.6us
+             * (12.8us symbol + 0.8us GI). Coded bits per subcarrier are
+             * scaled by 6 to stay integral for MCS 0-11.
+             */
+            static const uint16_t he_bits_x6[] = { 3, 6, 9, 12, 18, 24, 27, 30, 36, 40, 45, 50 };
+            unsigned nsd;
+            unsigned mcs = MIN(ic->ic_bss->ni_txmcs, (int)nitems(he_bits_x6) - 1);
+            nss = fHalService->getDriverInfo()->getTxNSS();
+            switch (ic->ic_bss->ni_chw) {
+                case IEEE80211_CHAN_WIDTH_40:
+                    nsd = 468;
+                    break;
+                case IEEE80211_CHAN_WIDTH_80:
+                    nsd = 980;
+                    break;
+                case IEEE80211_CHAN_WIDTH_80P80:
+                case IEEE80211_CHAN_WIDTH_160:
+                    nsd = 1960;
+                    break;
+                default:
+                    nsd = 234;
+                    break;
+            }
+            rd->rate[0] = nsd * he_bits_x6[mcs] * nss * 10 / 816;
         } else if (ic->ic_curmode == IEEE80211_MODE_11N) {
             int is_40mhz = ic->ic_bss->ni_chw == IEEE80211_CHAN_WIDTH_40;
             if (sgi)

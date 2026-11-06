@@ -7080,7 +7080,8 @@ iwx_is_valid_mac_addr(const uint8_t *addr)
 int ItlIwx::
 iwx_nvm_get(struct iwx_softc *sc)
 {
-    if (bzDevice()) {int e=iwx_bz_port_nvm_get(sc);if(!e) sc->sc_nvm.sku_cap_11ax_enable=false;return e;}
+    // BZ HE stays off unless the experimental -itlwmhe opt-in is present.
+    if (bzDevice()) {int e=iwx_bz_port_nvm_get(sc);if(!e && !(sc->sc_ic.ic_userflags & IEEE80211_F_HEON)) sc->sc_nvm.sku_cap_11ax_enable=false;return e;}
 
     struct iwx_nvm_get_info cmd = {};
     struct iwx_nvm_data *nvm = &sc->sc_nvm;
@@ -14323,6 +14324,37 @@ iwx_rx_pkt(struct iwx_softc *sc, struct iwx_rx_data *data, struct mbuf_list *ml)
                 
                 iwx_release_frames(sc, sc->sc_ic.ic_bss, baid_data, &baid_data->reorder_buf, nssn, ml);
                 
+                break;
+            }
+                
+            /*
+             * Firmware tells the host the reorder window may advance to nssn
+             * (frames it will not get back), as Linux iwl_mvm_rx_frame_release().
+             * Without it, frames behind a hole wait for the reorder timeout.
+             */
+            case IWX_WIDE_ID(IWX_LEGACY_GROUP, IWX_FRAME_RELEASE): {
+                struct iwx_frame_release *release;
+                SYNC_RESP_STRUCT(release, pkt, struct iwx_frame_release *);
+                struct iwx_rxba_data *baid_data;
+                unsigned int baid, nssn;
+                
+                if (iwx_rx_packet_payload_len(pkt) < sizeof(*release))
+                    break;
+                
+                baid = release->baid;
+                nssn = le16toh(release->nssn) & 0xfff;
+                if (baid == IWX_RX_REORDER_DATA_INVALID_BAID || baid >= IWX_MAX_BAID)
+                    break;
+                
+                baid_data = &sc->sc_rxba_data[baid];
+                if (baid_data->baid != baid || !baid_data->reorder_buf.valid ||
+                    baid_data->reorder_buf.buf_size == 0)
+                    break;
+                
+                iwx_release_frames(sc, sc->sc_ic.ic_bss, baid_data, &baid_data->reorder_buf, nssn, ml);
+                /* Publish on powers of two only: no per-packet registry access. */
+                if (++fFrameReleaseCount && !(fFrameReleaseCount & (fFrameReleaseCount - 1)))
+                    sc->sc_pcitag->setProperty("ItlwmFrameRelease", fFrameReleaseCount, 32);
                 break;
             }
                 
