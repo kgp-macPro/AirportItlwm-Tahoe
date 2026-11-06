@@ -269,6 +269,13 @@ Follow their own dependencies and instructions. Hackintool's
 “Apple / THIRD_PARTY_DONGLE / 0x004C” does not identify the physical Bluetooth
 chip. The separate Bananz0 BLE/AWDL analysis is not integrated into2.0.0.
 
+## AI-assisted development and human direction
+
+- **OpenAI ChatGPT** — Collaborative analysis, technical discussion, critical review, documentation, handover preparation and release planning under KGP’s continuous direction.
+- **OpenAI Codex CLI** — AI-assisted implementation, debugging, builds, automated checks, REA/Ghidra-assisted binary investigation and repository integration under KGP’s continuous supervision, review and hardware validation.
+
+KGP directs, reviews and validates this work. The [full approved KGP credit and all developer, tester and tool acknowledgements](CREDITS.md) are retained. These acknowledgements do not imply endorsement or support by OpenAI. [Verified GitHub co-author attribution](docs/AI_ATTRIBUTION.md) is limited to tools that actually contributed; it does not replace human responsibility or hardware validation.
+
 ## Limits and historical records
 
 AX201/AX211 HE/BF hardware validation, some firmware 63 profiles, longer-load/

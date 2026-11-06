@@ -11,8 +11,8 @@
 
 KGP also coordinates community testing, reviews conflicting findings, challenges assumptions and redirects investigations, maintains technical documentation and evidence-backed handovers, and manages release preparation and publication. Development combines AI-assisted implementation and binary analysis with sustained human judgment, hands-on hardware testing and repeated validation on real systems.
 
-- **ChatGPT by OpenAI** — Reasoning, evidence analysis, architecture, experiment planning, runtime interpretation, safety review and documentation.
-- **OpenAI Codex CLI** — Repository/source analysis, implementation, tests, reproducible builds, auditing, evidence and release preparation.
+- **OpenAI ChatGPT** — Collaborative analysis, technical discussion, critical review, documentation, handover preparation and release planning under KGP’s continuous direction.
+- **OpenAI Codex CLI** — AI-assisted implementation, debugging, builds, automated checks, REA/Ghidra-assisted binary investigation and repository integration under KGP’s continuous supervision, review and hardware validation.
 
 ## Technical references and acknowledgements
 
@@ -27,6 +27,8 @@ KGP also coordinates community testing, reviews conflicting findings, challenges
 These acknowledgements concern historical reports, not testing or qualification of ZC28. Klaus confirmed the listed TM/GitHub profiles for both testers and Fulvio’s IM profile. No InsanelyMac account has been confirmed for Luiz.
 
 ## AI assistance
+
+New commits use only verified co-author identities for tools that actually contributed. See the [repository-scoped attribution policy and official evidence](docs/AI_ATTRIBUTION.md). The original gsfront commits and their Claude co-author trailers are preserved.
 
 AI-assisted work was performed under continuous human direction, review, physical testing and editorial control. KGP controls project and release decisions. This assistance and these acknowledgements do not imply endorsement by OpenAI or any referenced project or developer.
 
