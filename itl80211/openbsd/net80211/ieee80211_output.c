@@ -340,6 +340,12 @@ const struct ieee80211_edca_ac_params
         [EDCA_AC_VI] = { 3,  4, 2,  94 },
         [EDCA_AC_VO] = { 2,  3, 2,  47 }
     },
+    [IEEE80211_MODE_11AX] = {
+        [EDCA_AC_BK] = { 4, 10, 7,   0 },
+        [EDCA_AC_BE] = { 4, 10, 3,   0 },
+        [EDCA_AC_VI] = { 3,  4, 2,  94 },
+        [EDCA_AC_VO] = { 2,  3, 2,  47 }
+    },
 };
 
 #ifndef IEEE80211_STA_ONLY
@@ -370,6 +376,12 @@ const struct ieee80211_edca_ac_params
 		[EDCA_AC_VO] = { 2,  3, 1,  47 }
 	},
     [IEEE80211_MODE_11AC] = {
+        [EDCA_AC_BK] = { 4, 10, 7,   0 },
+        [EDCA_AC_BE] = { 4,  6, 3,   0 },
+        [EDCA_AC_VI] = { 3,  4, 1,  94 },
+        [EDCA_AC_VO] = { 2,  3, 1,  47 }
+    },
+    [IEEE80211_MODE_11AX] = {
         [EDCA_AC_BK] = { 4, 10, 7,   0 },
         [EDCA_AC_BE] = { 4,  6, 3,   0 },
         [EDCA_AC_VI] = { 3,  4, 1,  94 },
@@ -1293,8 +1305,11 @@ ieee80211_add_hecaps(uint8_t *frm, struct ieee80211com *ic)
     
     /* Check if PPE Threshold should be present */
     if ((ic->ic_he_cap_elem.phy_cap_info[6] &
-         IEEE80211_HE_PHY_CAP6_PPE_THRESHOLD_PRESENT) == 0)
+         IEEE80211_HE_PHY_CAP6_PPE_THRESHOLD_PRESENT) == 0) {
+        /* The element length must be set on this path too. */
+        orig_pos[1] = (frm - orig_pos) - 2;
         return frm;
+    }
     
     /*
      * Calculate how many PPET16/PPET8 pairs are to come. Algorithm:
@@ -1641,7 +1656,8 @@ ieee80211_get_assoc_req(struct ieee80211com *ic, struct ieee80211_node *ni,
     if (ic->ic_flags & IEEE80211_F_VHTON)
         frm = ieee80211_add_vhtcaps(frm, ic);
     
-    if (ic->ic_flags & IEEE80211_F_HEON)
+    ni->ni_he_requested = ieee80211_he_supported(ic, ni);
+    if (ni->ni_he_requested)
         frm = ieee80211_add_hecaps(frm, ic);
 
     size_t l = frm - mtod(m, u_int8_t *);

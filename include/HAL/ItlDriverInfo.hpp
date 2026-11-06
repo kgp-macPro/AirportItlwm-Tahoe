@@ -15,6 +15,14 @@
 #ifndef ItlDriverInfo_h
 #define ItlDriverInfo_h
 
+struct ItlHeTxReport {
+    uint32_t kbps, raw;
+    uint32_t age_ms;
+    uint8_t mcs, nss, bw, gi, source;
+    bool valid; // coherent last-known tuple for this connection
+    bool fresh; // observed within 5s; expiry does not erase Legacy PHY status
+};
+
 class ItlDriverInfo {
     
 public:
@@ -26,6 +34,8 @@ public:
     virtual bool is5GBandSupport() = 0;
     
     virtual int getTxNSS() = 0;
+    // true: this HAL owns HE reporting, including explicit unavailable state and age/freshness.
+    virtual bool getHeTxReport(ItlHeTxReport &report) { return false; }
     
     virtual const char *getFirmwareName() = 0;
     

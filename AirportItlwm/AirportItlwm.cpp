@@ -409,7 +409,13 @@ bool AirportItlwm::start(IOService *provider)
         fHalService->get80211Controller()->ic_userflags |= IEEE80211_F_NOVHT;
     if (PE_parse_boot_argn("-noht40", &boot_value, sizeof(boot_value)))
         fHalService->get80211Controller()->ic_userflags |= IEEE80211_F_NOHT40;
-    
+    /* Opt-in for the experimental BZ HE (11ax) station profile. */
+    if (PE_parse_boot_argn("-itlwmhe", &boot_value, sizeof(boot_value)))
+        fHalService->get80211Controller()->ic_userflags |= IEEE80211_F_HEON;
+    /* With -itlwmhe, also advertise HE SU beamformee so the AP can beamform. */
+    if (PE_parse_boot_argn("-itlwmbf", &boot_value, sizeof(boot_value)))
+        fHalService->get80211Controller()->ic_userflags |= IEEE80211_F_HEBFEE;
+
     if (!fHalService->attach(pciNub)) {
         upperTime2G[1] = kgp2GTimeNs();
         XYLog("attach fail\n");

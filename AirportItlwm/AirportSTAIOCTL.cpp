@@ -506,6 +506,37 @@ getRATE(OSObject *object, struct apple80211_rate_data *rd)
             index += 2 * (nss - 1);
             const struct ieee80211_vht_rateset *rs = &ieee80211_std_ratesets_11ac[index];
             rd->rate[0] = rs->rates[ic->ic_bss->ni_txmcs % rs->nrates] / 2;
+        } else if (ic->ic_curmode == IEEE80211_MODE_11AX) {
+            ItlHeTxReport report = {};
+            if (fHalService->getDriverInfo()->getHeTxReport(report)) {
+                rd->rate[0] = report.valid ? report.kbps / 1000 : 0;
+                return report.valid ? kIOReturnSuccess : kIOReturnNotReady;
+            }
+            /*
+             * HE data rate = data subcarriers * coded bits * NSS / 13.6us
+             * (12.8us symbol + 0.8us GI). Coded bits per subcarrier are
+             * scaled by 6 to stay integral for MCS 0-11.
+             */
+            static const uint16_t he_bits_x6[] = { 3, 6, 9, 12, 18, 24, 27, 30, 36, 40, 45, 50 };
+            unsigned nsd;
+            unsigned mcs = MIN(ic->ic_bss->ni_txmcs, (int)nitems(he_bits_x6) - 1);
+            nss = fHalService->getDriverInfo()->getTxNSS();
+            switch (ic->ic_bss->ni_chw) {
+                case IEEE80211_CHAN_WIDTH_40:
+                    nsd = 468;
+                    break;
+                case IEEE80211_CHAN_WIDTH_80:
+                    nsd = 980;
+                    break;
+                case IEEE80211_CHAN_WIDTH_80P80:
+                case IEEE80211_CHAN_WIDTH_160:
+                    nsd = 1960;
+                    break;
+                default:
+                    nsd = 234;
+                    break;
+            }
+            rd->rate[0] = nsd * he_bits_x6[mcs] * nss * 10 / 816;
         } else if (ic->ic_curmode == IEEE80211_MODE_11N) {
             int is_40mhz = ic->ic_bss->ni_chw == IEEE80211_CHAN_WIDTH_40;
             if (sgi)
@@ -765,6 +796,15 @@ getMCS_VHT(OSObject *object, struct apple80211_mcs_vht_data *data)
     }
     memset(data, 0, sizeof(struct apple80211_mcs_vht_data));
     data->version = APPLE80211_VERSION;
+    ItlHeTxReport report = {};
+    if (fHalService->getDriverInfo()->getHeTxReport(report)) {
+        data->index = report.valid ? report.mcs : 0xff;
+        data->nss = report.valid ? report.nss : 0;
+        data->bw = report.valid ? (20U << report.bw) : 0;
+        // Legacy ABI has only short/long GI. Exact HE GI code is in diagnostics.
+        data->guard_interval = report.gi == 2 || report.gi == 3 ? APPLE80211_GI_LONG : APPLE80211_GI_SHORT;
+        return report.valid ? kIOReturnSuccess : kIOReturnNotReady;
+    }
     data->guard_interval = (ieee80211_node_supports_vht_sgi80(ic->ic_bss) || ieee80211_node_supports_vht_sgi160(ic->ic_bss)) ? APPLE80211_GI_SHORT : APPLE80211_GI_LONG;
     data->index = ic->ic_bss->ni_txmcs;
     data->nss = fHalService->getDriverInfo()->getTxNSS();
@@ -1315,6 +1355,11 @@ getMCS(OSObject *object, struct apple80211_mcs_data* md)
     if (ic->ic_state != IEEE80211_S_RUN ||  ic->ic_bss == NULL || !md)
         return 6;
     md->version = APPLE80211_VERSION;
+    ItlHeTxReport report = {};
+    if (fHalService->getDriverInfo()->getHeTxReport(report)) {
+        md->index = report.valid ? report.mcs : 0xff;
+        return report.valid ? kIOReturnSuccess : kIOReturnNotReady;
+    }
     md->index = ic->ic_bss->ni_txmcs;
     return kIOReturnSuccess;
 }

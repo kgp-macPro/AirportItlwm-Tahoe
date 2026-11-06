@@ -135,6 +135,22 @@ OSDefineMetaClassAndStructors(ItlIwx, ItlHalService)
 
 #define IC2IFP(_ic_) (&(_ic_)->ic_if)
 
+// P10R4D stat indices. KGP_AX_HE_DIAG 41/1 puts these at wire index 8+i.
+enum {
+    AXD_SINGLE=0, AXD_SINGLE_OK=1, AXD_SINGLE_FAIL=2,
+    AXD_SINGLE_RETRIES=3, AXD_SINGLE_RAW=4,
+    AXD_BA=5, AXD_BA_TXED=6, AXD_BA_DONE=7, AXD_BA_RETRIES=8,
+    AXD_BA_TFD=9, AXD_BA_RAW=10, AXD_BA_FLAGS=11,
+    AXD_RX_DATA=12, AXD_RX_SAMPLED=13, AXD_RX_AMPDU=14,
+    AXD_RX_AMSDU=15, AXD_RX_RAW=16, AXD_RX_DECRYPT_DROP=17,
+    AXD_RX_DUP_DROP=18, // 19..23 reserved; shared reorder path is untouched.
+    AXD_BA_MCS=24, AXD_RX_MCS=36, AXD_SINGLE_MCS=48,
+    AXD_BA_GI=60, AXD_RX_GI=65, AXD_BA_BW=70, AXD_RX_BW=74,
+    AXD_BA_NSS=78, AXD_RX_NSS=80,
+    AXD_TLC_CONFIG=82, AXD_TLC_FIELDS=83, AXD_TLC_80=84,
+    AXD_TLC_160=85, AXD_TLC_VERSION=86, AXD_TLC_MPDU=87
+};
+
 #define IWX_DEBUG
 
 #ifdef IWX_DEBUG
@@ -430,7 +446,7 @@ bool ItlIwx::dma5Select()
     if (!resolved) { boot5Mark(10, "device DMA policy unresolved; attach refused", 2); return false; }
     pci.pa_tag->setProperty("KGP_ZC5_DMA_MODE", mapped ? "mapped RX/TX" : "original Dexter RX/TX");
     pci.pa_tag->setProperty("KGP_RX_EXPERIMENT", bzDevice() ?
-        "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P8R1" : "AirportItlwm-Tahoe-B1-ZC30-PERF");
+        "AirportItlwm-Tahoe-BE200-GL92-P10-HE" : "AirportItlwm-Tahoe-AX-P10-HE");
     boot5Mark(11, mapped ? "DMA routing completed: mapped" : "DMA routing completed: original Dexter");
     return true;
 }
@@ -2307,7 +2323,7 @@ bool ItlIwx::attach(IOPCIDevice *device)
     fBzDevice = device->configRead16(kIOPCIConfigVendorID)==0x8086 &&
         device->configRead16(kIOPCIConfigDeviceID)==0x272b;
     if(fBzDevice) { com.sc_device_family=IWX_DEVICE_FAMILY_BZ;
-        device->setProperty("KGP_BE200_CANDIDATE","BE200-GL92-PRIVATE-P8R1"); }
+        device->setProperty("KGP_BE200_CANDIDATE","BE200-GL92-P10-HE"); }
     pci.pa_tag = device;
     pci.workloop = getMainWorkLoop();
     const bool attached2G = iwx_attach(&com, &pci);
@@ -2548,6 +2564,8 @@ is5GBandSupport()
 int ItlIwx::
 getTxNSS()
 {
+    ItlHeTxReport report = {};
+    if (getHeTxReport(report)) return report.valid ? report.nss : 0;
     return iwx_mimo_enabled(&com) && 
     (com.sc_ic.ic_bss != NULL && com.sc_ic.ic_bss->ni_rx_nss > 1) ? 2 : 1;
 }
@@ -4617,7 +4635,7 @@ iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
     }
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 &&
         !pci.pa_tag->setProperty("KGP_RX_EXPERIMENT", bzDevice() ?
-            "AirportItlwm-Tahoe-BE200-GL92-PRIVATE-P8R1" : "AirportItlwm-Tahoe-B1-ZC30-PERF")) {
+            "AirportItlwm-Tahoe-BE200-GL92-P10-HE" : "AirportItlwm-Tahoe-AX-P10-HE")) {
         err = ENOMEM; goto fail;
     }
     return 0;
@@ -6432,7 +6450,8 @@ iwx_reorder_timer_expired(void *arg)
     if (expired) {
         /* SN is set to the last expired frame + 1 */
         that->iwx_release_frames(sc, ni, rxba, buf, sn, &ml);
-        if_input(&sc->sc_ic.ic_if, &ml);
+        if (that->axHeDiagActive(sc)) that->axInputHandoff(sc, &ml, 5);
+        else if_input(&sc->sc_ic.ic_if, &ml);
         ic->ic_stats.is_ht_rx_ba_window_gap_timeout++;
     } else {
         /*
@@ -6521,111 +6540,131 @@ iwx_setup_vht_rates(struct iwx_softc *sc)
     ic->ic_vht_sup_mcs[1] = 0x03FF;         /* MCS 0-9 */
 }
 
+/* Limit the new conventional HE path to the AX201/AX210/AX211 PCI matches.
+ * AX411 shares some firmware families but is outside this P10 experiment. */
+static bool
+iwx_p10_ax_he_target(struct iwx_softc *sc)
+{
+    const uint16_t device = sc->sc_pcitag->configRead16(kIOPCIConfigDeviceID);
+    const uint16_t subsystem = sc->sc_pcitag->configRead16(kIOPCIConfigSubSystemID);
+    switch (device) {
+    case 0x43f0: case 0xa0f0: case 0x02f0: case 0x06f0:
+    case 0x34f0: case 0x3df0: case 0x4df0: /* AX201 */
+        return true;
+    case 0x2725: case 0x2726: /* AX210/AX211 and some AX201, except AX411 */
+    case 0x7a70: case 0x7af0: case 0x51f0: case 0x54f0:
+    case 0x7f70: /* AX211, except AX411 subdevices */
+        return subsystem != 0x00b0 && subsystem != 0x00b4 &&
+            subsystem != 0x1691 && subsystem != 0x1692;
+    case 0x7e40: /* AX211 MA profiles; bundled firmware is checked separately */
+        return subsystem == 0x1671 || subsystem == 0x1672;
+    default:
+        return false;
+    }
+}
+
+/* AX HE capability gate adapted from laobamac/itlwm v2.4.0-alpha,
+ * commit 7204c69d1bfa7f5cc0f7864e08fb03e55d0ec29e, GPL-2.0-or-later. */
 void ItlIwx::
 iwx_setup_he_rates(struct iwx_softc *sc)
 {
     if (bzDevice()) return iwx_bz_port_setup_he_rates(sc);
 
     struct ieee80211com *ic = &sc->sc_ic;
-    
-    /* enable 11ax support */
-//    ic->ic_flags |= IEEE80211_F_HEON;
-    
-    ic->ic_he_cap_elem = {
-        .mac_cap_info[0] =
-            IEEE80211_HE_MAC_CAP0_HTC_HE |
-            IEEE80211_HE_MAC_CAP0_TWT_REQ,
-        .mac_cap_info[1] =
-            IEEE80211_HE_MAC_CAP1_TF_MAC_PAD_DUR_16US |
-            IEEE80211_HE_MAC_CAP1_MULTI_TID_AGG_RX_QOS_8,
-        .mac_cap_info[2] =
-            IEEE80211_HE_MAC_CAP2_32BIT_BA_BITMAP,
-        .mac_cap_info[3] =
-            IEEE80211_HE_MAC_CAP3_OMI_CONTROL |
-            IEEE80211_HE_MAC_CAP3_MAX_AMPDU_LEN_EXP_VHT_2,
-        .mac_cap_info[4] =
-            IEEE80211_HE_MAC_CAP4_AMDSU_IN_AMPDU |
-            IEEE80211_HE_MAC_CAP4_MULTI_TID_AGG_TX_QOS_B39,
-        .mac_cap_info[5] =
-            IEEE80211_HE_MAC_CAP5_MULTI_TID_AGG_TX_QOS_B40 |
-            IEEE80211_HE_MAC_CAP5_MULTI_TID_AGG_TX_QOS_B41 |
-            IEEE80211_HE_MAC_CAP5_UL_2x996_TONE_RU |
-            IEEE80211_HE_MAC_CAP5_HE_DYNAMIC_SM_PS |
-            IEEE80211_HE_MAC_CAP5_HT_VHT_TRIG_FRAME_RX,
-        .phy_cap_info[1] =
-            IEEE80211_HE_PHY_CAP1_PREAMBLE_PUNC_RX_MASK |
-            IEEE80211_HE_PHY_CAP1_DEVICE_CLASS_A |
-            IEEE80211_HE_PHY_CAP1_LDPC_CODING_IN_PAYLOAD,
-        .phy_cap_info[2] =
-            IEEE80211_HE_PHY_CAP2_NDP_4x_LTF_AND_3_2US,
-        .phy_cap_info[3] =
-            IEEE80211_HE_PHY_CAP3_DCM_MAX_CONST_TX_NO_DCM |
-            IEEE80211_HE_PHY_CAP3_DCM_MAX_TX_NSS_1 |
-            IEEE80211_HE_PHY_CAP3_DCM_MAX_CONST_RX_NO_DCM |
-            IEEE80211_HE_PHY_CAP3_DCM_MAX_RX_NSS_1,
-        .phy_cap_info[4] =
-            IEEE80211_HE_PHY_CAP4_SU_BEAMFORMEE |
-            IEEE80211_HE_PHY_CAP4_BEAMFORMEE_MAX_STS_ABOVE_80MHZ_8 |
-            IEEE80211_HE_PHY_CAP4_BEAMFORMEE_MAX_STS_UNDER_80MHZ_8,
-        .phy_cap_info[5] =
-            IEEE80211_HE_PHY_CAP5_BEAMFORMEE_NUM_SND_DIM_UNDER_80MHZ_2 |
-            IEEE80211_HE_PHY_CAP5_BEAMFORMEE_NUM_SND_DIM_ABOVE_80MHZ_2,
-        .phy_cap_info[6] =
-            IEEE80211_HE_PHY_CAP6_TRIG_SU_BEAMFORMER_FB |
-            IEEE80211_HE_PHY_CAP6_TRIG_MU_BEAMFORMER_FB |
-            IEEE80211_HE_PHY_CAP6_PPE_THRESHOLD_PRESENT,
-        .phy_cap_info[7] =
-            IEEE80211_HE_PHY_CAP7_POWER_BOOST_FACTOR_AR |
-            IEEE80211_HE_PHY_CAP7_HE_SU_MU_PPDU_4XLTF_AND_08_US_GI |
-            IEEE80211_HE_PHY_CAP7_MAX_NC_1,
-        .phy_cap_info[8] =
-            IEEE80211_HE_PHY_CAP8_HE_ER_SU_PPDU_4XLTF_AND_08_US_GI |
-            IEEE80211_HE_PHY_CAP8_20MHZ_IN_40MHZ_HE_PPDU_IN_2G |
-            IEEE80211_HE_PHY_CAP8_20MHZ_IN_160MHZ_HE_PPDU |
-            IEEE80211_HE_PHY_CAP8_80MHZ_IN_160MHZ_HE_PPDU |
-            IEEE80211_HE_PHY_CAP8_DCM_MAX_RU_2x996,
-        .phy_cap_info[9] =
-            IEEE80211_HE_PHY_CAP9_NON_TRIGGERED_CQI_FEEDBACK |
-            IEEE80211_HE_PHY_CAP9_RX_FULL_BW_SU_USING_MU_WITH_COMP_SIGB |
-            IEEE80211_HE_PHY_CAP9_RX_FULL_BW_SU_USING_MU_WITH_NON_COMP_SIGB |
-            IEEE80211_HE_PHY_CAP9_NOMIMAL_PKT_PADDING_RESERVED,
-    };
-    
-    /*
-     * Set default Tx/Rx HE MCS NSS Support field.
-     * Indicate support for up to 2 spatial streams and all
-     * MCS, without any special cases
-     */
-    ic->ic_he_mcs_nss_supp = {
-        .rx_mcs_80 = htole16(0xfffa),
-        .tx_mcs_80 = htole16(0xfffa),
-        .rx_mcs_160 = htole16(0xfffa),
-        .tx_mcs_160 = htole16(0xfffa),
-        .rx_mcs_80p80 = htole16(0xffff),
-        .tx_mcs_80p80 = htole16(0xffff),
-    };
-    
-    /*
-     * Set default PPE thresholds, with PPET16 set to 0,
-     * PPET8 set to 7
-     */
-    uint8_t ppe_thres[] = {0x61, 0x1c, 0xc7, 0x71};
-    memcpy(ic->ic_ppe_thres, ppe_thres, sizeof(ic->ic_ppe_thres));
+    ic->ic_flags &= ~IEEE80211_F_HEON;
+    memset(&ic->ic_he_cap_elem, 0, sizeof(ic->ic_he_cap_elem));
+    memset(&ic->ic_he_mcs_nss_supp, 0xff, sizeof(ic->ic_he_mcs_nss_supp));
+    memset(ic->ic_ppe_thres, 0, sizeof(ic->ic_ppe_thres));
+    uint8_t version = iwx_lookup_cmd_ver(sc, IWX_DATA_PATH_GROUP, IWX_STA_HE_CTXT_CMD);
+    /* Preinit builds modecaps before media_init enables HT. Requiring HTON
+     * here would omit 11ax from the initial capability table permanently.
+     * Negotiation still requires HT and QoS on the associated node. */
+    const char *off = nullptr;
+    if (!iwx_p10_ax_he_target(sc))
+        off = "off:outside-p10-ax-target";
+    else if (!sc->sc_nvm.sku_cap_11ax_enable)
+        off = "off:nvm-11ax";
+    else if (!(ic->ic_userflags & IEEE80211_F_HEON))
+        off = "off:no-opt-in";
+    else if (ic->ic_userflags & IEEE80211_F_NOVHT)
+        off = "off:novht";
+    else if (version != 1 && version != 2)
+        off = "off:he-ctxt-version";
+    if (off) {
+        sc->sc_pcitag->setProperty("ItlwmAxHeSetup", off);
+        return;
+    }
+    unsigned rx = iwx_num_of_ant(iwx_fw_valid_rx_ant(sc));
+    unsigned tx = iwx_num_of_ant(iwx_fw_valid_tx_ant(sc));
+    if (!rx || !tx) {
+        sc->sc_pcitag->setProperty("ItlwmAxHeSetup", "off:antennas");
+        return;
+    }
+    if (!iwx_mimo_enabled(sc))
+        rx = tx = 1;
+    /* Conservative station profile: no TWT, OMI, multi-TID or fragmentation. */
+    ic->ic_he_cap_elem.mac_cap_info[0] = IEEE80211_HE_MAC_CAP0_HTC_HE;
+    ic->ic_he_cap_elem.mac_cap_info[1] = IEEE80211_HE_MAC_CAP1_TF_MAC_PAD_DUR_16US;
+    ic->ic_he_cap_elem.mac_cap_info[2] = IEEE80211_HE_MAC_CAP2_32BIT_BA_BITMAP;
+    ic->ic_he_cap_elem.mac_cap_info[4] = IEEE80211_HE_MAC_CAP4_AMDSU_IN_AMPDU;
+    if (ic->ic_htcaps & IEEE80211_HTCAP_CBW20_40)
+        ic->ic_he_cap_elem.phy_cap_info[0] |= IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_40MHZ_IN_2G;
+    if (sc->sc_nvm.sku_cap_band_52GHz_enable)
+        ic->ic_he_cap_elem.phy_cap_info[0] |= IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_40MHZ_80MHZ_IN_5G;
+    ic->ic_he_cap_elem.phy_cap_info[1] = IEEE80211_HE_PHY_CAP1_DEVICE_CLASS_A |
+        IEEE80211_HE_PHY_CAP1_LDPC_CODING_IN_PAYLOAD;
+    ic->ic_he_cap_elem.phy_cap_info[2] = IEEE80211_HE_PHY_CAP2_NDP_4x_LTF_AND_3_2US;
+    ic->ic_he_cap_elem.phy_cap_info[7] = IEEE80211_HE_PHY_CAP7_HE_SU_MU_PPDU_4XLTF_AND_08_US_GI;
+    /* Require 16us padding without advertising an optional PPE field. */
+    ic->ic_he_cap_elem.phy_cap_info[9] = IEEE80211_HE_PHY_CAP9_NOMIMAL_PKT_PADDING_16US |
+        IEEE80211_HE_PHY_CAP9_RX_FULL_BW_SU_USING_MU_WITH_COMP_SIGB |
+        IEEE80211_HE_PHY_CAP9_RX_FULL_BW_SU_USING_MU_WITH_NON_COMP_SIGB;
+    ic->ic_he_mcs_nss_supp.rx_mcs_80 = htole16(rx > 1 ? 0xfffa : 0xfffe);
+    ic->ic_he_mcs_nss_supp.tx_mcs_80 = htole16(tx > 1 ? 0xfffa : 0xfffe);
+    if (sc->sc_nvm.vht160_supported) {
+        ic->ic_he_cap_elem.phy_cap_info[0] |= IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_160MHZ_IN_5G;
+        ic->ic_he_mcs_nss_supp.rx_mcs_160 = ic->ic_he_mcs_nss_supp.rx_mcs_80;
+        ic->ic_he_mcs_nss_supp.tx_mcs_160 = ic->ic_he_mcs_nss_supp.tx_mcs_80;
+    }
+    /* AX station SU beamformee is opt-in. 11ax NVM, HE-context firmware
+     * version and RX antennas passed the gates above. Linux iwlwifi v5.15
+     * advertises this station capability; no SU/MU beamformer or MU
+     * beamformee capability is implied. The AP must advertise a compatible
+     * beamformer before it can actually sound this station. The pinned AX
+     * reference does not set an additional BFEE field in HE context,
+     * ADD_STA or TLC; do not copy the unrelated BZ/GL92 station API. */
+    if (ic->ic_userflags & IEEE80211_F_HEBFEE) {
+        ic->ic_he_cap_elem.phy_cap_info[4] = IEEE80211_HE_PHY_CAP4_SU_BEAMFORMEE |
+            IEEE80211_HE_PHY_CAP4_BEAMFORMEE_MAX_STS_UNDER_80MHZ_4;
+        if (sc->sc_nvm.vht160_supported)
+            ic->ic_he_cap_elem.phy_cap_info[4] |=
+                IEEE80211_HE_PHY_CAP4_BEAMFORMEE_MAX_STS_ABOVE_80MHZ_4;
+    }
+    ic->ic_flags |= IEEE80211_F_HEON;
+    sc->sc_pcitag->setProperty("ItlwmAxHeSetup", "on");
+    XYLog("P10 AX experimental HE enabled: context-v%u rx80=%04x tx80=%04x width-bits=%02x\n",
+        version, le16toh(ic->ic_he_mcs_nss_supp.rx_mcs_80),
+        le16toh(ic->ic_he_mcs_nss_supp.tx_mcs_80), ic->ic_he_cap_elem.phy_cap_info[0]);
 }
 
 #define IWX_MAX_RX_BA_SESSIONS 16
 
-void ItlIwx::
+int ItlIwx::
 iwx_sta_rx_agg(struct iwx_softc *sc, struct ieee80211_node *ni, uint8_t tid,
                uint16_t ssn, uint16_t winsize, int timeout_val, int start)
 {
-    if (bzDevice()) { int bzError = iwx_bz_port_sta_rx_agg(sc, ni, tid, ssn, winsize, timeout_val, start); if (bzError) bzFail(1, bzError); return; }
+    if (bzDevice()) { int bzError = iwx_bz_port_sta_rx_agg(sc, ni, tid, ssn, winsize, timeout_val, start); if (bzError) bzFail(1, bzError); return bzError; }
 
     XYLog("%s start=%d tid=%d ssn=%d winsize=%d\n", __FUNCTION__, start, tid, ssn, winsize);
     struct ieee80211com *ic = &sc->sc_ic;
     struct iwx_add_sta_cmd cmd;
     struct iwx_node *in = (struct iwx_node *)ni;
     int err, s;
+    const int generation = sc->sc_generation;
+    const uint32_t epoch = fPc1ResetEpoch;
+    const uint32_t connection = __atomic_load_n(&fAxBaEpoch, __ATOMIC_ACQUIRE);
+    const uint8_t token = start ? ni->ni_rx_ba[tid].ba_token : 0;
+    bool removed = false;
     uint32_t status;
     struct iwx_rxba_data *rxba = NULL;
     uint8_t baid = 0;
@@ -6635,7 +6674,7 @@ iwx_sta_rx_agg(struct iwx_softc *sc, struct ieee80211_node *ni, uint8_t tid,
     if (start && sc->sc_rx_ba_sessions >= IWX_MAX_RX_BA_SESSIONS) {
         ieee80211_addba_req_refuse(ic, ni, tid);
         splx(s);
-        return;
+        return EIO;
     }
     
     memset(&cmd, 0, sizeof(cmd));
@@ -6655,15 +6694,32 @@ iwx_sta_rx_agg(struct iwx_softc *sc, struct ieee80211_node *ni, uint8_t tid,
     cmd.modify_mask = start ? IWX_STA_MODIFY_ADD_BA_TID :
     IWX_STA_MODIFY_REMOVE_BA_TID;
     
+    axBaEvent(3, tid, start, 0, 0);
     status = IWX_ADD_STA_SUCCESS;
     err = iwx_send_cmd_pdu_status(sc, IWX_ADD_STA, sizeof(cmd), &cmd,
                                   &status);
     
+    // Only the reply commit is gated. Legacy iwx_send_cmd above MUST stay
+    // outside the main gate: its sleeper does not release that gate (DBFR).
+    auto finish = [&]() -> int {
+    axBaEvent(4, tid, start, err, status);
+    // Never accept/refuse or publish a BAID into a replacement connection.
+    if (generation != sc->sc_generation || epoch != fPc1ResetEpoch ||
+        connection != __atomic_load_n(&fAxBaEpoch, __ATOMIC_ACQUIRE) ||
+        (sc->sc_flags & IWX_FLAG_SHUTDOWN) || ni != ic->ic_bss ||
+        (start && (ic->ic_state != IEEE80211_S_RUN ||
+                   sc->ns_nstate != IEEE80211_S_RUN ||
+                   ni->ni_rx_ba[tid].ba_state != IEEE80211_BA_REQUESTED ||
+                   ni->ni_rx_ba[tid].ba_token != token || ni->ni_rx_ba[tid].ba_winstart != ssn))) {
+        axBaEvent(6, tid, start, ENXIO, status);
+        splx(s);
+        return ENXIO;
+    }
     if (err || (status & IWX_ADD_STA_STATUS_MASK) != IWX_ADD_STA_SUCCESS) {
         if (start)
             ieee80211_addba_req_refuse(ic, ni, tid);
         splx(s);
-        return;
+        return EIO;
     }
     
     /* Deaggregation is done in hardware. */
@@ -6671,7 +6727,7 @@ iwx_sta_rx_agg(struct iwx_softc *sc, struct ieee80211_node *ni, uint8_t tid,
         if (!(status & IWX_ADD_STA_BAID_VALID_MASK)) {
             ieee80211_addba_req_refuse(ic, ni, tid);
             splx(s);
-            return;
+            return EIO;
         }
         baid = (status & IWX_ADD_STA_BAID_MASK) >>
         IWX_ADD_STA_BAID_SHIFT;
@@ -6679,13 +6735,13 @@ iwx_sta_rx_agg(struct iwx_softc *sc, struct ieee80211_node *ni, uint8_t tid,
             baid >= nitems(sc->sc_rxba_data)) {
             ieee80211_addba_req_refuse(ic, ni, tid);
             splx(s);
-            return;
+            return EIO;
         }
         rxba = &sc->sc_rxba_data[baid];
         if (rxba->baid != IWX_RX_REORDER_DATA_INVALID_BAID) {
             ieee80211_addba_req_refuse(ic, ni, tid);
             splx(s);
-            return;
+            return EIO;
         }
         rxba->sta_id = IWX_STATION_ID;
         rxba->tid = tid;
@@ -6717,6 +6773,7 @@ iwx_sta_rx_agg(struct iwx_softc *sc, struct ieee80211_node *ni, uint8_t tid,
             if (rxba->tid != tid)
                 continue;
             iwx_clear_reorder_buffer(sc, rxba);
+            removed = true;
             break;
         }
     }
@@ -6724,10 +6781,17 @@ iwx_sta_rx_agg(struct iwx_softc *sc, struct ieee80211_node *ni, uint8_t tid,
     if (start) {
         sc->sc_rx_ba_sessions++;
         ieee80211_addba_req_accept(ic, ni, tid);
-    } else if (sc->sc_rx_ba_sessions > 0)
+    } else if (removed && sc->sc_rx_ba_sessions > 0)
         sc->sc_rx_ba_sessions--;
 
     splx(s);
+    return 0;
+    };
+    return getMainCommandGate()->runAction(
+        [](OSObject *,void *fn,void *,void *,void *) -> IOReturn {
+            return (*static_cast<decltype(finish) *>(fn))();
+        }, &finish);
+
 }
 
 void ItlIwx::
@@ -6749,6 +6813,12 @@ iwx_mac_ctxt_task(void *arg)
         return;
     }
     
+    err = that->iwx_config_he_sta(sc, &in->in_ni);
+    if (err) {
+        XYLog("AX HE context update failed: %d\n", err);
+        splx(s);
+        return;
+    }
     err = that->iwx_mac_ctxt_cmd(sc, in, IWX_FW_CTXT_ACTION_MODIFY, 1);
     if (err)
         printf("%s: failed to update MAC\n", DEVNAME(sc));
@@ -6878,21 +6948,41 @@ iwx_ba_task(void *arg)
         return;
     }
 
+    const int rxGeneration = sc->sc_generation;
+    const uint32_t rxEpoch = that->fPc1ResetEpoch;
+    const uint32_t rxConnection = __atomic_load_n(&that->fAxBaEpoch, __ATOMIC_ACQUIRE);
     for (tid = 0; tid < IWX_MAX_TID_COUNT; tid++) {
-        if (sc->sc_flags & IWX_FLAG_SHUTDOWN)
+        if ((sc->sc_flags & IWX_FLAG_SHUTDOWN) ||
+            rxGeneration != sc->sc_generation || rxEpoch != that->fPc1ResetEpoch ||
+            rxConnection != __atomic_load_n(&that->fAxBaEpoch, __ATOMIC_ACQUIRE))
             break;
-        if (sc->ba_rx.start_tidmask & (1 << tid)) {
-            struct ieee80211_rx_ba *ba = &ni->ni_rx_ba[tid];
-            XYLog("%s ba_rx_start tid=%d, ssn=%d\n", __FUNCTION__, tid, ba->ba_winstart);
-            that->iwx_sta_rx_agg(sc, ni, tid, ba->ba_winstart,
-                                 ba->ba_winsize, ba->ba_timeout_val, 1);
-            sc->ba_rx.start_tidmask &= ~(1 << tid);
-        } else if (sc->ba_rx.stop_tidmask & (1 << tid)) {
-            that->iwx_sta_rx_agg(sc, ni, tid, 0, 0, 0, 0);
-            sc->ba_rx.stop_tidmask &= ~(1 << tid);
+        const uint32_t bit = 1U << tid;
+        if (__atomic_fetch_and(&sc->ba_rx.stop_tidmask, ~bit, __ATOMIC_ACQ_REL) & bit) {
+            int stopError = that->iwx_sta_rx_agg(sc, ni, tid, 0, 0, 0, 0);
+            if (stopError && rxGeneration == sc->sc_generation && rxEpoch == that->fPc1ResetEpoch) {
+                if (__atomic_fetch_and(&sc->ba_rx.start_tidmask, ~bit, __ATOMIC_ACQ_REL) & bit)
+                    if (ni->ni_rx_ba[tid].ba_state == IEEE80211_BA_REQUESTED)
+                        ieee80211_addba_req_refuse(ic, ni, tid);
+                continue;
+            }
+        }
+        if (rxGeneration != sc->sc_generation || rxEpoch != that->fPc1ResetEpoch ||
+            rxConnection != __atomic_load_n(&that->fAxBaEpoch, __ATOMIC_ACQUIRE) ||
+            (sc->sc_flags & IWX_FLAG_SHUTDOWN)) { splx(s); return; }
+        if (__atomic_fetch_and(&sc->ba_rx.start_tidmask, ~bit, __ATOMIC_ACQ_REL) & bit) {
+            struct ieee80211_rx_ba *rxba = &ni->ni_rx_ba[tid];
+            if (ic->ic_state == IEEE80211_S_RUN && sc->ns_nstate == IEEE80211_S_RUN &&
+                rxba->ba_state == IEEE80211_BA_REQUESTED) {
+                that->iwx_sta_rx_agg(sc, ni, tid, rxba->ba_winstart,
+                    rxba->ba_winsize, rxba->ba_timeout_val, 1);
+            } else that->axBaEvent(6, tid, 1, ENXIO, 0);
+        }
+        if (rxGeneration != sc->sc_generation || rxEpoch != that->fPc1ResetEpoch ||
+            rxConnection != __atomic_load_n(&that->fAxBaEpoch, __ATOMIC_ACQUIRE)) {
+            splx(s); return;
         }
     }
-    
+
     for (tid = 0; tid < IWX_MAX_TID_COUNT; tid++) {
         if (sc->sc_flags & IWX_FLAG_SHUTDOWN)
             break;
@@ -6948,10 +7038,14 @@ iwx_ampdu_rx_start(struct ieee80211com *ic, struct ieee80211_node *ni,
     if (ic->ic_state != IEEE80211_S_RUN)
         return ENOSPC;
     
-    if (sc->ba_rx.start_tidmask & (1 << tid))
-        return EBUSY;
-
-    sc->ba_rx.start_tidmask |= (1 << tid);
+    if (!that->bzDevice()) {
+        that->axBaEvent(1, tid, 1, 0, 0);
+        if (__atomic_fetch_or(&sc->ba_rx.start_tidmask, 1U << tid, __ATOMIC_ACQ_REL) & (1U << tid))
+            return EBUSY;
+    } else {
+        if (sc->ba_rx.start_tidmask & (1 << tid)) return EBUSY;
+        sc->ba_rx.start_tidmask |= (1 << tid);
+    }
     that->iwx_add_task(sc, systq, &sc->ba_task);
     
     return EBUSY;
@@ -6968,13 +7062,16 @@ iwx_ampdu_rx_stop(struct ieee80211com *ic, struct ieee80211_node *ni,
     struct iwx_softc *sc = (struct iwx_softc *)IC2IFP(ic)->if_softc;
     ItlIwx *that = container_of(sc, ItlIwx, com);
     
-    if (tid >= IWX_MAX_TID_COUNT || sc->ba_rx.stop_tidmask & (1 << tid))
-        return;
+    if (tid >= IWX_MAX_TID_COUNT) return;
+    if (that->bzDevice() && (sc->ba_rx.stop_tidmask & (1 << tid))) return;
     
     if (ic->ic_state != IEEE80211_S_RUN)
         return;
 
-    sc->ba_rx.stop_tidmask |= (1 << tid);
+    if (!that->bzDevice()) {
+        that->axBaEvent(2, tid, 0, 0, 0);
+        if (__atomic_fetch_or(&sc->ba_rx.stop_tidmask, 1U << tid, __ATOMIC_ACQ_REL) & (1U << tid)) return;
+    } else sc->ba_rx.stop_tidmask |= (1 << tid);
     that->iwx_add_task(sc, systq, &sc->ba_task);
 }
 
@@ -7080,7 +7177,8 @@ iwx_is_valid_mac_addr(const uint8_t *addr)
 int ItlIwx::
 iwx_nvm_get(struct iwx_softc *sc)
 {
-    if (bzDevice()) {int e=iwx_bz_port_nvm_get(sc);if(!e) sc->sc_nvm.sku_cap_11ax_enable=false;return e;}
+    // BZ HE stays off unless the experimental -itlwmhe opt-in is present.
+    if (bzDevice()) {int e=iwx_bz_port_nvm_get(sc);if(!e && !(sc->sc_ic.ic_userflags & IEEE80211_F_HEON)) sc->sc_nvm.sku_cap_11ax_enable=false;return e;}
 
     struct iwx_nvm_get_info cmd = {};
     struct iwx_nvm_data *nvm = &sc->sc_nvm;
@@ -8308,11 +8406,13 @@ iwx_rx_mpdu_mq(struct iwx_softc *sc, mbuf_t m, void *pktdata,
      * verified as part of the CCMP nonce.
      */
     if (iwx_rx_hwdecrypt(sc, m, le16toh(desc->status), &rxi)) {
+        if (axHeDiagActive(sc)) __atomic_fetch_add(&fAxHeDiagStats[AXD_RX_DECRYPT_DROP],1ULL,__ATOMIC_RELAXED);
         mbuf_freem(m);
         return;
     }
     
     if (iwx_detect_duplicate(sc, m, desc, &rxi)) {
+        if (axHeDiagActive(sc)) __atomic_fetch_add(&fAxHeDiagStats[AXD_RX_DUP_DROP],1ULL,__ATOMIC_RELAXED);
         mbuf_freem(m);
         return;
     }
@@ -8336,6 +8436,11 @@ iwx_rx_mpdu_mq(struct iwx_softc *sc, mbuf_t m, void *pktdata,
         rxi.rxi_tstamp = (uint32_t)le64toh(desc->v1.tsf_on_air_rise);
     }
     rxi.rxi_chan = chanidx;
+    if ((mtod(m, struct ieee80211_frame *)->i_fc[0] & IEEE80211_FC0_TYPE_MASK) ==
+        IEEE80211_FC0_TYPE_DATA)
+        axHeDiagRx(sc, rate_n_flags,
+            !!(phy_info & IWX_RX_MPDU_PHY_AMPDU),
+            !!(desc->mac_flags2 & IWX_RX_MPDU_MFLG2_AMSDU));
     
     if (iwx_rx_reorder(sc, m, chanidx, desc,
                        (phy_info & IWX_RX_MPDU_PHY_SHORT_PREAMBLE),
@@ -8361,6 +8466,7 @@ iwx_rx_tx_cmd_single(struct iwx_softc *sc, struct iwx_rx_packet *pkt,
     KASSERT(tx_resp->frame_count == 1, "tx_resp->frame_count == 1");
     
     txfail = (status != IWX_TX_STATUS_SUCCESS);
+    axHeDiagSingle(sc, tx_resp, status, txd->type);
     
     if (txfail) {
         zc28Note(3,unsigned(status),unsigned(txd->type),0);
@@ -8452,6 +8558,9 @@ iwx_rx_tx_ba_notif(struct iwx_softc *sc, struct iwx_rx_packet *pkt, struct iwx_r
        offsetof(iwx_compressed_ba_notif,tfd)+size_t(le16toh(ba_res->tfd_cnt))*sizeof(iwx_compressed_ba_tfd)>
        iwx_rx_packet_payload_len(pkt))) {bzFail(24,EPROTO);return;}
     sc->sc_tx_timer = 0;
+
+    if (iwx_rx_packet_payload_len(pkt) >= offsetof(iwx_compressed_ba_notif,tfd))
+        axHeDiagBa(sc, ba_res);
 
     if (le32toh(ba_res->flags) != IWX_BA_RESP_TX_BAR && le32toh(ba_res->flags) != IWX_BA_RESP_TX_AGG){
         DPRINTFN(3, ("BA_NOTIFICATION flags %x, sent:%d, acked:%d, tfd_cnt:%d, query_frame_cnt:%d, retry_cnt:%d\n",
@@ -10199,8 +10308,13 @@ iwx_rm_sta(struct iwx_softc *sc, struct iwx_node *in)
     }
 
     sc->sc_rx_ba_sessions = 0;
-    sc->ba_rx.start_tidmask = 0;
-    sc->ba_rx.stop_tidmask = 0;
+    if (!bzDevice()) {
+        __atomic_store_n(&sc->ba_rx.start_tidmask, 0U, __ATOMIC_RELEASE);
+        __atomic_store_n(&sc->ba_rx.stop_tidmask, 0U, __ATOMIC_RELEASE);
+    } else {
+        sc->ba_rx.start_tidmask = 0;
+        sc->ba_rx.stop_tidmask = 0;
+    }
     sc->ba_tx.start_tidmask = 0;
     sc->ba_tx.stop_tidmask = 0;
     for (i = 0; i < IEEE80211_NUM_TID; i++) {
@@ -11706,48 +11820,158 @@ static uint8_t iwx_rs_fw_set_active_chains(uint8_t chains)
     return fw_chains;
 }
 
+/* Peer/local HE MCS intersection adapted from laobamac/itlwm
+ * v2.4.0-alpha at 7204c69d1bfa7f5cc0f7864e08fb03e55d0ec29e. */
 static void
 iwx_rs_fw_he_set_enabled_rates(struct iwx_softc *sc,
-                           struct iwx_tlc_config_cmd_v4 *cmd)
+    struct iwx_tlc_config_cmd_v4 *cmd)
 {
     struct ieee80211com *ic = &sc->sc_ic;
-    uint16_t mcs_160 = le16toh(ic->ic_he_mcs_nss_supp.rx_mcs_160);
-    uint16_t mcs_80 = le16toh(ic->ic_he_mcs_nss_supp.rx_mcs_80);
-    uint16_t tx_mcs_80 =
-    le16toh(ic->ic_he_mcs_nss_supp.tx_mcs_80);
-    uint16_t tx_mcs_160 =
-    le16toh(ic->ic_he_mcs_nss_supp.tx_mcs_160);
-    int i;
-    uint8_t nss = ic->ic_bss->ni_rx_nss;
-
-    for (i = 0; i < nss && i < IWX_TLC_NSS_MAX; i++) {
-        uint16_t _mcs_160 = (mcs_160 >> (2 * i)) & 0x3;
-        uint16_t _mcs_80 = (mcs_80 >> (2 * i)) & 0x3;
-        uint16_t _tx_mcs_160 = (tx_mcs_160 >> (2 * i)) & 0x3;
-        uint16_t _tx_mcs_80 = (tx_mcs_80 >> (2 * i)) & 0x3;
-
-        /* If one side doesn't support - mark both as not supporting */
-        if (_mcs_80 == IEEE80211_HE_MCS_NOT_SUPPORTED ||
-            _tx_mcs_80 == IEEE80211_HE_MCS_NOT_SUPPORTED) {
-            _mcs_80 = IEEE80211_HE_MCS_NOT_SUPPORTED;
-            _tx_mcs_80 = IEEE80211_HE_MCS_NOT_SUPPORTED;
+    struct ieee80211_node *ni = ic->ic_bss;
+    uint16_t maps[2] = {
+        ieee80211_he_mcs_intersection(le16toh(ni->ni_he_mcs_nss_supp.rx_mcs_80),
+            le16toh(ic->ic_he_mcs_nss_supp.tx_mcs_80)),
+        ieee80211_he_mcs_intersection(le16toh(ni->ni_he_mcs_nss_supp.rx_mcs_160),
+            le16toh(ic->ic_he_mcs_nss_supp.tx_mcs_160))
+    };
+    if (ni->ni_chw != IEEE80211_CHAN_WIDTH_160)
+        maps[IWX_TLC_MCS_PER_BW_160] = 0xffff;
+    bool ldpc = ni->ni_he_cap_elem.phy_cap_info[1] & IEEE80211_HE_PHY_CAP1_LDPC_CODING_IN_PAYLOAD;
+    for (unsigned ss = 0; ss < IWX_TLC_NSS_MAX; ss++) {
+        for (unsigned bw = 0; bw < 2; bw++) {
+            uint16_t mask = ss < ni->ni_rx_nss ?
+                rs_fw_he_ieee80211_mcs_to_rs_mcs((maps[bw] >> (2 * ss)) & 3) : 0;
+            if (!ldpc)
+                mask &= 0x03ff; /* HE MCS10/11 requires LDPC. */
+            cmd->ht_rates[ss][bw] = htole16(mask);
         }
-        if (_mcs_80 > _tx_mcs_80)
-            _mcs_80 = _tx_mcs_80;
-        cmd->ht_rates[i][IWX_TLC_MCS_PER_BW_80] =
-            htole16(rs_fw_he_ieee80211_mcs_to_rs_mcs(_mcs_80));
-
-        /* If one side doesn't support - mark both as not supporting */
-        if (_mcs_160 == IEEE80211_HE_MCS_NOT_SUPPORTED ||
-            _tx_mcs_160 == IEEE80211_HE_MCS_NOT_SUPPORTED) {
-            _mcs_160 = IEEE80211_HE_MCS_NOT_SUPPORTED;
-            _tx_mcs_160 = IEEE80211_HE_MCS_NOT_SUPPORTED;
-        }
-        if (_mcs_160 > _tx_mcs_160)
-            _mcs_160 = _tx_mcs_160;
-        cmd->ht_rates[i][IWX_TLC_MCS_PER_BW_160] =
-        htole16(rs_fw_he_ieee80211_mcs_to_rs_mcs(_mcs_160));
     }
+}
+
+static uint8_t
+iwx_he_ppe_value(const uint8_t *ppe, unsigned bit)
+{
+    unsigned value = ppe[bit / 8] >> (bit % 8);
+    if (bit % 8 > 5)
+        value |= unsigned(ppe[bit / 8 + 1]) << (8 - bit % 8);
+    return value & 7;
+}
+
+static void
+iwx_build_he_sta(const struct ieee80211_node *ni, struct iwx_he_sta_context_cmd *cmd)
+{
+    memset(cmd, 0, sizeof(*cmd));
+    cmd->sta_id = IWX_STATION_ID;
+    cmd->tid_limit = 1; /* single TID aggregation */
+    uint32_t flags = IWX_HE_NIC_NOT_ACK_ENABLED;
+    uint32_t op = ni->ni_he_oper_params;
+    cmd->bss_color = (op >> 24) & 0x3f;
+    if (op & IEEE80211_HE_OPERATION_BSS_COLOR_DISABLED)
+        flags |= IWX_HE_BSS_COLOR_DIS;
+    if (op & IEEE80211_HE_OPERATION_PARTIAL_BSS_COLOR)
+        flags |= IWX_HE_PARTIAL_BSS_COLOR;
+    cmd->htc_trig_based_pkt_ext = op & 7;
+    cmd->frame_time_rts_th = htole16((op >> 4) & 0x3ff);
+    const uint8_t *mac = ni->ni_he_cap_elem.mac_cap_info;
+    uint32_t htc = (mac[0] & IEEE80211_HE_MAC_CAP0_HTC_HE) ? 1 : 0;
+    if (mac[2] & IEEE80211_HE_MAC_CAP2_BSR) htc |= 1U << 4;
+    if (mac[3] & IEEE80211_HE_MAC_CAP3_OMI_CONTROL) htc |= 1U << 5;
+    if (mac[4] & IEEE80211_HE_MAC_CAP4_BQR) htc |= 1U << 6;
+    cmd->htc_flags = htole32(htc);
+    if (mac[2] & IEEE80211_HE_MAC_CAP2_32BIT_BA_BITMAP) flags |= IWX_HE_32BIT_BA_BITMAP;
+    if (mac[2] & IEEE80211_HE_MAC_CAP2_ACK_EN) flags |= IWX_HE_ACK_ENABLED;
+    memset(cmd->pkt_ext, 7, sizeof(cmd->pkt_ext));
+    if (ni->ni_he_cap_elem.phy_cap_info[6] & IEEE80211_HE_PHY_CAP6_PPE_THRESHOLD_PRESENT) {
+        unsigned nss = (ni->ni_ppe_thres[0] & 7) + 1;
+        unsigned mask = (ni->ni_ppe_thres[0] >> 3) & 15;
+        unsigned bit = 7;
+        for (unsigned ss = 0; ss < nss && ss < 2; ss++) {
+            for (unsigned bw = 0; bw < 4; bw++) {
+                if (!(mask & (1U << bw))) continue;
+                cmd->pkt_ext[ss][bw][1] = iwx_he_ppe_value(ni->ni_ppe_thres, bit);
+                cmd->pkt_ext[ss][bw][0] = iwx_he_ppe_value(ni->ni_ppe_thres, bit + 3);
+                bit += 6;
+            }
+        }
+        flags |= IWX_HE_PACKET_EXT;
+    } else {
+        unsigned padding = (ni->ni_he_cap_elem.phy_cap_info[9] >> 6) & 3;
+        if (padding != 3) {
+            for (unsigned ss = 0; ss < 2; ss++)
+                for (unsigned bw = 0; bw < 4; bw++) {
+                    cmd->pkt_ext[ss][bw][0] = padding == 1 ? 0 : 7;
+                    cmd->pkt_ext[ss][bw][1] = padding == 2 ? 0 : 7;
+                }
+            flags |= IWX_HE_PACKET_EXT;
+        }
+    }
+    if (ni->ni_flags & IEEE80211_NODE_HE_MU_EDCA) {
+        flags |= IWX_HE_MU_EDCA_CW;
+        for (unsigned ac = 0; ac < 4; ac++) {
+            const uint8_t *rec = ni->ni_he_mu_edca + 1 + 3 * ac;
+            unsigned fw_ac = iwx_mvm_mac80211_ac_to_ucode_ac((enum ieee80211_edca_ac)ac);
+            cmd->trig_based_txf[fw_ac].cwmin = htole16(rec[1] & 15);
+            cmd->trig_based_txf[fw_ac].cwmax = htole16(rec[1] >> 4);
+            cmd->trig_based_txf[fw_ac].aifsn = htole16(rec[0] & 15);
+            cmd->trig_based_txf[fw_ac].mu_time = htole16(rec[2]);
+        }
+    }
+    cmd->flags = htole32(flags);
+}
+
+int ItlIwx::
+iwx_config_he_sta(struct iwx_softc *sc, struct ieee80211_node *ni)
+{
+    if (!(ni->ni_flags & IEEE80211_NODE_HE))
+        return 0;
+    if ((ni->ni_flags & (IEEE80211_NODE_HECAP | IEEE80211_NODE_HEOP)) !=
+        (IEEE80211_NODE_HECAP | IEEE80211_NODE_HEOP))
+        return EINVAL;
+    struct iwx_he_sta_context_cmd cmd;
+    static_assert(sizeof(cmd) == 88, "HE context v2 ABI");
+    static_assert(__offsetof(struct iwx_he_sta_context_cmd, max_bssid_indicator) == 80, "HE context v1 ABI");
+    uint8_t ver = iwx_lookup_cmd_ver(sc, IWX_DATA_PATH_GROUP, IWX_STA_HE_CTXT_CMD);
+    if (ver != 1 && ver != 2)
+        return EOPNOTSUPP;
+    iwx_build_he_sta(ni, &cmd);
+    static_assert(sizeof(struct iwx_cmd_response) == 4, "HE context status ABI");
+    struct iwx_host_cmd hcmd = {
+        .data = { &cmd, },
+        .resp_pkt_len = sizeof(struct iwx_rx_packet) + sizeof(struct iwx_cmd_response),
+        .flags = IWX_CMD_WANT_RESP,
+        .len = { uint16_t(ver == 1 ? 80 : sizeof(cmd)), },
+        .id = iwx_cmd_id(IWX_STA_HE_CTXT_CMD, IWX_DATA_PATH_GROUP, 0),
+    };
+    int err = iwx_send_cmd(sc, &hcmd);
+    int payload_len = -1;
+    uint32_t status = 0xffffffff;
+    bool status_present = false;
+    if (!err) {
+        struct iwx_rx_packet *pkt = hcmd.resp_pkt;
+        if (pkt == NULL || (pkt->hdr.group_id & IWX_CMD_FAILED_MSK))
+            err = EIO;
+        else if (iwx_rx_packet_len(pkt) < sizeof(pkt->hdr))
+            err = EPROTO;
+        else {
+            payload_len = int(iwx_rx_packet_payload_len(pkt));
+            if (payload_len == 0) {
+                /* AX210 firmware 68 replies with only the four-byte header. */
+            } else if (payload_len == sizeof(struct iwx_cmd_response)) {
+                struct iwx_cmd_response resp;
+                memcpy(&resp, pkt->data, sizeof(resp));
+                status = le32toh(resp.status);
+                status_present = true;
+                if (status != 0)
+                    err = EIO;
+            } else
+                err = EPROTO;
+        }
+    }
+    iwx_free_resp(sc, &hcmd);
+    XYLog("HE context: version=%u color=%u flags=%08x result=%d payload=%d status_present=%u status=0x%08x\n",
+        ver, cmd.bss_color, le32toh(cmd.flags), err, payload_len,
+        status_present ? 1U : 0U, status);
+    return err;
 }
 
 int ItlIwx::
@@ -11808,6 +12032,21 @@ iwx_rs_init(struct iwx_softc *sc, struct iwx_node *in, bool update)
 
     cmd_id = iwx_cmd_id(IWX_TLC_MNG_CONFIG_CMD, IWX_DATA_PATH_GROUP, 0);
     cmdver = iwx_lookup_cmd_ver(sc, IWX_DATA_PATH_GROUP, IWX_TLC_MNG_CONFIG_CMD);
+    if (ni->ni_flags & IEEE80211_NODE_HE) {
+        __atomic_fetch_add(&fAxHeDiagStats[AXD_TLC_CONFIG],1ULL,__ATOMIC_RELAXED);
+        __atomic_store_n(&fAxHeDiagStats[AXD_TLC_FIELDS],
+            uint64_t(cfg_cmd.mode) | (uint64_t(cfg_cmd.max_ch_width)<<8) |
+            (uint64_t(cfg_cmd.chains)<<16) | (uint64_t(cfg_cmd.flags)<<24),
+            __ATOMIC_RELAXED);
+        __atomic_store_n(&fAxHeDiagStats[AXD_TLC_80],
+            uint64_t(le16toh(cfg_cmd.ht_rates[0][0])) |
+            (uint64_t(le16toh(cfg_cmd.ht_rates[1][0]))<<16),__ATOMIC_RELAXED);
+        __atomic_store_n(&fAxHeDiagStats[AXD_TLC_160],
+            uint64_t(le16toh(cfg_cmd.ht_rates[0][1])) |
+            (uint64_t(le16toh(cfg_cmd.ht_rates[1][1]))<<16),__ATOMIC_RELAXED);
+        __atomic_store_n(&fAxHeDiagStats[AXD_TLC_VERSION],cmdver,__ATOMIC_RELAXED);
+        __atomic_store_n(&fAxHeDiagStats[AXD_TLC_MPDU],cfg_cmd.max_mpdu_len,__ATOMIC_RELAXED);
+    }
     XYLog("%s cmdver %d\n", __FUNCTION__, cmdver);
     if (cmdver == 4) {
         return iwx_send_cmd_pdu(sc, cmd_id, IWX_CMD_ASYNC,
@@ -11922,6 +12161,200 @@ static uint32_t iwx_new_rate_from_v1(uint32_t rate_v1)
     return rate_v2;
 }
 
+/* Decode the last AX TLC HE SU rate, including the firmware-selected GI.
+ * Adapted from laobamac/itlwm v2.4.0-alpha (7204c69), GPL-2.0.
+ * MU/TB lacks an RU allocation in this notification and remains unknown. */
+static uint32_t
+iwx_ax_he_tlc_rate_kbps(uint32_t rate)
+{
+    if ((rate & IWX_RATE_MCS_MOD_TYPE_MSK) != IWX_RATE_MCS_HE_MSK)
+        return 0;
+    unsigned type = (rate & IWX_RATE_MCS_HE_TYPE_MSK) >> IWX_RATE_MCS_HE_TYPE_POS;
+    unsigned bw = (rate & IWX_RATE_MCS_CHAN_WIDTH_MSK) >> IWX_RATE_MCS_CHAN_WIDTH_POS;
+    unsigned mcs = rate & IWX_RATE_MCS_CODE_MSK;
+    unsigned gi = (rate & IWX_RATE_MCS_HE_GI_LTF_MSK) >> IWX_RATE_MCS_HE_GI_LTF_POS;
+    unsigned nss = ((rate & IWX_RATE_MCS_NSS_MSK) >> IWX_RATE_MCS_NSS_POS) + 1;
+    if (type > 1 || bw > 3 || mcs > 11 || gi > 4)
+        return 0;
+    static const unsigned tones[] = {234, 468, 980, 1960};
+    static const unsigned bits[] = {1, 2, 2, 4, 4, 6, 6, 6, 8, 8, 10, 10};
+    static const unsigned num[] = {1, 1, 3, 1, 3, 2, 3, 5, 3, 5, 3, 5};
+    static const unsigned den[] = {2, 2, 4, 2, 4, 3, 4, 6, 4, 6, 4, 6};
+    unsigned symbol = 128 + (gi == 2 ? 16 : gi == 3 ? 32 : 8);
+    unsigned nsd = (rate & IWX_RATE_MCS_HE_106T_MSK) ? 102 : tones[bw];
+    unsigned divisor = den[mcs] * symbol;
+    if (rate & IWX_RATE_HE_DUAL_CARRIER_MODE_MSK) divisor *= 2;
+    return nsd * nss * bits[mcs] * num[mcs] * 10000 / divisor;
+}
+
+void ItlIwx::axTxRateNote(uint32_t raw, unsigned source)
+{
+    if (bzDevice() || !axHeDiagActive(&com) || com.ns_nstate != IEEE80211_S_RUN ||
+        source < 1 || source > 2) return;
+    auto &r=fAxRate[source-1];
+    __atomic_add_fetch(&r.seq,1ULL,__ATOMIC_ACQ_REL);
+    __atomic_store_n(&r.raw,raw,__ATOMIC_RELAXED);
+    __atomic_store_n(&r.identity,(uint64_t(uint32_t(com.sc_generation))<<32)|fPc1ResetEpoch,__ATOMIC_RELAXED);
+    __atomic_store_n(&r.epoch,__atomic_load_n(&fAxRateEpoch,__ATOMIC_ACQUIRE),__ATOMIC_RELAXED);
+    __atomic_store_n(&r.stamp,time2GNow(),__ATOMIC_RELAXED);
+    __atomic_add_fetch(&r.seq,1ULL,__ATOMIC_RELEASE);
+}
+
+bool ItlIwx::getHeTxReport(ItlHeTxReport &out)
+{
+    if (bzDevice() || !com.sc_ic.ic_bss ||
+        !(com.sc_ic.ic_bss->ni_flags & IEEE80211_NODE_HE)) return false;
+    out={};
+    if (com.sc_ic.ic_state!=IEEE80211_S_RUN || com.ns_nstate!=IEEE80211_S_RUN ||
+        (com.sc_flags&IWX_FLAG_SHUTDOWN)) return true;
+    const uint64_t now=time2GNow();
+    const uint64_t identity=(uint64_t(uint32_t(com.sc_generation))<<32)|fPc1ResetEpoch;
+    const uint32_t epoch=__atomic_load_n(&fAxRateEpoch,__ATOMIC_ACQUIRE);
+    // Legacy PHY status is the last firmware-reported state, not a live
+    // transmission while idle. Keep one coherent tuple and publish its age.
+    // A later unsupported report is unknown, never an invented older SU rate.
+    uint64_t selectedStamp=0;
+    for (int i=1;i>=0;--i) {
+        auto &r=fAxRate[i];
+        const uint64_t seq=__atomic_load_n(&r.seq,__ATOMIC_ACQUIRE);
+        if (seq&1) continue;
+        const uint32_t raw=__atomic_load_n(&r.raw,__ATOMIC_RELAXED);
+        const uint64_t stamp=__atomic_load_n(&r.stamp,__ATOMIC_RELAXED);
+        const uint64_t id=__atomic_load_n(&r.identity,__ATOMIC_RELAXED);
+        const uint32_t e=__atomic_load_n(&r.epoch,__ATOMIC_RELAXED);
+        __atomic_thread_fence(__ATOMIC_ACQUIRE);
+        if (seq!=__atomic_load_n(&r.seq,__ATOMIC_ACQUIRE) || !stamp || id!=identity || e!=epoch ||
+            now<stamp || stamp<=selectedStamp) continue;
+        selectedStamp=stamp;
+        const uint64_t age=now-stamp;
+        out.raw=raw;out.source=i+1;
+        out.age_ms=uint32_t(MIN(age/1000000ULL,0xffffffffULL));
+        out.kbps=iwx_ax_he_tlc_rate_kbps(raw);
+        out.mcs=raw&IWX_RATE_MCS_CODE_MSK;
+        out.nss=((raw&IWX_RATE_MCS_NSS_MSK)>>IWX_RATE_MCS_NSS_POS)+1;
+        out.bw=(raw&IWX_RATE_MCS_CHAN_WIDTH_MSK)>>IWX_RATE_MCS_CHAN_WIDTH_POS;
+        out.gi=(raw&IWX_RATE_MCS_HE_GI_LTF_MSK)>>IWX_RATE_MCS_HE_GI_LTF_POS;
+        out.valid=out.kbps!=0;
+        out.fresh=out.valid && age<=5000000000ULL;
+    }
+    if (identity!=((uint64_t(uint32_t(com.sc_generation))<<32)|fPc1ResetEpoch) ||
+        epoch!=__atomic_load_n(&fAxRateEpoch,__ATOMIC_ACQUIRE)) out={};
+    return true;
+}
+
+int ItlIwx::axInputHandoff(struct iwx_softc *sc, struct mbuf_list *ml, unsigned path)
+{
+    if (!axHeDiagActive(sc)) return if_input(&sc->sc_ic.ic_if, ml);
+    const uint64_t first = __atomic_load_n(&fAxInputTicket, __ATOMIC_RELAXED) + 1;
+    const uint64_t identity = (uint64_t(uint32_t(sc->sc_generation)) << 32) | fPc1ResetEpoch;
+    const uint32_t batch = ml_len(ml);
+    // Read only small, linear Ethernet/IPv4 TCP headers. UDP payloads and
+    // large result JSON are deliberately not inspected or copied here.
+    for (mbuf_t m=ml->ml_head; m; m=mbuf_nextpkt(m)) {
+        const size_t size=mbuf_pkthdr_len(m), linear=mbuf_len(m);
+        if (size<54 || size>256 || linear<54) continue;
+        const auto *b=static_cast<const uint8_t *>(mbuf_data(m));
+        const auto u16=[&](unsigned o) -> uint32_t { return (uint32_t(b[o])<<8)|b[o+1]; };
+        const auto u32=[&](unsigned o) -> uint32_t { return (u16(o)<<16)|u16(o+2); };
+        if (u16(12)!=0x0800 || (b[14]>>4)!=4 || b[23]!=6 || (u16(20)&0x3fff)) continue;
+        const unsigned ih=(b[14]&15U)*4, iplen=u16(16), tcp=14+ih;
+        if (ih<20 || iplen<ih+20 || iplen>size-14 || linear<tcp+20) continue;
+        if (u16(tcp)!=5201 && u16(tcp+2)!=5201) continue;
+        const unsigned th=(b[tcp+12]>>4)*4, payload=iplen-ih;
+        if (th<20 || th>payload || linear<tcp+th) continue;
+        const unsigned plen=payload-th;
+        uint32_t prefix=0;
+        for (unsigned i=0;i<4 && i<plen && tcp+th+i<linear;++i)
+            prefix|=uint32_t(b[tcp+th+i])<<(24-i*8);
+        const uint64_t ticket=__atomic_add_fetch(&fAxInputTicket,1ULL,__ATOMIC_RELAXED);
+        auto *w=fAxInputEvents[(ticket-1)%64];
+        __atomic_store_n(w,0ULL,__ATOMIC_RELEASE);
+        const uint64_t fields[9]={time2GNow(),0,identity,
+            (uint64_t(u32(tcp+4))<<32)|u32(tcp+8),
+            (uint64_t(u32(26))<<32)|u32(30),
+            uint64_t(u16(tcp))|(uint64_t(u16(tcp+2))<<16)|
+                (uint64_t(b[tcp+13])<<32)|(uint64_t(b[15])<<40)|(uint64_t(path)<<48),
+            uint64_t(iplen)|(uint64_t(plen)<<16)|(uint64_t(batch)<<32),
+            uint64_t(prefix)|(uint64_t(mbuf_flags(m))<<32),0};
+        for (unsigned i=0;i<9;++i) __atomic_store_n(w+i+1,fields[i],__ATOMIC_RELAXED);
+        __atomic_store_n(w,ticket,__ATOMIC_RELEASE);
+    }
+    const uint64_t last=__atomic_load_n(&fAxInputTicket,__ATOMIC_RELAXED);
+    // The actual original if_input runs exactly once and consumes the list.
+    // Do not access packet storage after it returns.
+    const int result=if_input(&sc->sc_ic.ic_if,ml);
+    if (last>=first) {
+        const uint64_t returned=time2GNow();
+        const uint64_t begin=last-first<64?first:last-63;
+        for (uint64_t ticket=begin;ticket<=last;++ticket) {
+            auto *w=fAxInputEvents[(ticket-1)%64];
+            // A reentrant handoff may have overwritten this slot while the
+            // original callback slept; never complete a different ticket.
+            if (__atomic_load_n(w,__ATOMIC_ACQUIRE)!=ticket) continue;
+            __atomic_store_n(w+9,uint64_t(uint32_t(result)),__ATOMIC_RELAXED);
+            __atomic_store_n(w+2,returned,__ATOMIC_RELEASE);
+        }
+    }
+    return result;
+}
+
+void ItlIwx::axBaEvent(unsigned event,unsigned tid,unsigned start,int error,uint32_t status)
+{
+    if (bzDevice()) return;
+    const uint64_t ticket=__atomic_add_fetch(&fAxBaTicket,1ULL,__ATOMIC_RELAXED);
+    auto *w=fAxBaEvents[(ticket-1)%16];
+    __atomic_store_n(&w[0],0ULL,__ATOMIC_RELEASE);
+    __atomic_store_n(&w[1],time2GNow(),__ATOMIC_RELAXED);
+    __atomic_store_n(&w[2],(uint64_t(uint32_t(com.sc_generation))<<32)|fPc1ResetEpoch,__ATOMIC_RELAXED);
+    __atomic_store_n(&w[3],uint64_t(event)|(uint64_t(tid)<<8)|(uint64_t(start)<<16),__ATOMIC_RELAXED);
+    __atomic_store_n(&w[4],uint64_t(uint32_t(error)),__ATOMIC_RELAXED);
+    __atomic_store_n(&w[5],uint64_t(status),__ATOMIC_RELAXED);
+    __atomic_store_n(&w[6],(uint64_t(__atomic_load_n(&com.ba_rx.start_tidmask,__ATOMIC_RELAXED))<<32)|
+        __atomic_load_n(&com.ba_rx.stop_tidmask,__ATOMIC_RELAXED),__ATOMIC_RELAXED);
+    __atomic_store_n(&w[7],uint64_t(com.sc_rx_ba_sessions),__ATOMIC_RELAXED);
+    __atomic_store_n(&w[0],ticket,__ATOMIC_RELEASE);
+}
+
+void ItlIwx::axExtraCapture()
+{
+    auto *w=fAxBaWire;
+    w[0]=42;w[1]=1;w[2]=sizeof(fAxBaWire);w[3]=__atomic_load_n(&fAxBaTicket,__ATOMIC_ACQUIRE);
+    w[4]=com.sc_generation;w[5]=fPc1ResetEpoch;w[6]=com.sc_rx_ba_sessions;w[7]=time2GNow();
+    for(unsigned tid=0;tid<16;++tid) {
+        w[8+tid]=0xff00U;
+        if(com.sc_ic.ic_bss) w[8+tid]|=com.sc_ic.ic_bss->ni_rx_ba[tid].ba_state;
+        for(unsigned i=0;i<nitems(com.sc_rxba_data);++i) {
+            auto &ba=com.sc_rxba_data[i];
+            if(ba.baid!=IWX_RX_REORDER_DATA_INVALID_BAID && ba.tid==tid) {
+                w[8+tid]=(w[8+tid]&0xffU)|(uint64_t(ba.baid)<<8)|
+                    (uint64_t(ba.reorder_buf.buf_size)<<16)|(uint64_t(ba.reorder_buf.removed)<<32);
+                break;
+            }
+        }
+    }
+    for(unsigned i=0;i<16;++i) {
+        auto *v=fAxBaEvents[i];const uint64_t ticket=__atomic_load_n(&v[0],__ATOMIC_ACQUIRE);
+        for(unsigned j=1;j<8;++j) w[24+i*8+j]=__atomic_load_n(&v[j],__ATOMIC_RELAXED);
+        __atomic_thread_fence(__ATOMIC_ACQUIRE);
+        w[24+i*8]=ticket==__atomic_load_n(&v[0],__ATOMIC_ACQUIRE)?ticket:0;
+    }
+    ItlHeTxReport r={};getHeTxReport(r);
+    auto *v=fAxRateWire;
+    v[0]=43;v[1]=2;v[2]=sizeof(fAxRateWire);v[3]=time2GNow();v[4]=r.valid;v[5]=r.source;
+    v[6]=r.raw;v[7]=r.age_ms;v[8]=r.kbps;v[9]=r.mcs;v[10]=r.nss;v[11]=r.bw;v[12]=r.gi;
+    v[13]=com.sc_generation;v[14]=fPc1ResetEpoch;v[15]=__atomic_load_n(&fAxRateEpoch,__ATOMIC_ACQUIRE);v[16]=r.fresh;
+    auto *d=fAxInputWire;
+    d[0]=44;d[1]=1;d[2]=sizeof(fAxInputWire);d[3]=__atomic_load_n(&fAxInputTicket,__ATOMIC_ACQUIRE);
+    d[4]=time2GNow();d[5]=com.sc_generation;d[6]=fPc1ResetEpoch;d[7]=64;d[8]=10;
+    d[9]=d[3]>64?d[3]-64:0;d[10]=5201;d[11]=256;
+    for(unsigned i=12;i<16;++i) d[i]=0;
+    for(unsigned i=0;i<64;++i) {
+        auto *s=fAxInputEvents[i]; const uint64_t ticket=__atomic_load_n(s,__ATOMIC_ACQUIRE);
+        for(unsigned j=1;j<10;++j) d[16+i*10+j]=__atomic_load_n(s+j,__ATOMIC_ACQUIRE);
+        d[16+i*10]=ticket==__atomic_load_n(s,__ATOMIC_ACQUIRE)?ticket:0;
+    }
+}
+
 void ItlIwx::
 iwx_rs_update(struct iwx_softc *sc, struct iwx_tlc_update_notif *notif)
 {
@@ -11945,6 +12378,7 @@ iwx_rs_update(struct iwx_softc *sc, struct iwx_tlc_update_notif *notif)
         rate_n_flags = iwx_new_rate_from_v1(rate_n_flags);
     zc28Note(5,rate_n_flags,notifver,0);
     format = rate_n_flags & IWX_RATE_MCS_MOD_TYPE_MSK;
+    axTxRateNote(rate_n_flags, 1);
     if (format == IWX_RATE_MCS_VHT_MSK ||
         format == IWX_RATE_MCS_HE_MSK ||
         format == IWX_RATE_MCS_EHT_MSK) {
@@ -12021,6 +12455,21 @@ iwx_auth(struct iwx_softc *sc)
 
     XYLog("%s\n", __FUNCTION__);
     struct ieee80211com *ic = &sc->sc_ic;
+    /* The legacy media-change path can leave HEON set while clearing HTON
+     * and VHTON. An HE association request then omits its HT/VHT capability
+     * elements. Repair only the gated conventional AX HE path at its last
+     * driver boundary before authentication; GL92 returned above. */
+    if (iwx_p10_ax_he_target(sc) &&
+        (ic->ic_userflags & IEEE80211_F_HEON) &&
+        (ic->ic_flags & IEEE80211_F_HEON) &&
+        sc->sc_nvm.sku_cap_11n_enable && sc->sc_nvm.sku_cap_11ac_enable) {
+        const uint32_t before = ic->ic_flags;
+        if (!sc->sc_pcitag->getProperty("ItlwmAxHeLegacyCapsFirstBefore"))
+            sc->sc_pcitag->setProperty("ItlwmAxHeLegacyCapsFirstBefore", before, 32);
+        ic->ic_flags |= IEEE80211_F_HTON | IEEE80211_F_VHTON;
+        sc->sc_pcitag->setProperty("ItlwmAxHeLegacyCapsLastBefore", before, 32);
+        sc->sc_pcitag->setProperty("ItlwmAxHeLegacyCapsAfter", ic->ic_flags, 32);
+    }
     struct iwx_node *in = (struct iwx_node *)ic->ic_bss;
     uint32_t duration;
     int generation = sc->sc_generation, err = 0;
@@ -12301,6 +12750,9 @@ iwx_run(struct iwx_softc *sc)
         return err;
     }
     
+    err = iwx_config_he_sta(sc, &in->in_ni);
+    if (err)
+        return err;
     err = iwx_rs_init(sc, in, true);
     if (err) {
         XYLog("%s: could not update rate scaling (error %d)\n",
@@ -12341,7 +12793,8 @@ iwx_run_stop(struct iwx_softc *sc)
         struct iwx_rxba_data *rxba = &sc->sc_rxba_data[i];
         if (rxba->baid == IWX_RX_REORDER_DATA_INVALID_BAID)
             continue;
-        iwx_sta_rx_agg(sc, ic->ic_bss, rxba->tid, 0, 0, 0, 0);
+        err = iwx_sta_rx_agg(sc, ic->ic_bss, rxba->tid, 0, 0, 0, 0);
+        if (err) return err;
     }
     
     err = iwx_sf_config(sc, IWX_SF_INIT_OFF);
@@ -12633,6 +13086,10 @@ iwx_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
     struct iwx_softc *sc = (struct iwx_softc *)ifp->if_softc;
     ItlIwx *that = container_of(sc, ItlIwx, com);
     struct ieee80211_node *ni = ic->ic_bss;
+    if (!that->bzDevice() && nstate != IEEE80211_S_RUN) {
+        __atomic_add_fetch(&that->fAxRateEpoch, 1U, __ATOMIC_RELEASE);
+        __atomic_add_fetch(&that->fAxBaEpoch, 1U, __ATOMIC_RELEASE);
+    }
     
     /*
      * Prevent attemps to transition towards the same state, unless
@@ -13416,6 +13873,7 @@ iwx_stop(struct _ifnet *ifp, unsigned origin2J)
     //    rw_assert_wrlock(&sc->ioctl_rwl);
     
     sc->sc_flags |= IWX_FLAG_SHUTDOWN; /* Disallow new tasks. */
+    if (!bzDevice()) ++sc->sc_generation; // invalidate AX BA replies before reset
     if (bzDevice()) {
         // Invalidate sleeping state/command continuations BEFORE reset begins.
         ++sc->sc_generation;
@@ -13438,7 +13896,6 @@ iwx_stop(struct _ifnet *ifp, unsigned origin2J)
     
     /* Reset soft state. */
     
-    if (!bzDevice()) sc->sc_generation++;
     for (i = 0; i < nitems(sc->sc_cmd_resp_pkt); i++) {
         ::free(sc->sc_cmd_resp_pkt[i]);
         sc->sc_cmd_resp_pkt[i] = NULL;
@@ -13464,8 +13921,13 @@ iwx_stop(struct _ifnet *ifp, unsigned origin2J)
     sc->sc_flags &= ~IWX_FLAG_TXFLUSH;
 
     sc->sc_rx_ba_sessions = 0;
-    sc->ba_rx.start_tidmask = 0;
-    sc->ba_rx.stop_tidmask = 0;
+    if (!bzDevice()) {
+        __atomic_store_n(&sc->ba_rx.start_tidmask, 0U, __ATOMIC_RELEASE);
+        __atomic_store_n(&sc->ba_rx.stop_tidmask, 0U, __ATOMIC_RELEASE);
+    } else {
+        sc->ba_rx.start_tidmask = 0;
+        sc->ba_rx.stop_tidmask = 0;
+    }
     sc->ba_tx.start_tidmask = 0;
     sc->ba_tx.stop_tidmask = 0;
     
@@ -14127,6 +14589,7 @@ iwx_rx_pkt(struct iwx_softc *sc, struct iwx_rx_data *data, struct mbuf_list *ml)
             case IWX_WIDE_ID(IWX_MAC_CONF_GROUP,IWX_STA_REMOVE_CMD):
             case IWX_WIDE_ID(IWX_DATA_PATH_GROUP,IWX_SCD_QUEUE_CONFIG_CMD):
             case IWX_WIDE_ID(IWX_DATA_PATH_GROUP,IWX_SEC_KEY_CMD):
+            case IWX_WIDE_ID(IWX_DATA_PATH_GROUP,IWX_STA_HE_CTXT_CMD):
             case IWX_WIDE_ID(IWX_DATA_PATH_GROUP,IWX_RLC_CONFIG_CMD):
             case IWX_WIDE_ID(IWX_DATA_PATH_GROUP,IWX_RX_BAID_ALLOCATION_CONFIG_CMD):
             case IWX_REPLY_BEACON_FILTERING_CMD:
@@ -14326,6 +14789,37 @@ iwx_rx_pkt(struct iwx_softc *sc, struct iwx_rx_data *data, struct mbuf_list *ml)
                 break;
             }
                 
+            /*
+             * Firmware tells the host the reorder window may advance to nssn
+             * (frames it will not get back), as Linux iwl_mvm_rx_frame_release().
+             * Without it, frames behind a hole wait for the reorder timeout.
+             */
+            case IWX_WIDE_ID(IWX_LEGACY_GROUP, IWX_FRAME_RELEASE): {
+                struct iwx_frame_release *release;
+                SYNC_RESP_STRUCT(release, pkt, struct iwx_frame_release *);
+                struct iwx_rxba_data *baid_data;
+                unsigned int baid, nssn;
+                
+                if (iwx_rx_packet_payload_len(pkt) < sizeof(*release))
+                    break;
+                
+                baid = release->baid;
+                nssn = le16toh(release->nssn) & 0xfff;
+                if (baid == IWX_RX_REORDER_DATA_INVALID_BAID || baid >= IWX_MAX_BAID)
+                    break;
+                
+                baid_data = &sc->sc_rxba_data[baid];
+                if (baid_data->baid != baid || !baid_data->reorder_buf.valid ||
+                    baid_data->reorder_buf.buf_size == 0)
+                    break;
+                
+                iwx_release_frames(sc, sc->sc_ic.ic_bss, baid_data, &baid_data->reorder_buf, nssn, ml);
+                /* Publish on powers of two only: no per-packet registry access. */
+                if (++fFrameReleaseCount && !(fFrameReleaseCount & (fFrameReleaseCount - 1)))
+                    sc->sc_pcitag->setProperty("ItlwmFrameRelease", fFrameReleaseCount, 32);
+                break;
+            }
+                
             default:
                 handled = 0;
                 XYLog("%s: unhandled firmware response 0x%x/0x%x "
@@ -14408,16 +14902,34 @@ iwx_notif_intr(struct iwx_softc *sc)
         iwx_dma_queue_publish_barrier();
         IWX_WRITE(sc,IWX_RFH_Q0_FRBDCB_WIDX_TRG,credits);
     };
+    // AX HE only: do not withhold all replacement-backed RFH credits and
+    // upper delivery until the entire completion snapshot has been drained.
+    // BZ already has its own bounded service; its earlier dispatch is intact.
+    // Finish the current completion (including any reorder release) first;
+    // 64 packets is a delivery trigger, not a truncation of an atomic release.
+    const bool boundedAxHe = axHeDiagActive(sc);
+    unsigned completionsSinceDelivery = 0;
     while (sc->rxq.cur != hw) {
         struct iwx_rx_data *data = &sc->rxq.data[sc->rxq.cur];
         if (dma5Leased()) fRxZcBatchQueued = ml_len(&ml);
         iwx_rx_pkt(sc, data, &ml);
         if (dma5Leased() && !rxZcRepost(sc->rxq.cur)) {
-            if_input(&sc->sc_ic.ic_if, &ml);
+            axInputHandoff(sc, &ml, 2);
             rxZcReport(0);
             return; // No new RX credits after sync/ownership/generation failure.
         }
         sc->rxq.cur = (sc->rxq.cur + 1) % IWX_RX_MQ_RING_COUNT;
+        if (boundedAxHe && (++completionsSinceDelivery >= 32 || ml_len(&ml) >= 64)) {
+            fRxZcBatchQueued = ml_len(&ml);
+            if (fRxZcBatchQueued > fRxZcBatchMax) fRxZcBatchMax = fRxZcBatchQueued;
+            const unsigned cursor = sc->rxq.cur;
+            publish(); // Same AX cur-1/aligned RFH rule, after rxZcRepost.
+            axInputHandoff(sc, &ml, 6);
+            // Upper callbacks may reset/stop/reenter. Do not consume an old
+            // completion snapshot or write old-generation credits afterward.
+            if (!current() || !axHeDiagActive(sc) || sc->rxq.cur != cursor) return;
+            completionsSinceDelivery = 0;
+        }
     }
     if (dma5Leased()) {
         fRxZcBatchQueued = ml_len(&ml);
@@ -14426,7 +14938,7 @@ iwx_notif_intr(struct iwx_softc *sc)
     // Publish BEFORE the final handoff too; no old-generation DMA write may
     // follow a stack-triggered reset, detach or shutdown.
     publish();
-    if_input(&sc->sc_ic.ic_if, &ml);
+    axInputHandoff(sc, &ml, 1);
     if (dma5Leased()) rxZcReport(0);
     dma5Report();
 }
@@ -16854,6 +17366,7 @@ dexterOriginal_iwx_rx_pkt(struct iwx_softc *sc, struct iwx_rx_data *data, struct
             case IWX_WIDE_ID(IWX_LONG_GROUP, IWX_SCAN_REQ_UMAC):
             case IWX_WIDE_ID(IWX_LONG_GROUP, IWX_SCAN_ABORT_UMAC):
             case IWX_WIDE_ID(IWX_MAC_CONF_GROUP, IWX_SESSION_PROTECTION_CMD):
+            case IWX_WIDE_ID(IWX_DATA_PATH_GROUP, IWX_STA_HE_CTXT_CMD):
             case IWX_REPLY_BEACON_FILTERING_CMD:
             case IWX_MAC_PM_POWER_TABLE:
             case IWX_TIME_QUOTA_CMD:
@@ -17097,7 +17610,7 @@ dexterOriginal_iwx_notif_intr(struct iwx_softc *sc)
         iwx_rx_pkt(sc, data, &ml);
         if (generation!=unsigned(sc->sc_generation) || epoch!=fPc1ResetEpoch ||
             (sc->sc_flags & IWX_FLAG_SHUTDOWN)) {
-            if_input(&sc->sc_ic.ic_if,&ml);return;
+            axInputHandoff(sc,&ml,4);return;
         }
         sc->rxq.cur = (sc->rxq.cur + 1) % IWX_RX_MQ_RING_COUNT;
     }
@@ -17110,7 +17623,7 @@ dexterOriginal_iwx_notif_intr(struct iwx_softc *sc)
         iwx_dma_queue_publish_barrier();
         IWX_WRITE(sc, IWX_RFH_Q0_FRBDCB_WIDX_TRG, hw & ~7);
     }
-    if_input(&sc->sc_ic.ic_if, &ml);
+    axInputHandoff(sc, &ml, 3);
 }
 
 int ItlIwx::
@@ -17359,6 +17872,9 @@ dexterOriginal_iwx_rx_tx_ba_notif(struct iwx_softc *sc, struct iwx_rx_packet *pk
     struct iwx_tx_ring *ring;
 
     sc->sc_tx_timer = 0;
+
+    if (iwx_rx_packet_payload_len(pkt) >= offsetof(iwx_compressed_ba_notif,tfd))
+        axHeDiagBa(sc, ba_res);
 
     if (le32toh(ba_res->flags) != IWX_BA_RESP_TX_BAR && le32toh(ba_res->flags) != IWX_BA_RESP_TX_AGG){
         DPRINTFN(3, ("BA_NOTIFICATION flags %x, sent:%d, acked:%d, tfd_cnt:%d, query_frame_cnt:%d, retry_cnt:%d\n",
@@ -17729,6 +18245,90 @@ void ItlIwx::zc28Publish()
     if(!pci.pa_tag->setProperty("KGP_ZC28_SERVICE",fZc28Wire,sizeof(fZc28Wire))) ++fZc28PubFail;
 }
 
+// Passive AX HE diagnostic: no changes to firmware commands or completions.
+bool ItlIwx::axHeDiagActive(struct iwx_softc *sc)
+{
+    return sc && !bzDevice() && sc->sc_ic.ic_state==IEEE80211_S_RUN &&
+        sc->sc_ic.ic_bss && (sc->sc_ic.ic_bss->ni_flags & IEEE80211_NODE_HE);
+}
+
+void ItlIwx::axHeDiagRx(struct iwx_softc *sc,uint32_t raw,bool ampdu,bool amsdu)
+{
+    if(!axHeDiagActive(sc)) return;
+    uint64_t n=__atomic_add_fetch(&fAxHeDiagStats[AXD_RX_DATA],1ULL,__ATOMIC_RELAXED);
+    if(n&15) return; // sample one data MPDU in 16
+    __atomic_fetch_add(&fAxHeDiagStats[AXD_RX_SAMPLED],1ULL,__ATOMIC_RELAXED);
+    if(ampdu) __atomic_fetch_add(&fAxHeDiagStats[AXD_RX_AMPDU],1ULL,__ATOMIC_RELAXED);
+    if(amsdu) __atomic_fetch_add(&fAxHeDiagStats[AXD_RX_AMSDU],1ULL,__ATOMIC_RELAXED);
+    __atomic_store_n(&fAxHeDiagStats[AXD_RX_RAW],raw,__ATOMIC_RELAXED);
+    if((raw&IWX_RATE_MCS_MOD_TYPE_MSK)!=IWX_RATE_MCS_HE_MSK) return;
+    unsigned mcs=raw&IWX_RATE_MCS_CODE_MSK;
+    unsigned gi=(raw&IWX_RATE_MCS_HE_GI_LTF_MSK)>>IWX_RATE_MCS_HE_GI_LTF_POS;
+    unsigned bw=(raw&IWX_RATE_MCS_CHAN_WIDTH_MSK)>>IWX_RATE_MCS_CHAN_WIDTH_POS;
+    unsigned nss=(raw&IWX_RATE_MCS_NSS_MSK)?1:0;
+    if(mcs<12) __atomic_fetch_add(&fAxHeDiagStats[AXD_RX_MCS+mcs],1ULL,__ATOMIC_RELAXED);
+    if(gi<5) __atomic_fetch_add(&fAxHeDiagStats[AXD_RX_GI+gi],1ULL,__ATOMIC_RELAXED);
+    if(bw<4) __atomic_fetch_add(&fAxHeDiagStats[AXD_RX_BW+bw],1ULL,__ATOMIC_RELAXED);
+    __atomic_fetch_add(&fAxHeDiagStats[AXD_RX_NSS+nss],1ULL,__ATOMIC_RELAXED);
+}
+
+void ItlIwx::axHeDiagBa(struct iwx_softc *sc,const struct iwx_compressed_ba_notif *ba)
+{
+    if(!axHeDiagActive(sc)||!ba) return;
+    uint32_t raw=le32toh(ba->tx_rate);
+    if (ba->sta_id == IWX_STATION_ID && le16toh(ba->done) &&
+        (le32toh(ba->flags) == IWX_BA_RESP_TX_AGG ||
+         le32toh(ba->flags) == IWX_BA_RESP_TX_BAR))
+        axTxRateNote(raw, 2);
+    __atomic_fetch_add(&fAxHeDiagStats[AXD_BA],1ULL,__ATOMIC_RELAXED);
+    __atomic_fetch_add(&fAxHeDiagStats[AXD_BA_TXED],uint64_t(le16toh(ba->txed)),__ATOMIC_RELAXED);
+    __atomic_fetch_add(&fAxHeDiagStats[AXD_BA_DONE],uint64_t(le16toh(ba->done)),__ATOMIC_RELAXED);
+    __atomic_fetch_add(&fAxHeDiagStats[AXD_BA_RETRIES],uint64_t(ba->retry_cnt),__ATOMIC_RELAXED);
+    __atomic_fetch_add(&fAxHeDiagStats[AXD_BA_TFD],uint64_t(le16toh(ba->tfd_cnt)),__ATOMIC_RELAXED);
+    __atomic_store_n(&fAxHeDiagStats[AXD_BA_RAW],raw,__ATOMIC_RELAXED);
+    __atomic_store_n(&fAxHeDiagStats[AXD_BA_FLAGS],le32toh(ba->flags),__ATOMIC_RELAXED);
+    if((raw&IWX_RATE_MCS_MOD_TYPE_MSK)!=IWX_RATE_MCS_HE_MSK) return;
+    unsigned mcs=raw&IWX_RATE_MCS_CODE_MSK;
+    unsigned gi=(raw&IWX_RATE_MCS_HE_GI_LTF_MSK)>>IWX_RATE_MCS_HE_GI_LTF_POS;
+    unsigned bw=(raw&IWX_RATE_MCS_CHAN_WIDTH_MSK)>>IWX_RATE_MCS_CHAN_WIDTH_POS;
+    unsigned nss=(raw&IWX_RATE_MCS_NSS_MSK)?1:0;
+    if(mcs<12) __atomic_fetch_add(&fAxHeDiagStats[AXD_BA_MCS+mcs],1ULL,__ATOMIC_RELAXED);
+    if(gi<5) __atomic_fetch_add(&fAxHeDiagStats[AXD_BA_GI+gi],1ULL,__ATOMIC_RELAXED);
+    if(bw<4) __atomic_fetch_add(&fAxHeDiagStats[AXD_BA_BW+bw],1ULL,__ATOMIC_RELAXED);
+    __atomic_fetch_add(&fAxHeDiagStats[AXD_BA_NSS+nss],1ULL,__ATOMIC_RELAXED);
+}
+
+void ItlIwx::axHeDiagSingle(struct iwx_softc *sc,const struct iwx_tx_resp *resp,
+    int status,int type)
+{
+    if(!axHeDiagActive(sc)||!resp||type!=IEEE80211_FC0_TYPE_DATA) return;
+    uint32_t raw=le32toh(resp->initial_rate);
+    __atomic_fetch_add(&fAxHeDiagStats[AXD_SINGLE],1ULL,__ATOMIC_RELAXED);
+    __atomic_fetch_add(&fAxHeDiagStats[status==IWX_TX_STATUS_SUCCESS?
+        AXD_SINGLE_OK:AXD_SINGLE_FAIL],1ULL,__ATOMIC_RELAXED);
+    __atomic_fetch_add(&fAxHeDiagStats[AXD_SINGLE_RETRIES],uint64_t(resp->failure_frame),__ATOMIC_RELAXED);
+    __atomic_store_n(&fAxHeDiagStats[AXD_SINGLE_RAW],raw,__ATOMIC_RELAXED);
+    if((raw&IWX_RATE_MCS_MOD_TYPE_MSK)==IWX_RATE_MCS_HE_MSK) {
+        unsigned mcs=raw&IWX_RATE_MCS_CODE_MSK;
+        if(mcs<12) __atomic_fetch_add(&fAxHeDiagStats[AXD_SINGLE_MCS+mcs],1ULL,__ATOMIC_RELAXED);
+    }
+}
+
+void ItlIwx::axHeDiagCapture()
+{
+    auto *w=fAxHeDiagWire;
+    w[0]=41;w[1]=1;w[2]=sizeof(fAxHeDiagWire);
+    w[3]=fZc19Health[3];w[4]=com.sc_generation;w[5]=fPc1ResetEpoch;
+    w[6]=com.sc_ic.ic_state;w[7]=fZc19Health[5];
+    for(unsigned i=0;i<88;++i)
+        w[8+i]=__atomic_load_n(&fAxHeDiagStats[i],__ATOMIC_RELAXED);
+}
+void ItlIwx::axHeDiagPublish()
+{
+    if(!bzDevice()&&pci.pa_tag&&getMainWorkLoop()&&!getMainWorkLoop()->inGate())
+        pci.pa_tag->setProperty("KGP_AX_HE_DIAG",fAxHeDiagWire,sizeof(fAxHeDiagWire));
+}
+
 // ZC19 independent minimal health publication, using the corrected controller-
 // owned gate convention from KGP c1b1d9a72aaae80ee3819996ecaa35a0d568c0ed.
 // Only the already existing watchdog calls this; no packet observer/worker.
@@ -17760,6 +18360,7 @@ IOReturn ItlIwx::zc19Snapshot(OSObject *, void *context, void *, void *, void *)
     w[30]=0; w[31]=0;
     that->rxZcCapturePeriodic();
     that->zc28Capture();
+    if(!that->bzDevice()) { that->axHeDiagCapture(); that->axExtraCapture(); }
     if(that->bzDevice()) { auto *b=that->fBzWire; b[0]=200;b[1]=1;b[2]=sizeof(that->fBzWire);b[3]=that->fZc19Health[3];
         b[4]=that->fZc19Health[4];b[5]=that->fZc19Health[5];b[6]=that->com.sc_generation;b[7]=that->fPc1ResetEpoch;
         b[8]=that->fBzFault;b[9]=that->fBzError;b[10]=that->fBzHardwareOwned;b[11]=that->com.sc_ic.ic_state;
@@ -17781,6 +18382,7 @@ void ItlIwx::zc19Publish()
     }
     rxZcPublishPeriodic();
     zc28Publish();
+    if(!bzDevice()) { axHeDiagPublish(); if(pci.pa_tag) { pci.pa_tag->setProperty("KGP_AX_BA_LIFECYCLE",fAxBaWire,sizeof(fAxBaWire)); pci.pa_tag->setProperty("KGP_AX_TX_RATE",fAxRateWire,sizeof(fAxRateWire)); pci.pa_tag->setProperty("KGP_AX_INPUT_HANDOFF",fAxInputWire,sizeof(fAxInputWire)); } }
     if(bzDevice()) bzCapture();
     if (!pci.pa_tag->setProperty("KGP_ZC19",fZc19Health,sizeof(fZc19Health)))
         ++fZc19PublishFail;

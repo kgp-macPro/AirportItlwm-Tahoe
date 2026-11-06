@@ -174,6 +174,7 @@ public:
     virtual bool is5GBandSupport() override;
     
     virtual int getTxNSS() override;
+    virtual bool getHeTxReport(ItlHeTxReport &) override;
     
     virtual const char *getFirmwareName() override;
     
@@ -293,6 +294,7 @@ public:
     void    iwx_setup_ht_rates(struct iwx_softc *);
     void    iwx_setup_vht_rates(struct iwx_softc *);
     void    iwx_setup_he_rates(struct iwx_softc *);
+    int     iwx_config_he_sta(struct iwx_softc *, struct ieee80211_node *);
     int    iwx_mimo_enabled(struct iwx_softc *);
     static void    iwx_mac_ctxt_task(void *);
     static void    iwx_chan_ctxt_task(void *);
@@ -311,7 +313,7 @@ public:
     static void    iwx_reorder_timer_expired(void *);
     void zc16ArmReorder(struct iwx_rxba_data *);
     static void    iwx_update_chw(struct ieee80211com *);
-    void    iwx_sta_rx_agg(struct iwx_softc *, struct ieee80211_node *, uint8_t,
+    int     iwx_sta_rx_agg(struct iwx_softc *, struct ieee80211_node *, uint8_t,
                            uint16_t, uint16_t, int, int);
     static int    iwx_ampdu_tx_start(struct ieee80211com *, struct ieee80211_node *,
             uint8_t);
@@ -636,6 +638,17 @@ public:
     // packet observers. Gate-only except atomic BA-task setup slots 6/7/11.
     // They do not control packet processing and are not a public wire schema.
     uint64_t fZc18Stats[12]={};
+    struct AxRateSample { uint64_t seq=0, stamp=0, identity=0; uint32_t raw=0, epoch=0; };
+    AxRateSample fAxRate[2]; // TLC / successful BA; one RX workloop writer
+    uint32_t fAxRateEpoch=0, fAxBaEpoch=0;
+    uint64_t fAxBaTicket=0, fAxBaEvents[16][8]={}, fAxBaWire[152]={}, fAxRateWire[17]={};
+    void axTxRateNote(uint32_t raw, unsigned source);
+    void axBaEvent(unsigned event,unsigned tid,unsigned start,int error,uint32_t status);
+    void axExtraCapture();
+    // AX HE only: passive small TCP/5201 handoff timing. No packet mutation.
+    uint64_t fAxInputTicket=0, fAxInputEvents[64][10]={}, fAxInputWire[656]={};
+    int axInputHandoff(struct iwx_softc *, struct mbuf_list *, unsigned path);
+
     // ZC19 watchdog-owned copy, schema 19/1; no hot-path instrumentation.
     uint64_t fZc19Health[32]={}, fZc19Miss=0, fZc19PublishFail=0;
     static IOReturn zc19Snapshot(OSObject*,void*,void*,void*,void*);
@@ -730,6 +743,16 @@ public:
     void zc28Capture();
     void zc28Publish();
 
+    // P10R4D: AX-only passive TLC/BA/RX diagnostic, published by the
+    // existing watchdog. No packet-path logging, allocation or registry IO.
+    uint64_t fAxHeDiagStats[88]={}, fAxHeDiagWire[96]={};
+    bool axHeDiagActive(struct iwx_softc *);
+    void axHeDiagRx(struct iwx_softc *, uint32_t, bool, bool);
+    void axHeDiagBa(struct iwx_softc *, const struct iwx_compressed_ba_notif *);
+    void axHeDiagSingle(struct iwx_softc *, const struct iwx_tx_resp *, int, int);
+    void axHeDiagCapture();
+    void axHeDiagPublish();
+
     // PC1 control is serialized by the existing main workloop, not a new worker.
     struct Pc1Advance { iwx_tx_ring *ring; int index; unsigned generation; };
     uint32_t fPc1ResetEpoch=0, fPc1TerminalEpoch=0, fPc1ExpectedGeneration=0;
@@ -765,6 +788,12 @@ public:
     kgp_bz::CommandLedger fBzCommands;
     kgp_bz::RxLedger fBzRx;
     uint64_t fBzStats[32] = {}, fBzWire[48] = {};
+    uint32_t fFrameReleaseCount = 0; // firmware FRAME_RELEASE notifications handled
+    /*
+     * Received MPDU rate histogram: [0,24) HE nss*12+mcs, [24,44) VHT nss*10+mcs,
+     * 44 HT, 45 legacy, [46,51) bandwidth 20/40/80/160/320, 51 total.
+     */
+    uint32_t fRxRateHist[52] = {};
     int bzValidateFirmware();
     int bzWaitFailure(struct iwx_softc *, int, uint32_t);
     void bzPnvmComplete(struct iwx_softc *, const void *, size_t);
