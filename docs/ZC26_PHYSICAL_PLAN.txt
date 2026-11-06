@@ -1,0 +1,16 @@
+ZC26 — future KGP physical evaluation; not executed by Codex
+Priority: dependable ZC22-class~550/520 TCP RX and~480TX, good WAN, no collapses.
+No requirement for tonight's candidate to reach580/580. Higher throughput welcome.
+1. KGP loads candidate by his existing process; verify loaded UUID vs archive.
+2. Scan/associatebbc, basic connectivity. Record any pre-existing traffic/time;
+   do not impose an undocumented warm-up. First controlled workload is evidence.
+3. Run the unchanged shared3x14 protocol once using ZC26 identity and ASIX peer;
+   keep all42 JSON/server records, allUDPsender/loss details and online raw arrays.
+   Preserve first and later rounds, never discard a bad run as warm-up.
+4. If normal operation later changes, retain the original evidence and ordinary
+   boundary snapshots; no profiler or intrusive recurring registry polling.
+5. WAN: compare networkQuality directional RPM/tails and capacity; keep any Ookla
+   endpoint/time distinct. PASS means execution, not acceptable performance.
+6. Sleep/wake, toggles, conventional and other-device qualification remain KGP
+   controlled outstanding gates. No claims from source inclusion/host tests.
+One final candidate only; no unchangedZC25 rerun or tester handover requested.

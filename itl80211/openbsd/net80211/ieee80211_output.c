@@ -633,8 +633,19 @@ fallback:
         struct ieee80211_tx_ba *ba;
         tid = ieee80211_classify(ic, m);
         ba = &ni->ni_tx_ba[tid];
-        /* We use QoS data frames for aggregation only. */
-        if (ba->ba_state != IEEE80211_BA_AGREED) {
+        /* GL92/TLC negotiates TX BA in firmware, so no host BA_AGREED
+         * transition is expected. Still generate QoS headers (and the per-TID
+         * sequence domain) after authorization: iwx_tx needs the header TID
+         * to reach the station's data queue. EAPOL stays non-QoS above.
+         * Do not fabricate a host BA agreement or schedule host ADDBA retries.
+         * Preserve the existing protected-HT aggregation policy and every
+         * non-offload device's original behavior. */
+        if ((ic->ic_caps & IEEE80211_C_TX_BA_OFFLOAD) &&
+            ic->ic_state == IEEE80211_S_RUN && ni == ic->ic_bss &&
+            ni->ni_port_valid && ieee80211_can_use_ampdu(ic, ni)) {
+            hdrlen = sizeof(struct ieee80211_qosframe);
+            addqos = 1;
+        } else if (ba->ba_state != IEEE80211_BA_AGREED) {
             hdrlen = sizeof(struct ieee80211_frame);
             addqos = 0;
             if ((ic->ic_caps & IEEE80211_C_TX_AMPDU_SETUP_IN_RS) == 0 &&

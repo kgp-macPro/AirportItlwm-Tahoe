@@ -1,0 +1,133 @@
+B1-ZC21-PERF — TVQM ERROR CONTRACT AND FAILURE OWNERSHIP
+2026-10-19. Existing Clean VTD session 01a09618-9d6f-7f20-8890-0338ed887257.
+
+Baseline and purpose
+Complete ZC19 tooling HEAD 251fb7b09bd17f7506f08029982545ce4d43e4f4,
+tree 56029a3d263d703a764429c2e682674a505065f5; production equals built
+f18801f700b433199cf45808eaa674c92ec4f422. Independent choice: direct ASIX
+controls, cached TX architecture, required ZC16 and later safety retained,
+fewer observer/scheduling dependencies than ZC18. Not a return to plain ZC8.
+The isolated ZC20 command-cache change did not restore RX and is not adopted.
+
+This candidate repairs a demonstrated correctness defect. Occurrence during
+KGP's RX deficit, and any throughput benefit, remain UNPROVEN. No root cause
+claim, ACK priority/pacing, cache-policy experiment or firmware-rate change.
+
+Exact history
+The frozen ZC8 commit db22bb90b72b440b657246940fd8da17dbee23a4 contains
+both iwx_tvqm_enable_txq's unchanged positive command-error return and
+alloc_txq's queue<0 test. Thus ZC8 CONTAINS this bug; this conclusion is not
+inferred merely from the phrase 'before ZC13'. The oldest available file
+commit is 22dc4f1412061ba386e9d29701808c8b43a401f9, author kgp-macPro,
+2026-09-14T14:33:03+02:00, initial repository import; it contains the same
+contract mismatch. That is the earliest local provenance, not a claim that
+this author originally introduced the upstream defect. Later ZC5 import
+bc8b39bb6ceede8522f5e1c8126d078dd10aac64 adds temporary-ring retention guards
+but leaves the erroneous return unchanged. Original ZC13 TX conversion
+31ac210425f497d3d8192982a643807361f1c6b2 changes allocations, not this contract.
+Exact snippets, Git blob identities and line anchors are recorded separately.
+
+Return chain
+1. iwx_send_cmd returns 0 or positive errno (e.g. EBUSY, ENOMEM, ETIMEDOUT,
+   ENXIO). This command API and its firmware-command queue policy are unchanged.
+2. iwx_tvqm_enable_txq otherwise returns a nonnegative QID or negative errno,
+   but its old command-error branch returned positive errno unchanged.
+3. iwx_tvqm_alloc_txq tested queue<0, then installed any nonnegative result in
+   sc_tid_data[tid].qid. EBUSY=16 could therefore install an empty QID 16.
+4. iwx_ba_task tested qid<0, indexed sc->txq[qid] and accepted BA on this error.
+
+Every functional change
+Q1 — iwx_tvqm_enable_txq / iwx_tvqm_alloc_txq (ItlIwx.cpp)
+Normalize every command error to negative errno; leave already-negative errors
+negative. Validate TID before indexing. Retry smaller backing ONLY for a local
+ENOMEM with all temporary backing actually released. Do not retry errors from
+an ambiguous firmware transaction. TID mapping is updated only on success.
+
+Q2 — same functions: response and DMA ownership
+Free the caller-owned WANT_RESP buffer on every success/post-command failure.
+The old success path leaked it. iwx_send_cmd transfers this CPU response out of
+sc_cmd_resp_pkt; iwx_free_resp is null-safe and clears the caller pointer.
+Do not reset/free temporary descriptor, command or byte-count DMA storage after
+command error, missing/failed/malformed reply, invalid assignment or stale epoch.
+The command API does not provide a positive 'never published' or 'queue disabled'
+proof. Keep that backing in the existing sc_tvqm_ring, close admission and set
+the existing blocked flag; subsequent allocations cannot overwrite it. Existing
+positive terminal-stop/reset cleanup remains responsible for reclamation.
+This is deliberately conservative even for early command errors; at most one
+prepared temporary ring is retained. It may require existing recovery to restore
+service. No automatic recovery loop or weaker stop proof is introduced.
+Only pre-command allocation/map failures use ordinary local cleanup. A host
+response release is distinct from releasing device-visible ring backing.
+
+Q3 — same function: response validation and initial ring coordinates
+Reject the command queue, the configured default queue, old-firmware auxiliary
+queue, any QID outside the actual txq array or qfullmsk bit domain, or a queue
+still named by another/live TID mapping. Keep the existing packet ownership
+check. ADD_STA>=12 default QID 1 still permits dynamic QID 2; old/unknown default
+QID 2 reserves auxiliary QID 1. This is derived from our own initialization,
+not a blind numeric-boundary port. Validate firmware write-pointer domain with
+getTxQueueSize(): 65536 on gen3, 256 on older supported IWX. Physical ring size
+remains 256; do not mistake full firmware coordinates for descriptor indices.
+Initialize cur AND tail to the firmware-provided empty-ring coordinate. Do not
+interpret an empty packet ring as permission to overwrite another TID's queue.
+Generation, command epoch and shutdown are checked after the response. These
+checks reject observed stale results; they do not create a new global locking
+contract or claim that host models prove all possible lifecycle interleavings.
+
+Q4 — iwx_ba_task (ItlIwx.cpp)
+Reset the request error for EACH TID; preserve the actual negative allocation
+error. A prior failed TID must not cause a later successful TID to be refused.
+Only release the NIC-access request if this iteration acquired it. Failure
+clears the pending request and refuses BA instead of accepting a bogus queue.
+No blocking gate around a synchronous firmware wait was added.
+
+Q5 — identity and declaration comments
+Two KGP_RX_EXPERIMENT marker strings identify AirportItlwm-Tahoe-B1-ZC21-PERF.
+ItlIwx.hpp documents QID/negative-errno contract. KGP_ZC19 schema19/1, watchdog,
+publication cadence and all health fields remain unchanged.
+
+Tooling, tests and build (not packet behavior)
+New ZC21 runner derives from corrected ZC19 runner and accepts the ZC21 marker
+with the existing schema19/1. Equal adjacent publication records remain valid;
+rollback vs LAST fails; FINAL>INITIAL is required. Mode, loaded/archive UUID,
+marker, faults and epoch protections remain. No added sampling/profiler.
+ZC21 source check verifies the whole ItlIwx.cpp is identical to ZC19 after
+normalizing these three function bodies and two marker strings. It also retains
+ZC8 RX/DMA/notification and emitted-publication-fence checks. New build and
+validation scripts retain the pinned clean-committed-source integrity procedure.
+
+Hardware/mode applicability
+AX201 / family22000: applicable to the shared IWX TVQM/BA path in conventional
+mode ONLY. Mapped qualification is not enabled. AX210/AX211: applicable in both
+qualified mapped and conventional modes. Other attached IWX hardware uses the
+same error contract with its existing qualification and counter domain. IWM/IWN,
+RX packet bodies, mapper selection, cached control allocator, firmware-command
+queue policy, payload ownership/completion, PC1/STOP_MASTER, RX exchange, BA RX
+fixes, reorder deadline, ZC16 restart/power code and original PM policy are unchanged.
+
+Safety limitations / expected effect
+A successful queue setup follows the same allocation, firmware command, DMA
+publication and packet path. No steady-state throughput improvement is promised.
+Failure behavior becomes explicit refusal/retention instead of erroneous success
+or unproven DMA release. Invalid replies may now stop admission rather than allow
+unsafe continuation. ASan/UBSan and TSan host tests validate injected control flow,
+response/local allocation balance and atomic fault publication; they do not prove
+hardware DMA coherence, the whole driver task lifetime or physical wake behavior.
+The temporary ring's existing terminal cleanup is preserved. No broad lifetime
+or queue-allocation architecture rewrite is asserted.
+
+External provenance
+No external code imported. The bounded comparison with laobamac commit
+738d4c61b5a64433b27c1ab09dba94916ab77d8d (parent bbe368ec...) found its
+one-line low-QID rejection relaxation has no equivalent defective boundary in
+our baseline. Its parent's negative-error/response handling is corroboration,
+not the origin of this independently identified repair. Linux v6.12
+pcie/tx-gen2.c also corroborates response freeing and paired initial indices.
+https://github.com/laobamac/itlwm/commit/738d4c61b5a64433b27c1ab09dba94916ab77d8d
+https://github.com/torvalds/linux/blob/v6.12/drivers/net/wireless/intel/iwlwifi/pcie/tx-gen2.c
+
+Runtime counterevidence remains important: exact ZC13 ASIX snapshots already
+show successful QID 2/TID 0 BA and millions of normal retirements. This repair is
+justified on correctness grounds independently of the unresolved RX deficit.
+The prospective pacing comparison is optional evidence collection, never a gate
+for delivering this repair and never a substitute for a candidate performance test.

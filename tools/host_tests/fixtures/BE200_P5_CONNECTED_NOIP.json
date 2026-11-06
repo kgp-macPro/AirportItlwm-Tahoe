@@ -1,0 +1,54 @@
+{
+  "provenance": "P5_JOIN_20261029_224319_aKQ1b7.zip + runtime_20261029_225528; no synthetic wire packet supplied",
+  "archive_sha256": "69ea31e3669181437e6ebcb4d420723500445a54453aa9919c30c2f6c87946a0",
+  "loaded_uuid": "E52DFFDF-3CB3-3D6A-8C57-004F22FCB75B",
+  "interface": "en2",
+  "boot_uuid": "0E7F32FA-2B96-444C-9A36-7909E586789A",
+  "mode": 2,
+  "generation": 1,
+  "reset_epoch": 1,
+  "transport_fault": 0,
+  "transport_error": 0,
+  "MLD_step": 16,
+  "key_submissions": 2,
+  "key_error": 0,
+  "rsn_done": true,
+  "tx_publications": 4,
+  "tx_retires": 4,
+  "ipv4": null,
+  "configd_link_active": false,
+  "configd_DHCP_started": "2026-10-29T22:41:13.426+01:00",
+  "configd_DHCP_status": "media inactive",
+  "legacy_bind_error": -3903,
+  "legacy_bind_error_name": "kCWNotSupportedErr",
+  "ethernet_primary": "en0",
+  "legacy_framework": {
+    "path": "/Users/kgp/Desktop/EFI-OCLP-Intel/EFI/OC/Kexts/IO80211FamilyLegacy.kext/Contents/MacOS/IO80211FamilyLegacy",
+    "bytes": 2119088,
+    "sha256": "ac2dc15b77f8eaf97b71b34c5d0e1b59f862bfeac618396449306e1837e73894",
+    "uuid": "UUID: 4C07538B-62EB-3D6D-AEF9-93BCDCF45FAB (x86_64) /Users/kgp/Desktop/EFI-OCLP-Intel/EFI/OC/Kexts/IO80211FamilyLegacy.kext/Contents/MacOS/IO80211FamilyLegacy",
+    "loaded_uuid_match": true,
+    "slots": {
+      "interface_setLinkState": {
+        "slot": 342,
+        "address": 624028
+      },
+      "controller_setLinkStatus": {
+        "slot": 304,
+        "address": 0,
+        "external_relocation": "0x14c4f0 -> IONetworkController::setLinkStatus(unsigned,IONetworkMedium const*,unsigned long long,OSData*)"
+      },
+      "controller_getNetworkInterface": {
+        "slot": 401,
+        "address": 596810
+      }
+    },
+    "limits": "Static reference copy matches the loaded UUID. No private field/slot hardcoding in driver; external relocation targets not treated as resolved source."
+  },
+  "screenshots": {
+    "Screenshot 2026-10-29 at 22.50.11.png": "2a595063746124d1646c5c1f2554332bc940cd781e66f2ca81f63268787d6f76",
+    "Screenshot 2026-10-29 at 22.50.02.png": "f9f5229252f31e8dc1b05a6f3d09ec73d8fefc51148ac416b93b75aa601838e4",
+    "Screenshot 2026-10-29 at 22.50.21.png": "bfa6b9768e7eb25c61b29dd5a7a82367110b4a3092f9a7e2dca2f5a4f88b35d9",
+    "Screenshot 2026-10-29 at 22.50.34.png": "f613da89ac689fa548f1937e3044fcc070014590abda4b5cc72074525c186af9"
+  }
+}

@@ -1,0 +1,86 @@
+ZC25 ARCHITECTURE, CAUSAL DECISION AND FUTURE QUALIFICATION
+
+Selected baseline frozen ZC22 7dd260fbfb9d612574a6b18fbb042d4963402eda.
+Its later two campaigns show fastTX477.84/477.93 and improvedRX550.83/521.70Mbps.
+ZC23 feedback-scope change has no demonstrated additional benefit and adds
+interacting scheduling/lifecycle state, so is not adopted. This is not proof
+ZC23 caused its slightly lower means. ZC24 store-width intervention has negative
+physical evidence; it is NOT adopted. Entire baseline22 correctness remains.
+Branch name tb0-isolation describes the main architectural focus, not a forced
+single-factor protocol. There are TWO independently traceable corrections.
+
+Rank / competing mechanism / evidence / missing observation / consequence
+1 Direction-dependent TX control cost: source proves bidirectional20B TB0
+shares cached command memory in13, while22 publishes all control to UC-requested
+views. TX work also carries return ACKs.22 private construction improvedRX,24
+wide UC stores regressed it.25 separates scratch and restores cached read-only
+views.20 whole-commandUC negative evidence rules out treating scratch caching
+alone as proven cause. Actual PAT, hardware memory transaction and boundary
+latencies remain unavailable. If25 improves bothRXclasses withTXretained,
+architecture is supported, but cause cannot be assigned uniquely to either
+coordinated change. Ifnot, do not make another blind cache-class build.
+2 Non-packet work in critical RX service: exact22 rxZcReport0 per-batch clock
+and roughly1Hz registry allocation/locking before interrupt restore. Remove
+ordinary report work; reuse watchdog, gate-copy bounded scalar state, export
+outside gate. This is SOURCE-PROVEN work relocation, not a proven cause of the
+round3 collapses. It predates13 and cannot by itself explain the chronology.
+A future actual service-gap distribution, if needed, would distinguish long
+notification residence from delayed arrivals/host delivery; no polling now.
+3 RX arrival/BA/host delivery or transport/window/runtime state: existing BA
+agreement, counters, bounded mappings and stable epochs do not measure timely
+packet arrival/delivery, dynamic receive window or per-frame RF behavior. None
+is demonstrated as the initiating fault. Retain source correctness and all
+negative results. If this candidate fails, choose one bounded matched delay/
+window capture with an explicit decision, rather than an unchanged fullmatrix.
+
+Mechanisms1/2 can affectTCP ACK latency and coexist with high bulkUDP. That is a
+plausible corrective hypothesis, NOT proof that ACK output caused observedloss.
+SimultaneousUDPdegradation means ACK-only cannot explain the whole intermittent
+phenomenon. No TCP classification/priority/pacing/globalTCPwindow/ratechange.
+
+Preserved contracts: same checked allocations and mapper/backing identity;
+firstTBfourthallocation has existingpositivecompletion/STOP_MASTER lifetime;
+allfour retainedafterambiguousFWoutcome; allfourcleanupafterpositiveproof;
+queue0FWcommandsunchanged; fullmemoryfencebeforedoorbell/queueenable; unchanged
+RXreplacement/finalmbufrefs/cacheexchange, reorder/BAcorrectness, PC1terminality,
+quarantine, ZC16restart/power and ZC21error/lock/responseownership. AX210/AX211
+qualifiedmapped/conventional, AX201/family22000conventionalonly. IWM/IWNexact.
+Read-onlycontrols still useconservativeIOKitInOut; barriers are not cacheflushes
+or completionproofs. First/secondTB4GiBcheck isnot a newpayloadDMA workaround.
+
+Chronology and scope: the first ZC24 benchmark was NOT firsttraffic(Ookla79.2
+beforeit). Earlier22/23worstcollapsesoccurround3~9/12minafterboot; laterrecover
+samevisiblelifetime. No undocumented warmup requirement or universalcoldfailure
+is invented. Stablehealthdoesnotexcludebriefstalls. Alllosses/senderlimits/WAN
+latencytails remain in originalevidence/derived84-testtable.
+
+Observer overhead: no new packet observer/timer/worker/parser. Normal mappedRX
+reportcallnow returnsbeforeclock/snapshot/registry. Existingwatchdogcopiesfixed
+896B plusboundedpool/lifecounters underexistingattemptAction, thenexportsup to
+3propertiesoutsidegate. Forcedlifecycleexports remain. Hosttestsvalidatecall
+counts/gateplacementandconcurrency, NOT nanosecondcost/throughputonhardware.
+The optionalqueueobserverprototypewasnotimportedorcompiled.
+
+FUTURE PHYSICAL PLAN — KGP ONLY, no extra execution requested before delivery
+Use ONEcandidate, preserve firstcontrolledworkload and allpriortraffic(especially
+Ookla), no profiler/preconditioning/1Hzregistry. ConfirmloadedUUIDmatchesarchive,
+mode/marker/faults/epochs via correctedrunnerguard. Initialscan/association,
+management/EAPOL andbasicconnectivity mustwork. Use newZC25portable runner; it
+prompts currentwiredASIXpeerIP, bindsWiFiIPv4/interface, retains42originaltests,
+originalservertexts, normalboundaries and finalnetworkQuality. Keepfirstcomplete
+campaignunfavorableorotherwise. Comparefirstandlaterintervals, actualsenderand
+receiver/loss, TX>400target~480, BOTH RXtoward~580, UDP600lowloss; no best-ofmix.
+Ifseverestateappears, preserveoriginals/lastboundary beforemanualrecoverywhere
+practical. Noarbitraryrepeatcampaignwithoutdiscriminatingpurpose. Onlinecapacity
+andDL/ULRPM/rawlatency areindependentacceptanceaxes, PASSexecution!=performance.
+RecordmatchedWANendpoint/time; Ookla isseparate. KGPchoosesconventional, repeated
+wake andAX211/AX201nonregression tests; noneisprovenbythisbuild. OneoldZC18mapped
+wakepassdoesnotqualify25. Noinstall/EFI/settings/reboot/testbyCodex.
+
+Commands after KGP's own installation/loadedidentitycheck:
+  /bin/bash ~/Desktop/AirportItlwm/B1-ZC25-PERF/ZC25_3x14_PORTABLE_IP_PROMPT.sh ZC25
+Conventional only when KGP already selected it:
+  EXPECTED_MODE=conventional /bin/bash ~/Desktop/AirportItlwm/B1-ZC25-PERF/ZC25_3x14_PORTABLE_IP_PROMPT.sh ZC25
+Offline decoder(no livequeries):
+  python3 ~/Desktop/AirportItlwm/B1-ZC25-PERF/decode_zc25_rx.py /path/to/ROUND_01/AFTER.plist
+Allrawrecordsretained; nosubtractionacrossdifferentlifetimes. SeeZC25_RX_TELEMETRY.

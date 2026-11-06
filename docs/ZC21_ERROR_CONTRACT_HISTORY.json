@@ -1,0 +1,62 @@
+{
+  "22dc4f1412061ba386e9d29701808c8b43a401f9": {
+    "commit": "22dc4f1412061ba386e9d29701808c8b43a401f9 e8d29b3b55a532fd6e5552657ac15705d286f233 \nkgp-macPro <218073525+kgp-macPro@users.noreply.github.com>\n2026-09-14T14:33:03+02:00\nAirportItlwm-Tahoe 1.0.0 initial release\n",
+    "blob": "efecec31ca279780dc4de470507a84ba5858e6fa",
+    "source_sha256": "3e13c43fa296eabd2abf777323b6f1e99a8c3e22006fc50ceb9cb45a779a8ad9",
+    "positive_error_branch_line": 4744,
+    "caller_line": 4640,
+    "enable_txq_sha256": "3b5302ef7a561e5421fedf7533322651f25eeadc4280420282b0db0927d7c2a2",
+    "alloc_txq_sha256": "5c152de03e102a00299a2b695778ce875f0bda892eba02ce8e3bffd98bc874bb",
+    "positive_errno_bug_present": true,
+    "error_branch": "err = iwx_send_cmd(sc, &hcmd);\n    if (err)\n        return err;",
+    "caller": "int ItlIwx::\niwx_tvqm_alloc_txq(struct iwx_softc *sc, int tid, int ssn)\n{\n    int queue;\n    //TODO: Here is a bug, for gen3 devices which support 256 frame aggregate into 1 A-MPDU like ax210, if the TfDs count larger than 256 than it would trigger system freeze on macOS, don't know why but Linux can do this. Still need to dig deep into the code or optimize the DMA memory allocation, here I just limit the size to 256 as the temporary solution.\n#ifdef notyet\n    int size = sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 ? IWX_MIN_256_BA_QUEUE_SIZE_GEN3 : IWX_DEFAULT_QUEUE_SIZE;\n#else\n    int size = IWX_DEFAULT_QUEUE_SIZE;\n#endif\n    \n    do {\n        queue = iwx_tvqm_enable_txq(sc, tid, ssn, size);\n        if (queue < 0)\n            XYLog(\"Failed allocating TXQ of size %d for sta %d tid %d, ret: %d\\n\",\n                  size, IWX_STATION_ID, tid, queue);\n        size /= 2;\n    } while (queue < 0 && size >= 16);\n    \n    if (queue < 0)\n        return queue;\n    sc->sc_tid_data[tid].qid = queue;\n    return queue;\n}"
+  },
+  "db22bb90b72b440b657246940fd8da17dbee23a4": {
+    "commit": "db22bb90b72b440b657246940fd8da17dbee23a4 004db4fbdb5972e2617b9a9cc5aff8d83564e6f7 6c584b8cbe5176bab022fcc0fa52ab3d51c17157\nkgp-macPro <218073525+kgp-macPro@users.noreply.github.com>\n2026-10-14T17:08:14+02:00\nZC8: identify candidate and enforce committed-source build gate\n",
+    "blob": "e4a9d470d0ffccf995943b5b9b1529d359fc8726",
+    "source_sha256": "549675bc5e65f4f4c6ebf67cabe6fd48d64ef87f6076351a79724ff1ef25ba56",
+    "positive_error_branch_line": 5661,
+    "caller_line": 5556,
+    "enable_txq_sha256": "5c1834f1da9e12e191da52f64611da170303749c6352c0f7c03e00028d2dddb7",
+    "alloc_txq_sha256": "5c152de03e102a00299a2b695778ce875f0bda892eba02ce8e3bffd98bc874bb",
+    "positive_errno_bug_present": true,
+    "error_branch": "err = iwx_send_cmd(sc, &hcmd);\n    if (err)\n        return err;",
+    "caller": "int ItlIwx::\niwx_tvqm_alloc_txq(struct iwx_softc *sc, int tid, int ssn)\n{\n    int queue;\n    //TODO: Here is a bug, for gen3 devices which support 256 frame aggregate into 1 A-MPDU like ax210, if the TfDs count larger than 256 than it would trigger system freeze on macOS, don't know why but Linux can do this. Still need to dig deep into the code or optimize the DMA memory allocation, here I just limit the size to 256 as the temporary solution.\n#ifdef notyet\n    int size = sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 ? IWX_MIN_256_BA_QUEUE_SIZE_GEN3 : IWX_DEFAULT_QUEUE_SIZE;\n#else\n    int size = IWX_DEFAULT_QUEUE_SIZE;\n#endif\n    \n    do {\n        queue = iwx_tvqm_enable_txq(sc, tid, ssn, size);\n        if (queue < 0)\n            XYLog(\"Failed allocating TXQ of size %d for sta %d tid %d, ret: %d\\n\",\n                  size, IWX_STATION_ID, tid, queue);\n        size /= 2;\n    } while (queue < 0 && size >= 16);\n    \n    if (queue < 0)\n        return queue;\n    sc->sc_tid_data[tid].qid = queue;\n    return queue;\n}"
+  },
+  "31ac210425f497d3d8192982a643807361f1c6b2": {
+    "commit": "31ac210425f497d3d8192982a643807361f1c6b2 923003e42f8858f4d15b84a38bfc31223d1e70a0 cda7ae51561dee54ac21b01a70d60755205f5eb6\nkgp-macPro <218073525+kgp-macPro@users.noreply.github.com>\n2026-10-17T00:08:55+02:00\nZC13: use coherent packet TX control storage with ordered publication\n",
+    "blob": "e422b6d9b630598ba7439fc8695151a00fb2d720",
+    "source_sha256": "f9ee945f8f9f6b09b882d50a912f92917cf839eb3766873792825ff0eea4e774",
+    "positive_error_branch_line": 5710,
+    "caller_line": 5601,
+    "enable_txq_sha256": "25d04abb66aaf902e00874c99185771c6481c6f277e7823ad25f0a8f3846ffc6",
+    "alloc_txq_sha256": "5c152de03e102a00299a2b695778ce875f0bda892eba02ce8e3bffd98bc874bb",
+    "positive_errno_bug_present": true,
+    "error_branch": "err = iwx_send_cmd(sc, &hcmd);\n    if (err)\n        return err;",
+    "caller": "int ItlIwx::\niwx_tvqm_alloc_txq(struct iwx_softc *sc, int tid, int ssn)\n{\n    int queue;\n    //TODO: Here is a bug, for gen3 devices which support 256 frame aggregate into 1 A-MPDU like ax210, if the TfDs count larger than 256 than it would trigger system freeze on macOS, don't know why but Linux can do this. Still need to dig deep into the code or optimize the DMA memory allocation, here I just limit the size to 256 as the temporary solution.\n#ifdef notyet\n    int size = sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 ? IWX_MIN_256_BA_QUEUE_SIZE_GEN3 : IWX_DEFAULT_QUEUE_SIZE;\n#else\n    int size = IWX_DEFAULT_QUEUE_SIZE;\n#endif\n    \n    do {\n        queue = iwx_tvqm_enable_txq(sc, tid, ssn, size);\n        if (queue < 0)\n            XYLog(\"Failed allocating TXQ of size %d for sta %d tid %d, ret: %d\\n\",\n                  size, IWX_STATION_ID, tid, queue);\n        size /= 2;\n    } while (queue < 0 && size >= 16);\n    \n    if (queue < 0)\n        return queue;\n    sc->sc_tid_data[tid].qid = queue;\n    return queue;\n}"
+  },
+  "251fb7b09bd17f7506f08029982545ce4d43e4f4": {
+    "commit": "251fb7b09bd17f7506f08029982545ce4d43e4f4 56029a3d263d703a764429c2e682674a505065f5 f18801f700b433199cf45808eaa674c92ec4f422\nkgp-macPro <218073525+kgp-macPro@users.noreply.github.com>\n2026-10-18T12:16:02+02:00\nZC19 tools: allow adjacent health snapshots and require campaign progress\n",
+    "blob": "315d71be3acd08ce53bda7e719b70ab41b8c217c",
+    "source_sha256": "f906f17ef50dbee6bb63e08de9c225e5b7505c3de729805f89ab1f9410d610cc",
+    "positive_error_branch_line": 5753,
+    "caller_line": 5643,
+    "enable_txq_sha256": "e4047604f0749a96487517414afa14134ea3c0a1f012e56c3f4f915d1daf21f5",
+    "alloc_txq_sha256": "5c152de03e102a00299a2b695778ce875f0bda892eba02ce8e3bffd98bc874bb",
+    "positive_errno_bug_present": true,
+    "error_branch": "err = iwx_send_cmd(sc, &hcmd);\n    if (err)\n        return err;",
+    "caller": "int ItlIwx::\niwx_tvqm_alloc_txq(struct iwx_softc *sc, int tid, int ssn)\n{\n    int queue;\n    //TODO: Here is a bug, for gen3 devices which support 256 frame aggregate into 1 A-MPDU like ax210, if the TfDs count larger than 256 than it would trigger system freeze on macOS, don't know why but Linux can do this. Still need to dig deep into the code or optimize the DMA memory allocation, here I just limit the size to 256 as the temporary solution.\n#ifdef notyet\n    int size = sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 ? IWX_MIN_256_BA_QUEUE_SIZE_GEN3 : IWX_DEFAULT_QUEUE_SIZE;\n#else\n    int size = IWX_DEFAULT_QUEUE_SIZE;\n#endif\n    \n    do {\n        queue = iwx_tvqm_enable_txq(sc, tid, ssn, size);\n        if (queue < 0)\n            XYLog(\"Failed allocating TXQ of size %d for sta %d tid %d, ret: %d\\n\",\n                  size, IWX_STATION_ID, tid, queue);\n        size /= 2;\n    } while (queue < 0 && size >= 16);\n    \n    if (queue < 0)\n        return queue;\n    sc->sc_tid_data[tid].qid = queue;\n    return queue;\n}"
+  },
+  "10df3a65644503339b4cefb6a2c59e5e7a1dbfc2": {
+    "commit": "10df3a65644503339b4cefb6a2c59e5e7a1dbfc2 ed24a14ca2b5d6969079085d3ac62f09e29cc0ce 251fb7b09bd17f7506f08029982545ce4d43e4f4\nkgp-macPro <218073525+kgp-macPro@users.noreply.github.com>\n2026-10-18T13:14:56+02:00\nIsolate packet TX command cache policy with checked DMA backing\n",
+    "blob": "6975fb1c295e1069ebd1f32e2432b589f17e7d8e",
+    "source_sha256": "26b28e869cd9022df444cc6242d8037c2113fe50f9f8c8dba1c87bf1301ddf34",
+    "positive_error_branch_line": 5771,
+    "caller_line": 5658,
+    "enable_txq_sha256": "d5dec2e1de69b91acc545426788cd9e8901b08779d00f88e53b39adb52df4316",
+    "alloc_txq_sha256": "5c152de03e102a00299a2b695778ce875f0bda892eba02ce8e3bffd98bc874bb",
+    "positive_errno_bug_present": true,
+    "error_branch": "err = iwx_send_cmd(sc, &hcmd);\n    if (err)\n        return err;",
+    "caller": "int ItlIwx::\niwx_tvqm_alloc_txq(struct iwx_softc *sc, int tid, int ssn)\n{\n    int queue;\n    //TODO: Here is a bug, for gen3 devices which support 256 frame aggregate into 1 A-MPDU like ax210, if the TfDs count larger than 256 than it would trigger system freeze on macOS, don't know why but Linux can do this. Still need to dig deep into the code or optimize the DMA memory allocation, here I just limit the size to 256 as the temporary solution.\n#ifdef notyet\n    int size = sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 ? IWX_MIN_256_BA_QUEUE_SIZE_GEN3 : IWX_DEFAULT_QUEUE_SIZE;\n#else\n    int size = IWX_DEFAULT_QUEUE_SIZE;\n#endif\n    \n    do {\n        queue = iwx_tvqm_enable_txq(sc, tid, ssn, size);\n        if (queue < 0)\n            XYLog(\"Failed allocating TXQ of size %d for sta %d tid %d, ret: %d\\n\",\n                  size, IWX_STATION_ID, tid, queue);\n        size /= 2;\n    } while (queue < 0 && size >= 16);\n    \n    if (queue < 0)\n        return queue;\n    sc->sc_tid_data[tid].qid = queue;\n    return queue;\n}"
+  }
+}

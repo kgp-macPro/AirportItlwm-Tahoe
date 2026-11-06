@@ -769,11 +769,26 @@ enum iwx_fw_ini_allocation_id {
 #define IWX_CSR_GP_CNTRL_REG_MSK_POWER_SAVE_TYPE         (0x07000000)
 #define IWX_CSR_GP_CNTRL_REG_FLAG_RFKILL_WAKE_L1A_EN     (0x04000000)
 #define IWX_CSR_GP_CNTRL_REG_FLAG_HW_RF_KILL_SW          (0x08000000)
+/* BZ replaces the older INIT_DONE and MAC_ACCESS_REQ handshake. */
+#define IWX_CSR_GP_CNTRL_REG_FLAG_MAC_INIT               (1U << 6)
+#define IWX_CSR_GP_CNTRL_REG_FLAG_ROM_START              (1U << 7)
+#define IWX_CSR_GP_CNTRL_REG_FLAG_MAC_STATUS             (1U << 20)
+#define IWX_CSR_GP_CNTRL_REG_FLAG_BZ_MAC_ACCESS_REQ      (1U << 21)
+#define IWX_CSR_GP_CNTRL_REG_FLAG_BUS_MASTER_DISABLE_STATUS (1U << 28)
+#define IWX_CSR_GP_CNTRL_REG_FLAG_BUS_MASTER_DISABLE_REQ (1U << 29)
+#define IWX_CSR_GP_CNTRL_REG_FLAG_SW_RESET               (1U << 31)
+#define IWX_CSR_FUNC_SCRATCH                             (0x02c)
+#define IWX_CSR_FUNC_SCRATCH_INIT_VALUE                  (0x01010101)
 
 
 /* HW REV */
 #define IWX_CSR_HW_REV_DASH(_val)          (((_val) & 0x0000003) >> 0)
 #define IWX_CSR_HW_REV_STEP(_val)          (((_val) & 0x000000C) >> 2)
+#define IWX_CNVI_AUX_MISC_CHIP             0xA200B0
+#define IWX_CNVI_AUX_MISC_CHIP_MAC_STEP(_val) (((_val) >> 24) & 0xF)
+#define IWX_CNVI_AUX_MISC_CHIP_PROD_TYPE(_val) ((_val) & 0xFFF)
+#define IWX_CNVI_AUX_MISC_CHIP_PROD_TYPE_BZ_U 0x930
+#define IWX_WFPM_AUX_IF_MAC_OWNER_BZ       0x80000000U
 
 #define IWX_CSR_HW_REV_TYPE_MSK        (0x000FFF0)
 
@@ -1072,6 +1087,14 @@ enum iwx_fw_ini_allocation_id {
 #define IWX_UREG_UMAC_CURRENT_PC        0xa05c18
 #define IWX_UREG_LMAC1_CURRENT_PC        0xa05c1c
 #define IWX_UREG_LMAC2_CURRENT_PC        0xa05c20
+/* BZ-B0/FM-C0 -92 CURRENT_PC TLV (68), before the UMAC offset. */
+#define IWX_BZ_UREG_UMAC_CURRENT_PC1     0xa05c1c
+#define IWX_BZ_UREG_LMAC1_CURRENT_PC     0xa05c20
+/* Linux mvm ALIVE-failure power/OTP snapshot (UMAC-relative). */
+#define IWX_WFPM_LMAC1_PD_NOTIFICATION  0xa0338c
+#define IWX_HPM_SECONDARY_DEVICE_STATE  0xa03404
+#define IWX_WFPM_MAC_OTP_CFG7_ADDR       0xa03338
+#define IWX_WFPM_MAC_OTP_CFG7_DATA       0xa0333c
 
 #define IWX_UREG_CHICK                0xa05c00
 #define IWX_UREG_CHICK_MSI_ENABLE        (1 << 24)
@@ -1101,6 +1124,7 @@ enum iwx_fw_ini_allocation_id {
  * 11-8:  queue selector
  */
 #define IWX_HBUS_TARG_WRPTR         (IWX_HBUS_BASE+0x060)
+#define IWX_HBUS_TARG_WRPTR_RX_Q(q) (((q) + 512) << 16)
 
 /**********************************************************
  * CSR values
@@ -1175,6 +1199,7 @@ enum iwx_msix_ivar_for_cause {
     IWX_MSIX_IVAR_CAUSE_REG_ALIVE        = 0x10,
     IWX_MSIX_IVAR_CAUSE_REG_WAKEUP        = 0x11,
     IWX_MSIX_IVAR_CAUSE_REG_IML        = 0x12,
+    IWX_MSIX_IVAR_CAUSE_REG_SW_ERR_BZ  = 0x15,
     IWX_MSIX_IVAR_CAUSE_REG_CT_KILL        = 0x16,
     IWX_MSIX_IVAR_CAUSE_REG_RF_KILL        = 0x17,
     IWX_MSIX_IVAR_CAUSE_REG_PERIODIC    = 0x18,
@@ -1391,6 +1416,7 @@ enum iwx_msix_ivar_for_cause {
 #define IWX_UCODE_TLV_CAPA_UMAC_UPLOAD            35
 #define IWX_UCODE_TLV_CAPA_BINDING_CDB_SUPPORT        39
 #define IWX_UCODE_TLV_CAPA_CDB_SUPPORT            40
+#define IWX_UCODE_TLV_CAPA_FRAGMENTED_PNVM_IMG    32
 #define IWX_UCODE_TLV_CAPA_TLC_OFFLOAD                  43
 #define IWX_UCODE_TLV_CAPA_DYNAMIC_QUOTA                44
 #define IWX_UCODE_TLV_CAPA_ULTRA_HB_CHANNELS        48
@@ -1413,6 +1439,9 @@ enum iwx_msix_ivar_for_cause {
 #define IWX_UCODE_TLV_CAPA_EXTEND_SHARED_MEM_CFG    80
 #define IWX_UCODE_TLV_CAPA_LQM_SUPPORT            81
 #define IWX_UCODE_TLV_CAPA_LED_CMD_SUPPORT        88
+#define IWX_UCODE_TLV_CAPA_MLD_API_SUPPORT        110
+#define IWX_UCODE_TLV_CAPA_STA_EXP_MFP_SUPPORT    114
+#define IWX_UCODE_TLV_CAPA_BAID_ML_SUPPORT        63
 
 #define IWX_NUM_UCODE_TLV_CAPA 128
 
@@ -1674,6 +1703,12 @@ struct iwx_rx_completion_desc {
     uint8_t reserved2[25];
 } __packed;
 
+struct iwx_rx_completion_desc_bz {
+    uint16_t rbid;
+    uint8_t flags;
+    uint8_t reserved;
+} __packed;
+
 
 #define IWX_TFD_QUEUE_SIZE_MAX        (256)
 #define IWX_TFD_QUEUE_SIZE_MAX_GEN3    (65536)
@@ -1683,6 +1718,7 @@ struct iwx_rx_completion_desc {
 #define IWX_TFD_QUEUE_BC_SIZE        (IWX_TFD_QUEUE_SIZE_MAX + \
                     IWX_TFD_QUEUE_SIZE_BC_DUP)
 #define IWX_TFD_QUEUE_BC_SIZE_GEN3    1024
+#define IWX_TFD_QUEUE_BC_SIZE_GEN3_BZ (1024 * 4)
 #define IWX_TFH_NUM_TBS        25
 
 /**
@@ -1749,6 +1785,10 @@ struct iwx_agn_scd_bc_tbl {
  */
 struct iwx_gen3_bc_tbl {
     uint16_t tfd_offset[IWX_TFD_QUEUE_BC_SIZE_GEN3];
+} __packed;
+
+struct iwx_bz_bc_tbl {
+    uint16_t tfd_offset[IWX_TFD_QUEUE_BC_SIZE_GEN3_BZ];
 } __packed;
 
 /* Maximum number of Tx queues. */
@@ -2007,6 +2047,7 @@ struct iwx_tx_queue_cfg_rsp {
 #define IWX_MAC_CONF_GROUP    0x3
 #define IWX_PHY_OPS_GROUP    0x4
 #define IWX_DATA_PATH_GROUP    0x5
+#define IWX_STA_HE_CTXT_CMD    0x7
 #define IWX_PROT_OFFLOAD_GROUP    0xb
 #define IWX_REGULATORY_AND_NVM_GROUP    0xc
 
@@ -2383,10 +2424,30 @@ struct iwx_alive_resp_v5 {
     struct iwx_sku_id sku_id;
 } __packed; /* UCODE_ALIVE_NTFY_API_S_VER_5 */ 
 
+struct iwx_imr_alive_info {
+    uint64_t base_addr;
+    uint32_t size;
+    uint32_t enabled;
+} __packed;
+
+struct iwx_alive_resp_v6 {
+    uint16_t status;
+    uint16_t flags;
+    struct iwx_lmac_alive lmac_data[2];
+    struct iwx_umac_alive umac_data;
+    struct iwx_sku_id sku_id;
+    struct iwx_imr_alive_info imr;
+} __packed; /* UCODE_ALIVE_NTFY_API_S_VER_6 */
+
+static_assert(offsetof(struct iwx_alive_resp_v6, imr) ==
+              sizeof(struct iwx_alive_resp_v5),
+              "ALIVE v6 must preserve the v5 SKU prefix");
+
 #define IWX_SOC_CONFIG_CMD_FLAGS_DISCRETE    (1 << 0)
 #define IWX_SOC_CONFIG_CMD_FLAGS_LOW_LATENCY    (1 << 1)
 
 #define IWX_SOC_FLAGS_LTR_APPLY_DELAY_MASK        0xc
+#define IWX_SOC_FLAGS_LTR_APPLY_DELAY_SHIFT       2
 #define IWX_SOC_FLAGS_LTR_APPLY_DELAY_NONE        0
 #define IWX_SOC_FLAGS_LTR_APPLY_DELAY_200        1
 #define IWX_SOC_FLAGS_LTR_APPLY_DELAY_2500        2
@@ -2948,6 +3009,34 @@ struct iwx_fw_cmd_version {
     uint8_t notif_ver;
 } __packed;
 
+/* HE station context ABI, Intel iwlwifi fw/api/mac.h (Linux v5.15,
+ * dual BSD-3-Clause/GPL-2.0). Firmware 68 advertises command version 2. */
+struct iwx_he_backoff_conf {
+    uint16_t cwmin, cwmax, aifsn, mu_time;
+} __packed;
+struct iwx_he_sta_context_cmd {
+    uint8_t sta_id, tid_limit, reserved1, reserved2;
+    uint32_t flags;
+    uint8_t ref_bssid_addr[6];
+    uint16_t reserved0;
+    uint32_t htc_flags;
+    uint8_t frag_flags, frag_level, frag_max_num, frag_min_size;
+    uint8_t pkt_ext[2][4][2]; /* NSS, RU size, PPET8/PPET16 */
+    uint8_t bss_color, htc_trig_based_pkt_ext;
+    uint16_t frame_time_rts_th;
+    uint8_t rand_alloc_ecwmin, rand_alloc_ecwmax;
+    uint16_t reserved3;
+    struct iwx_he_backoff_conf trig_based_txf[4];
+    uint8_t max_bssid_indicator, bssid_index, ema_ap, profile_periodicity;
+    uint8_t bssid_count, reserved4[3];
+} __packed;
+#define IWX_HE_BSS_COLOR_DIS       (1U << 5)
+#define IWX_HE_PARTIAL_BSS_COLOR   (1U << 6)
+#define IWX_HE_32BIT_BA_BITMAP     (1U << 7)
+#define IWX_HE_PACKET_EXT          (1U << 8)
+#define IWX_HE_ACK_ENABLED         (1U << 11)
+#define IWX_HE_MU_EDCA_CW          (1U << 12)
+#define IWX_HE_NIC_NOT_ACK_ENABLED (1U << 13)
 /* Common PHY, MAC and Bindings definitions */
 
 #define IWX_MAX_MACS_IN_BINDING    (3)
@@ -3451,6 +3540,25 @@ struct iwx_phy_context_cmd {
     uint32_t dsp_cfg_flags;
     uint32_t reserved;
 } __packed; /* PHY_CONTEXT_CMD_API_VER_3 */
+
+/* DATA_PATH_GROUP RLC_CONFIG_CMD_API_S_VER_2. PHY context v5 leaves the
+ * rxchain_info slot empty when RLC v2 carries that configuration instead. */
+#define IWX_RLC_CONFIG_CMD 0x8
+struct iwx_rlc_config_cmd {
+    uint32_t phy_id;
+    struct {
+        uint32_t rx_chain_info;
+        uint32_t reserved;
+    } rlc;
+    struct {
+        uint32_t chain_a_sad_mode;
+        uint32_t chain_b_sad_mode;
+        uint32_t mac_id;
+        uint32_t reserved;
+    } sad;
+    uint8_t flags;
+    uint8_t reserved[3];
+} __packed;
 
 
 #define IWX_RX_INFO_PHY_CNT 8
@@ -4719,6 +4827,323 @@ struct iwx_ac_qos {
     uint8_t fifos_mask;
     uint16_t edca_txop;
 } __packed; /* IWX_AC_QOS_API_S_VER_2 */
+
+/*
+ * MLD firmware API, Intel iwlwifi fw/api/mac-cfg.h and fw/api/datapath.h
+ * (dual BSD-3-Clause/GPL-2.0). Firmware that sets
+ * IWX_UCODE_TLV_CAPA_MLD_API_SUPPORT replaces MAC_CONTEXT_CMD,
+ * BINDING_CONTEXT_CMD, ADD_STA, REMOVE_STA and TX_QUEUE_CFG with the
+ * commands below. BE201 firmware 92 advertises MAC_CONFIG v2,
+ * LINK_CONFIG v2, SCD_QUEUE_CONFIG v3 and SESSION_PROTECTION v2; STA_CONFIG
+ * and STA_REMOVE are not listed and therefore use version 1.
+ */
+
+/* MAC_CONF_GROUP subcommand IDs */
+#define IWX_MAC_CONFIG_CMD      0x8
+#define IWX_LINK_CONFIG_CMD     0x9
+#define IWX_STA_CONFIG_CMD      0xa
+#define IWX_AUX_STA_CMD         0xb
+#define IWX_STA_REMOVE_CMD      0xc
+#define IWX_STA_DISABLE_TX_CMD  0xd
+
+/* DATA_PATH_GROUP subcommand IDs */
+#define IWX_RX_BAID_ALLOCATION_CONFIG_CMD   0x16
+#define IWX_SCD_QUEUE_CONFIG_CMD            0x17
+#define IWX_SEC_KEY_CMD                     0x18
+
+/* MLD firmware has no colors; MAC, link and station IDs are plain indices. */
+#define IWX_MLD_MAC_ID      0
+#define IWX_MLD_LINK_ID     0
+
+#define IWX_MAC_CFG_FILTER_PROMISC                  (1 << 0)
+#define IWX_MAC_CFG_FILTER_ACCEPT_CONTROL_AND_MGMT  (1 << 1)
+#define IWX_MAC_CFG_FILTER_ACCEPT_GRP               (1 << 2)
+#define IWX_MAC_CFG_FILTER_ACCEPT_BEACON            (1 << 3)
+#define IWX_MAC_CFG_FILTER_ACCEPT_BCAST_PROBE_RESP  (1 << 4)
+#define IWX_MAC_CFG_FILTER_ACCEPT_PROBE_REQ         (1 << 5)
+
+struct iwx_mac_client_data {
+    uint8_t is_assoc;
+    uint8_t esr_transition_timeout;
+    uint16_t medium_sync_delay;
+    uint16_t assoc_id;
+    uint16_t reserved1;
+    uint16_t data_policy;
+    uint16_t reserved2;
+    uint32_t ctwin;
+} __packed; /* MAC_CONTEXT_CONFIG_CLIENT_DATA_API_S_VER_1 */
+
+/**
+ * struct iwx_mac_config_cmd - MAC_CONFIG_CMD (MAC_CONF_GROUP 0x8)
+ * @id_and_color: MAC ID (no color on MLD firmware)
+ * @action: one of IWX_FW_CTXT_ACTION_*
+ * @mac_type: one of IWX_FW_MAC_TYPE_*
+ * @local_mld_addr: our MLD address
+ * @filter_flags: IWX_MAC_CFG_FILTER_*
+ * @he_support: HE is used on this MAC
+ * @he_ap_support: HE AP support (AP mode only)
+ * @eht_support: EHT is used on this MAC
+ * @nic_not_ack_enabled: no ACK required for this MAC
+ * @client: station-mode data
+ */
+struct iwx_mac_config_cmd {
+    uint32_t id_and_color;
+    uint32_t action;
+    uint32_t mac_type;
+    uint8_t local_mld_addr[ETHER_ADDR_LEN];
+    uint16_t reserved_for_local_mld_addr;
+    uint32_t filter_flags;
+    uint16_t he_support;
+    uint16_t he_ap_support;
+    uint32_t eht_support;
+    uint32_t nic_not_ack_enabled;
+    struct iwx_mac_client_data client;
+} __packed; /* MAC_CONTEXT_CONFIG_CMD_API_S_VER_2 */
+
+static_assert(sizeof(struct iwx_mac_config_cmd) == 52,
+              "MAC_CONFIG_CMD v2 must be 52 bytes");
+
+#define IWX_LINK_CONTEXT_MODIFY_ACTIVE          (1 << 0)
+#define IWX_LINK_CONTEXT_MODIFY_RATES_INFO      (1 << 1)
+#define IWX_LINK_CONTEXT_MODIFY_PROTECT_FLAGS   (1 << 2)
+#define IWX_LINK_CONTEXT_MODIFY_QOS_PARAMS      (1 << 3)
+#define IWX_LINK_CONTEXT_MODIFY_BEACON_TIMING   (1 << 4)
+#define IWX_LINK_CONTEXT_MODIFY_HE_PARAMS       (1 << 5)
+#define IWX_LINK_CONTEXT_MODIFY_BSS_COLOR_DISABLE (1 << 6)
+#define IWX_LINK_CONTEXT_MODIFY_EHT_PARAMS      (1 << 7)
+
+#define IWX_LINK_PROT_FLG_TGG_PROTECT   (1 << 0)
+#define IWX_LINK_PROT_FLG_HT_PROT       (1 << 1)
+#define IWX_LINK_PROT_FLG_FAT_PROT      (1 << 2)
+#define IWX_LINK_PROT_FLG_SELF_CTS_EN   (1 << 3)
+
+/**
+ * struct iwx_link_config_cmd - LINK_CONFIG_CMD (MAC_CONF_GROUP 0x9)
+ * Ties a MAC to a PHY context and carries the per-BSS parameters that
+ * MAC_CONTEXT_CMD held on older firmware. There is no BINDING_CONTEXT_CMD.
+ * @action: one of IWX_FW_CTXT_ACTION_*
+ * @link_id: link ID
+ * @mac_id: owning MAC ID
+ * @phy_id: PHY context ID, or IWX_FW_CTXT_INVALID
+ * @local_link_addr: our link address
+ * @modify_mask: IWX_LINK_CONTEXT_MODIFY_* fields to apply on MODIFY
+ * @active: link is active (only applied with IWX_LINK_CONTEXT_MODIFY_ACTIVE)
+ */
+struct iwx_link_config_cmd {
+    uint32_t action;
+    uint32_t link_id;
+    uint32_t mac_id;
+    uint32_t phy_id;
+    uint8_t local_link_addr[ETHER_ADDR_LEN];
+    uint16_t reserved_for_local_link_addr;
+    uint32_t modify_mask;
+    uint32_t active;
+    uint32_t listen_lmac;
+    uint32_t cck_rates;
+    uint32_t ofdm_rates;
+    uint32_t cck_short_preamble;
+    uint32_t short_slot;
+    uint32_t protection_flags;
+    uint32_t qos_flags;
+    struct iwx_ac_qos ac[IWX_AC_NUM + 1];
+    uint8_t htc_trig_based_pkt_ext;
+    uint8_t rand_alloc_ecwmin;
+    uint8_t rand_alloc_ecwmax;
+    uint8_t ndp_fdbk_buff_th_exp;
+    struct iwx_he_backoff_conf trig_based_txf[IWX_AC_NUM];
+    uint32_t bi;
+    uint32_t dtim_interval;
+    uint16_t puncture_mask;
+    uint16_t frame_time_rts_th;
+    uint32_t flags;
+    uint32_t flags_mask;
+    uint8_t ref_bssid_addr[ETHER_ADDR_LEN];
+    uint16_t reserved_for_ref_bssid_addr;
+    uint8_t bssid_index;
+    uint8_t bss_color;
+    uint8_t spec_link_id;
+    uint8_t ul_mu_data_disable;
+    uint8_t ibss_bssid_addr[ETHER_ADDR_LEN];
+    uint16_t reserved_for_ibss_bssid_addr;
+    uint32_t reserved3[8];
+} __packed; /* LINK_CONTEXT_CONFIG_CMD_API_S_VER_2 */
+
+static_assert(sizeof(struct iwx_link_config_cmd) == 208,
+              "LINK_CONFIG_CMD v2 must be 208 bytes");
+
+#define IWX_STATION_TYPE_PEER       0
+#define IWX_STATION_TYPE_BCAST_MGMT 1
+#define IWX_STATION_TYPE_MCAST      2
+#define IWX_STATION_TYPE_AUX        3
+
+/**
+ * struct iwx_sta_cfg_cmd - STA_CONFIG_CMD (MAC_CONF_GROUP 0xa)
+ * Replaces ADD_STA on MLD firmware. Fields that only matter after
+ * association (aggregation, MIMO, U-APSD) are refreshed on MODIFY.
+ * @sta_id: firmware station ID
+ * @link_id: link this station belongs to
+ * @peer_mld_address: peer MLD address (the AP's address for non-MLO)
+ * @peer_link_address: peer link address
+ * @station_type: IWX_STATION_TYPE_*
+ * @assoc_id: association ID
+ * @mfp: management frame protection in use
+ * @tx_ampdu_spacing: minimum A-MPDU spacing
+ * @tx_ampdu_max_size: maximum A-MPDU length exponent
+ * @pkt_ext: HE packet extension thresholds
+ */
+struct iwx_sta_cfg_cmd {
+    uint32_t sta_id;
+    uint32_t link_id;
+    uint8_t peer_mld_address[ETHER_ADDR_LEN];
+    uint16_t reserved_for_peer_mld_address;
+    uint8_t peer_link_address[ETHER_ADDR_LEN];
+    uint16_t reserved_for_peer_link_address;
+    uint32_t station_type;
+    uint32_t assoc_id;
+    uint32_t beamform_flags;
+    uint32_t mfp;
+    uint32_t mimo;
+    uint32_t mimo_protection;
+    uint32_t ack_enabled;
+    uint32_t trig_rnd_alloc;
+    uint32_t tx_ampdu_spacing;
+    uint32_t tx_ampdu_max_size;
+    uint32_t sp_length;
+    uint32_t uapsd_acs;
+    uint8_t pkt_ext[2][5][2]; /* NSS, bandwidth index, PPET8/PPET16 */
+    uint32_t htc_flags;
+} __packed; /* STA_CMD_API_S_VER_1 */
+
+static_assert(sizeof(struct iwx_sta_cfg_cmd) == 96,
+              "STA_CONFIG_CMD v1 must be 96 bytes");
+
+struct iwx_sta_remove_cmd {
+    uint32_t sta_id;
+} __packed; /* REMOVE_STA_API_S_VER_1 */
+
+#define IWX_SCD_QUEUE_ADD       0
+#define IWX_SCD_QUEUE_REMOVE    1
+#define IWX_SCD_QUEUE_MODIFY    2
+
+/**
+ * struct iwx_scd_queue_cfg_cmd - SCD_QUEUE_CONFIG_CMD (DATA_PATH_GROUP 0x17)
+ * Replaces TX_QUEUE_CFG on MLD firmware. Stations are addressed by mask.
+ * The response is struct iwx_tx_queue_cfg_rsp.
+ */
+struct iwx_scd_queue_cfg_cmd {
+    uint32_t operation;
+    union {
+        struct {
+            uint32_t sta_mask;
+            uint8_t tid;
+            uint8_t reserved[3];
+            uint32_t flags;
+            uint32_t cb_size;
+            uint64_t bc_dram_addr;
+            uint64_t tfdq_dram_addr;
+        } __packed add; /* TX_QUEUE_CFG_CMD_ADD_API_S_VER_1 */
+        struct {
+            uint32_t sta_mask;
+            uint32_t tid;
+        } __packed remove; /* TX_QUEUE_CFG_CMD_REMOVE_API_S_VER_1 */
+        struct {
+            uint32_t old_sta_mask;
+            uint32_t tid;
+            uint32_t new_sta_mask;
+        } __packed modify; /* TX_QUEUE_CFG_CMD_MODIFY_API_S_VER_1 */
+    } __packed u;
+} __packed; /* TX_QUEUE_CFG_CMD_API_S_VER_3 */
+
+static_assert(sizeof(struct iwx_scd_queue_cfg_cmd) == 36,
+              "SCD_QUEUE_CONFIG_CMD v3 must be 36 bytes");
+
+#define IWX_SEC_KEY_FLAG_CIPHER_MASK    0x07
+#define IWX_SEC_KEY_FLAG_CIPHER_WEP     0x01
+#define IWX_SEC_KEY_FLAG_CIPHER_CCMP    0x02
+#define IWX_SEC_KEY_FLAG_CIPHER_TKIP    0x03
+#define IWX_SEC_KEY_FLAG_CIPHER_GCMP    0x05
+#define IWX_SEC_KEY_FLAG_NO_TX          0x08
+#define IWX_SEC_KEY_FLAG_KEY_SIZE       0x10
+#define IWX_SEC_KEY_FLAG_MFP            0x20
+#define IWX_SEC_KEY_FLAG_MCAST_KEY      0x40
+
+/**
+ * struct iwx_sec_key_cmd - SEC_KEY_CMD (DATA_PATH_GROUP 0x18)
+ * Replaces ADD_STA_KEY on MLD firmware. Keys are bound to stations by mask.
+ * @action: IWX_FW_CTXT_ACTION_ADD, _MODIFY or _REMOVE
+ */
+struct iwx_sec_key_cmd {
+    uint32_t action;
+    union {
+        struct {
+            uint32_t sta_mask;
+            uint32_t key_id;
+            uint32_t key_flags;
+            uint8_t key[32];
+            uint8_t tkip_mic_rx_key[8];
+            uint8_t tkip_mic_tx_key[8];
+            uint64_t rx_seq;
+            uint64_t tx_seq;
+        } __packed add; /* SEC_KEY_ADD_CMD_API_S_VER_1 */
+        struct {
+            uint32_t old_sta_mask;
+            uint32_t new_sta_mask;
+            uint32_t key_id;
+            uint32_t key_flags;
+        } __packed modify; /* SEC_KEY_MODIFY_CMD_API_S_VER_1 */
+        struct {
+            uint32_t sta_mask;
+            uint32_t key_id;
+            uint32_t key_flags;
+        } __packed remove; /* SEC_KEY_REMOVE_CMD_API_S_VER_1 */
+    } __packed u;
+} __packed; /* SEC_KEY_CMD_API_S_VER_1 */
+
+static_assert(sizeof(struct iwx_sec_key_cmd) == 80,
+              "SEC_KEY_CMD v1 must be 80 bytes");
+
+#define IWX_RX_BAID_ACTION_ADD      0
+#define IWX_RX_BAID_ACTION_MODIFY   1
+#define IWX_RX_BAID_ACTION_REMOVE   2
+
+/**
+ * struct iwx_rx_baid_cfg_cmd - RX_BAID_ALLOCATION_CONFIG_CMD
+ * (DATA_PATH_GROUP 0x16). Used instead of ADD_STA BA fields when the
+ * firmware has IWX_UCODE_TLV_CAPA_BAID_ML_SUPPORT. The response is a
+ * 32-bit BAID in place of the usual command status.
+ */
+struct iwx_rx_baid_cfg_cmd {
+    uint32_t action;
+    union {
+        struct {
+            uint32_t sta_id_mask;
+            uint8_t tid;
+            uint8_t reserved[3];
+            uint16_t ssn;
+            uint16_t win_size;
+        } __packed alloc; /* RX_BAID_ALLOCATION_ADD_CMD_API_S_VER_1 */
+        struct {
+            uint32_t old_sta_id_mask;
+            uint32_t new_sta_id_mask;
+            uint32_t tid;
+        } __packed modify; /* RX_BAID_ALLOCATION_MODIFY_CMD_API_S_VER_2 */
+        struct {
+            uint32_t sta_id_mask;
+            uint32_t tid;
+        } __packed remove; /* RX_BAID_ALLOCATION_REMOVE_CMD_API_S_VER_2 */
+    } __packed u;
+} __packed; /* RX_BAID_ALLOCATION_CONFIG_CMD_API_S_VER_2 */
+
+static_assert(sizeof(struct iwx_rx_baid_cfg_cmd) == 16,
+              "RX_BAID_ALLOCATION_CONFIG_CMD v2 must be 16 bytes");
+
+/*
+ * Notifications this firmware sends that need no handling: per-beacon
+ * BEACON_FILTER_IN_NOTIF (Linux v6.15+, iwlmld) and a boot-time system
+ * group notification. Listed so the RX dispatcher does not log them.
+ */
+#define IWX_BEACON_FILTER_IN_NOTIF  0xf8
+#define IWX_SYSTEM_NOTIF_FC         0xfc
 
 /**
  * struct iwx_mac_ctx_cmd - command structure to configure MAC contexts
@@ -6903,6 +7328,7 @@ struct iwx_scan_config {
  * @iter_count:        repetition count for the channel.
  * @iter_interval:    interval between two scan iterations on one channel.
  */
+#define IWX_CHAN_CFG_FLAGS_BAND_POS 30
 struct iwx_scan_channel_cfg_umac {
     uint32_t flags;
     union {
@@ -6917,6 +7343,12 @@ struct iwx_scan_channel_cfg_umac {
             uint8_t iter_count;
             uint8_t iter_interval;
         } v2; /* SCAN_CHANNEL_CFG_S_VER{2,3,4} */
+        struct {
+            uint8_t channel_num;
+            uint8_t psd_20;
+            uint8_t iter_count;
+            uint8_t iter_interval;
+        } v5; /* SCAN_CHANNEL_CFG_S_VER_5 */
     };
 } __packed;
 
@@ -7286,6 +7718,16 @@ struct iwx_scan_req_umac_v14 {
     uint32_t ooc_priority;
     struct iwx_scan_req_params_v14 scan_params;
 } __packed; /* SCAN_REQUEST_CMD_UMAC_API_S_VER_14 */
+
+/* Versions 14-17 have the same packed request layout. Version 17 reuses
+ * general_params.reserved1 as flags2 and encodes the channel band in the
+ * top two bits of channel_config.flags instead of channel_config.v2.band.
+ * See Linux iwlwifi fw/api/scan.h and mvm/scan.c (v6.12). */
+struct iwx_scan_req_umac_v17 {
+    uint32_t uid;
+    uint32_t ooc_priority;
+    struct iwx_scan_req_params_v14 scan_params;
+} __packed; /* SCAN_REQUEST_CMD_UMAC_API_S_VER_17 */
 
 /**
  * struct iwx_umac_scan_abort
@@ -7896,6 +8338,26 @@ struct iwx_mcc_update_resp {
     uint32_t n_channels;
     uint32_t channels[0];
 } __packed; /* LAR_UPDATE_MCC_CMD_RESP_S_VER_4 */
+
+/* LAR_UPDATE_MCC_CMD_RESP_S_VER_8: cap widened to 32 bits and the
+ * channel count moved from offset 16 to offset 20. */
+struct iwx_mcc_update_resp_v8 {
+    uint32_t status;
+    uint16_t mcc;
+    uint8_t padding[2];
+    uint32_t cap;
+    uint16_t time;
+    uint16_t geo_info;
+    uint8_t source_id;
+    uint8_t reserved[3];
+    uint32_t n_channels;
+    uint32_t channels[0];
+} __packed;
+
+static_assert(sizeof(struct iwx_mcc_update_resp_v8) == 24,
+              "MCC response v8 header must be 24 bytes");
+static_assert(offsetof(struct iwx_mcc_update_resp_v8, n_channels) == 20,
+              "MCC response v8 channel count must be at offset 20");
 
 /**
  * struct iwx_mcc_chub_notif - chub notifies of mcc change

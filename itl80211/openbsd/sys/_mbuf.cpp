@@ -38,7 +38,9 @@ static IOReturn _if_input(OSObject *target, void *arg0, void *arg1, void *arg2, 
     struct _ifnet *ifq = (struct _ifnet *)arg0;
     struct mbuf_list *ml = (struct mbuf_list *)arg1;
     
-    MBUF_LIST_FOREACH(ml, m) {
+    // Detach linkage while we still own m. inputPacket may rewrite or consume it;
+    // never obtain the next packet through an mbuf already handed to the stack.
+    while ((m = ml_dequeue(ml)) != nullptr) {
         if (ifq->iface == NULL) {
             panic("%s ifq->iface == NULL!!!\n", __FUNCTION__);
             break;

@@ -1,0 +1,115 @@
+{
+  "source_archive": {
+    "archive": "/Users/kgp/Desktop/AirportItlwm/TESTS/BE200-P8_BE200_3X14_mapped_20261030_232645_lLBMwH.zip",
+    "archive_sha256": "2fa6be173c86c26c2a4345cfc1d105537c70a5074525311668b5718185f50875",
+    "archive_bytes": 1427688,
+    "CRC": "PASS",
+    "manifest_entries": 292,
+    "all_hashes": "PASS",
+    "complete_tests": 42,
+    "runner_sha256": "e66ca99db2cdf77e4141b632b9165fdd9e32e83ce016b4b06733ada9905dead9",
+    "loaded_identity": "MATCHES_APPROVED_P8R1"
+  },
+  "receiver_means_mbps": {
+    "TCP_RX_P1": 481.67702965394204,
+    "TCP_RX_P4": 472.37058701469914,
+    "TCP_TX_P1": 481.16971230048404,
+    "TCP_TX_P4": 479.3690092382439,
+    "UDP_RX100": 100.30757159719641,
+    "UDP_RX250": 250.56189104141117,
+    "UDP_RX400": 400.8226993714666,
+    "UDP_RX500": 500.42749513641155,
+    "UDP_RX600": 600.4900398591406,
+    "UDP_TX100": 99.6446487375895,
+    "UDP_TX250": 249.0586405109248,
+    "UDP_TX400": 398.46608684624636,
+    "UDP_TX500": 445.735316497938,
+    "UDP_TX600": 445.0034887206642
+  },
+  "round_receiver_mbps": {
+    "TCP_RX_P1": [
+      446.68784823787803,
+      506.8456038664251,
+      491.49763685752305
+    ],
+    "TCP_RX_P4": [
+      475.9862709392298,
+      475.913746574125,
+      465.21174353074264
+    ],
+    "TCP_TX_P1": [
+      478.6392488585241,
+      480.02301157201674,
+      484.84687647091124
+    ],
+    "TCP_TX_P4": [
+      480.9138152981023,
+      479.583390669751,
+      477.60982174687837
+    ],
+    "UDP_RX100": [
+      100.29916075010958,
+      100.32395778253347,
+      100.2995962589462
+    ],
+    "UDP_RX250": [
+      250.75347828007446,
+      250.44807180828457,
+      250.48412303587452
+    ],
+    "UDP_RX400": [
+      401.08277778577695,
+      400.401019227204,
+      400.98430110141885
+    ],
+    "UDP_RX500": [
+      500.65613094539304,
+      500.2187057712612,
+      500.4076486925803
+    ],
+    "UDP_RX600": [
+      601.2915449972118,
+      600.6282637092032,
+      599.5503108710067
+    ],
+    "UDP_TX100": [
+      99.64373833809523,
+      99.6442319012766,
+      99.6459759733967
+    ],
+    "UDP_TX250": [
+      249.05100431178846,
+      249.0734075340113,
+      249.05150968697458
+    ],
+    "UDP_TX400": [
+      398.4801823143815,
+      398.426963608206,
+      398.49111461615155
+    ],
+    "UDP_TX500": [
+      447.50834634693445,
+      453.1722949451656,
+      436.525308201714
+    ],
+    "UDP_TX600": [
+      443.96362712919233,
+      446.4043691348499,
+      444.6424698979504
+    ]
+  },
+  "UDP_RX600_reported_loss_percent": [
+    0.0793210879412833,
+    0.19501811565339036,
+    0.18758917651854873
+  ],
+  "scope": "One complete three-round local BE200/Mode2 campaign, plus KGP USER-OBSERVED successful P8R1 Wi-Fi OFF/ON and manual Sleep/Wake reported after that campaign. Not other-card or long-term qualification. Full originals preserved.",
+  "recovery_user_observation": {
+    "candidate": "P8R1",
+    "WiFi_OFF_ON": "SUCCESS reported by KGP",
+    "manual_Sleep_Wake": "SUCCESS reported by KGP",
+    "cycle_count": "NOT SPECIFIED; do not reuse Alpha1 four-cycle count",
+    "evidence_class": "USER-OBSERVED; new report, not reconstructed from benchmark snapshots"
+  },
+  "known_issues": "Find My unresolved; TCP retransmissions, UDP losses, higher-rate UDP sender limits and RX variation remain; no common AX/BE200 cause proved."
+}

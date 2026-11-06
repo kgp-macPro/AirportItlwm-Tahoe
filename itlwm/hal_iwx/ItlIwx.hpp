@@ -123,6 +123,7 @@
 #include <sys/kpi_mbuf.h>
 
 #include "if_iwxreg.h"
+#include "ItlIwxBzContracts.hpp"
 #include "if_iwxvar.h"
 #include <sys/pcireg.h>
 
@@ -140,6 +141,10 @@
 #include <HAL/ItlHalService.hpp>
 #include <HAL/ItlDriverInfo.hpp>
 #include <HAL/ItlDriverController.hpp>
+
+class IOMapper;
+class KgpRxZcPool;
+class KgpRxZcLife;
 
 class ItlIwx : public ItlHalService, ItlDriverInfo, ItlDriverController {
     OSDeclareDefaultStructors(ItlIwx)
@@ -237,6 +242,7 @@ public:
     void    iwx_clear_bits_prph(struct iwx_softc *, uint32_t, uint32_t);
     int    iwx_dma_contig_alloc(bus_dma_tag_t, struct iwx_dma_info *, bus_size_t,
             bus_size_t);
+    int    iwx_tx_control_alloc(struct iwx_dma_info *, bus_size_t, bus_size_t);
     void    iwx_dma_contig_free(struct iwx_dma_info *);
     int    iwx_alloc_rx_ring(struct iwx_softc *, struct iwx_rx_ring *);
     void    iwx_disable_rx_dma(struct iwx_softc *);
@@ -269,6 +275,8 @@ public:
     int    iwx_nic_rx_init(struct iwx_softc *);
     int    iwx_nic_init(struct iwx_softc *);
     int    iwx_enable_txq(struct iwx_softc *, int, int, int, int);
+    // ZC21 TVQM contract: nonnegative firmware QID or negative errno;
+    // command errors never escape as successful queue IDs.
     int     iwx_tvqm_alloc_txq(struct iwx_softc *, int, int);
     int     iwx_tvqm_enable_txq(struct iwx_softc *, int, int, uint32_t);
     void    iwx_post_alive(struct iwx_softc *);
@@ -301,6 +309,7 @@ public:
             uint8_t);
     static void    iwx_rx_ba_session_expired(void *);
     static void    iwx_reorder_timer_expired(void *);
+    void zc16ArmReorder(struct iwx_rxba_data *);
     static void    iwx_update_chw(struct ieee80211com *);
     void    iwx_sta_rx_agg(struct iwx_softc *, struct ieee80211_node *, uint8_t,
                            uint16_t, uint16_t, int, int);
@@ -514,6 +523,20 @@ public:
     void rx2GSnapshot();
     // 2H mapped packet backing uses the same iwx_dma_info ownership representation
     // as persistent ring DMA. RX slot policy is separate from future TX/command policy.
+    // Pinned Dexter methods; only method names differ, not packet algorithms.
+    int  dexterOriginal_iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring);
+    void  dexterOriginal_iwx_update_rx_desc(struct iwx_softc *sc, struct iwx_rx_ring *ring, int idx);
+    int  dexterOriginal_iwx_rx_addbuf(struct iwx_softc *sc, int size, int idx);
+    void  dexterOriginal_iwx_rx_pkt(struct iwx_softc *sc, struct iwx_rx_data *data, struct mbuf_list *ml);
+    void  dexterOriginal_iwx_notif_intr(struct iwx_softc *sc);
+    int  dexterOriginal_iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac);
+    void  dexterOriginal_iwx_rx_tx_ba_notif(struct iwx_softc *sc, struct iwx_rx_packet *pkt, struct iwx_rx_data *data);
+    void  dexterOriginal_iwx_rx_tx_cmd(struct iwx_softc *sc, struct iwx_rx_packet *pkt,               struct iwx_rx_data *data);
+    void  dexterOriginal_iwx_ampdu_txq_advance(struct iwx_softc *sc, struct iwx_tx_ring *ring, int idx);
+    static IOReturn  dexterOriginal__iwx_start_task(OSObject *target, void *arg0, void *arg1, void *arg2, void *arg3);
+    static void  dexterOriginal_iwx_start(struct _ifnet *ifp);
+    static int  dexterOriginal_iwx_intr(OSObject *object, IOInterruptEventSource* sender, int count);
+    static bool  dexterOriginal_intrFilter(OSObject *object, IOFilterInterruptEventSource *src);
     // 2I: ordinary TX only. Tokens fit pre-existing iwx_tx_data tail padding.
     enum { kTx2ICount = 1024, kTx2ISize = 8192 };
     enum { Tx2IEmpty = 0, Tx2IFree, Tx2ICopying, Tx2IInflight, Tx2IQuarantined };
@@ -523,6 +546,32 @@ public:
         uint32_t state;
         uint32_t length;
     } fTx2I[kTx2ICount] = {};
+    // ZC5: immutable attach-time mapper selection; never a physical fallback.
+    IOMapper *fDma5Mapper = nullptr;
+    IOPCIDevice *fDma5Provider = nullptr;
+    bool fDma5Selected = false, fDma5Published = false, fDma5UseMapped = false;
+    bool fBoot5InterruptAdded = false, fBoot5TaskqInitialized = false, fBoot5IfAttached = false;
+    unsigned fBoot5Stage = 0;
+    void boot5Mark(unsigned, const char *, int error = 0);
+    void boot5RemoveInterrupt();
+    void boot5ConventionalStop();
+    void boot5ConventionalFault();
+    static IOReturn boot5ConventionalRun(OSObject *, void *, void *, void *, void *);
+    static IOReturn zc16PublishRun(OSObject *, void *, void *, void *, void *);
+    static void boot5ClosedInterrupt(OSObject *, IOInterruptEventSource *, int);
+    bool dma5Select();
+    bool dma5Mapped() const { return fDma5Selected && fDma5UseMapped; }
+    bool dma5Terminal() const;
+    void dma5Report(bool force = false);
+    uint64_t fDma5LastReport = 0, fDma5Reports = 0, fDma5Notifs = 0;
+    // Prepared reserve: a ring slot exclusively owns its lease until retirement.
+    uint16_t fTx5Free[kTx2ICount] = {};
+    unsigned fTx5FreeCount = 0;
+    uint64_t fTx5Telemetry[32] = {}, fTx5Stamp[kTx2ICount] = {};
+    bool fTx5Published[kTx2ICount] = {};
+    void tx5Return(unsigned token);
+    bool tx5Release(struct iwx_dma_info *);
+    bool tx5RingReleasable(const struct iwx_tx_ring *) const;
     uint32_t fTx2IStats[32] = {};
     uint64_t fTx2IFirst[4] = {};
     uint32_t fTx2INext = 0;
@@ -581,6 +630,17 @@ public:
     void path2L(unsigned event, uint32_t result = 0, uint32_t detail = 0, uint32_t fc0 = 0);
     void path2LPublish();
 
+    // ZC19 retains the bounded BA correctness counters from KGP
+    // f92775e65f743e3a84d9cd3634fd8c955125bc78 and
+    // 177d39aa865e6ac6d45127bc4f50c0f1a9ceb5c6, without the ZC10/ZC18
+    // packet observers. Gate-only except atomic BA-task setup slots 6/7/11.
+    // They do not control packet processing and are not a public wire schema.
+    uint64_t fZc18Stats[12]={};
+    // ZC19 watchdog-owned copy, schema 19/1; no hot-path instrumentation.
+    uint64_t fZc19Health[32]={}, fZc19Miss=0, fZc19PublishFail=0;
+    static IOReturn zc19Snapshot(OSObject*,void*,void*,void*,void*);
+    void zc19Publish();
+
     // 2M: a coalesced software event on the SAME workloop as mainCommandGate.
     // The lock protects event lifetime/signalling only; never held across gates.
     IOSimpleLock *fDrain2MLock = nullptr;
@@ -629,6 +689,47 @@ public:
     bool rx2HAllocate(unsigned);
     bool rx2HCopy(unsigned, mbuf_t);
 
+    // B1-ZC4: prepared replacement supply is independent of stack retention.
+    enum { kRxZcCount = IWX_RX_MQ_RING_COUNT * 4, kRxZcNone = kRxZcCount };
+    KgpRxZcPool *fRxZcPool = nullptr;
+    KgpRxZcLife *fRxZcLife = nullptr;
+    unsigned fRxZcSlot[IWX_RX_MQ_RING_COUNT] = {};
+    bool fRxZcPublished=false, fRxZcTerminal=false, fRxZcRunning=false, fRxZcCleanHandoff=false;
+    uint32_t fRxZcClosing=0, fRxZcFault=0, fRxZcGeneration=0, fRxZcEpoch=0;
+    uint64_t fRxZcSynced=0, fRxZcReplaced=0, fRxZcStarved=0, fRxZcNotif=0;
+    uint64_t fRxZcLastReport=0, fRxZcSnapshots=0, fRxZcPropertyFailures=0;
+    bool fRxZcReportedFault=false, fRxZcPressure=false;
+    uint64_t fRxZcEpisodes=0, fRxZcRecoveries=0, fRxZcBatchQueued=0, fRxZcBatchMax=0;
+    uint64_t fRxZcFirstPressure[24]={}, fRxZcLastRecovery[24]={};
+    bool rxZcSetup();
+    void rxZcTelemetry(const uint64_t *);
+    bool rxZcReplace(unsigned);
+    bool rxZcArm();
+    static IOReturn rxZcArmAction(OSObject *,void *,void *,void *,void *);
+    static IOReturn rxZcCloseAction(OSObject *,void *,void *,void *,void *);
+    bool rxZcFailed() const;
+    void rxZcFail(uint32_t);
+    bool rxZcSync(unsigned,mbuf_t);
+    bool rxZcRepost(unsigned);
+    void rxZcTerminal();
+    bool rxZcFree();
+    void rxZcPressureRecord(uint64_t *,unsigned);
+    void rxZcReport(unsigned);
+    // ZC25 watchdog-owned immutable-after-capture publication buffers.
+    // Never written by notification paths; no retained pool/mbuf/DMA pointer.
+    uint64_t fRxZcPeriodic[64]={};
+    uint64_t fRxZcPeriodicFirstPressure[24]={}, fRxZcPeriodicLastRecovery[24]={};
+    bool fRxZcPeriodicReady=false;
+    void rxZcCapturePeriodic();
+    void rxZcPublishPeriodic();
+
+    // ZC28 fixed watchdog-owned wire + rare atomic error/rate summaries.
+    uint64_t fZc28Rare[8]={}, fZc28Wire[32]={}, fZc28PubFail=0;
+    void zc28Note(unsigned,uint64_t=0,uint64_t=0,uint64_t=0);
+    void zc28Aggregate(const struct iwx_rx_packet *);
+    void zc28Capture();
+    void zc28Publish();
+
     // PC1 control is serialized by the existing main workloop, not a new worker.
     struct Pc1Advance { iwx_tx_ring *ring; int index; unsigned generation; };
     uint32_t fPc1ResetEpoch=0, fPc1TerminalEpoch=0, fPc1ExpectedGeneration=0;
@@ -641,6 +742,141 @@ public:
     static IOReturn pc1AdvanceAction(OSObject *,void *,void *,void *,void *);
     static IOReturn pc1StopEndAction(OSObject *,void *,void *,void *,void *);
     static IOReturn pc1RecoverAction(OSObject *,void *,void *,void *,void *);
+
+
+    // Private BE200 GL-C0/FM-C0 transport and single-link experiment.
+    bool fBzDevice = false, fBzAdmitted = false;
+    uint32_t fBzFault = 0, fBzError = 0;
+    bool fBzHardwareOwned = false;
+    uint32_t fBzQueueOwned=0;
+    // Gate-owned control predicates; these are NOT DMA ownership/completion proofs.
+    bool fBzScanStarted=false;
+    uint32_t fBzScanGeneration=0,fBzScanEpoch=0;
+    bool bzCommandReady(struct iwx_softc *);
+    bool bzStateCurrent(struct iwx_softc *,int,uint32_t);
+    int bzWaitForScan(struct iwx_softc *,int,uint32_t);
+    kgp_bz::ConnectionTrace fBzConnection;
+    uint64_t fBzConnectionWire[kgp_bz::ConnectionTrace::Words]={};
+    uint32_t fBzScanBeacons=0,fBzScanProbes=0;
+    void bzConnectionEvent(unsigned,uint64_t,uint64_t,uint64_t);
+    void bzObserveMgmt(const void *,size_t);
+    kgp_bz::ReplyRoute bzRouteReply(struct iwx_softc *,unsigned,unsigned,int *,unsigned);
+    kgp_bz::PnvmLedger fBzPnvm;
+    kgp_bz::CommandLedger fBzCommands;
+    kgp_bz::RxLedger fBzRx;
+    uint64_t fBzStats[32] = {}, fBzWire[48] = {};
+    int bzValidateFirmware();
+    int bzWaitFailure(struct iwx_softc *, int, uint32_t);
+    void bzPnvmComplete(struct iwx_softc *, const void *, size_t);
+    void bzPublishInitCounters(struct iwx_softc *);
+    int bzSyncBootMemory(struct iwx_softc *);
+    void bzStoppedCleanup(struct iwx_softc *);
+    int bzInterrupt(struct iwx_softc *);
+    bool bzDevice() const { return fBzDevice; }
+    bool dma5Leased() const { return dma5Mapped() || (fDma5Selected && fBzAdmitted); }
+    void bzFail(uint32_t, int);
+    bool bzAdmit();
+    bool bzMasterStop(struct iwx_softc *);
+    void bzUpdateRxDesc(struct iwx_softc *, struct iwx_rx_ring *, unsigned, unsigned);
+    void bzNotif(struct iwx_softc *);
+    void bzResetRx(struct iwx_softc *);
+    void bzPublishRx(struct iwx_softc *,bool force=false);
+    void bzCapture();
+    bool  iwx_has_new_station_api(struct iwx_softc *sc);
+    bool  iwx_use_mld_api(struct iwx_softc *sc);
+    int  iwx_bz_port_init_fw_sec(struct iwx_softc *sc, const struct iwx_fw_sects *fws,                 struct iwx_context_info_dram *ctxt_dram);
+    void  iwx_record_boot_dma(struct iwx_softc *sc, const struct iwx_fw_sects *fws);
+    int  iwx_bz_port_ctxt_info_gen3_init(struct iwx_softc *sc, const struct iwx_fw_sects *fws);
+    int  iwx_bz_port_read_firmware(struct iwx_softc *sc);
+    int  iwx_bz_port_pnvm_handle_section(struct iwx_softc *sc, const uint8_t *data, size_t len);
+    int  iwx_bz_port_read_pnvm(struct iwx_softc *sc);
+    int  iwx_bz_port_load_pnvm(struct iwx_softc *sc);
+    int  iwx_bz_port_nic_lock(struct iwx_softc *sc);
+    void  iwx_bz_port_nic_unlock(struct iwx_softc *sc);
+    void  iwx_bz_port_enable_fwload_interrupt(struct iwx_softc *sc);
+    void  iwx_bz_restore_boot_interrupts(struct iwx_softc *sc);
+    void  iwx_bz_port_ict_reset(struct iwx_softc *sc);
+    int  iwx_bz_port_apm_init(struct iwx_softc *sc);
+    int  iwx_bz_port_init_msix_hw(struct iwx_softc *sc);
+    int  iwx_bz_config_msi(struct iwx_softc *sc, uint32_t *before, uint32_t *after);
+    int  iwx_bz_port_conf_msix_hw(struct iwx_softc *sc, int stopped);
+    int  iwx_bz_port_start_hw(struct iwx_softc *sc);
+    void  iwx_bz_port_nic_config(struct iwx_softc *sc);
+    int  iwx_bz_port_nic_rx_init(struct iwx_softc *sc);
+    int  iwx_bz_port_nic_init(struct iwx_softc *sc);
+    int  iwx_bz_port_schedule_protect_session(struct iwx_softc *sc, struct iwx_node *in,                     uint32_t duration);
+    int  iwx_bz_port_cancel_session_protection(struct iwx_softc *sc, struct iwx_node *in);
+    void  iwx_bz_port_setup_he_rates(struct iwx_softc *sc);
+    int  iwx_bz_port_sta_rx_agg(struct iwx_softc *sc, struct ieee80211_node *ni, uint8_t tid,                uint16_t ssn, uint16_t winsize, int timeout_val, int start);
+    static void  iwx_bz_port_mac_ctxt_task(void *arg);
+    static void  iwx_bz_port_chan_ctxt_task(void *arg);
+    static void  iwx_bz_port_ba_task(void *arg);
+    int  iwx_bz_port_set_mac_addr_from_csr(struct iwx_softc *sc, struct iwx_nvm_data *data);
+    int  iwx_bz_port_nvm_get(struct iwx_softc *sc);
+    int  iwx_gate_sleep(struct iwx_softc *sc, void *event, uint32_t *budget_ms, int wait);
+    int  iwx_wait_notification(struct iwx_softc *sc, int *value, int bits, uint32_t milliseconds);
+    int  iwx_bz_poll_msix_causes(struct iwx_softc *sc);
+    int  iwx_wait_alive_poll(struct iwx_softc *sc, int *value, int bits, uint32_t milliseconds);
+    int  iwx_bz_port_load_firmware(struct iwx_softc *sc);
+    int  iwx_bz_port_start_fw(struct iwx_softc *sc);
+    int  iwx_bz_port_load_ucode_wait_alive(struct iwx_softc *sc);
+    int  iwx_bz_port_run_init_mvm_ucode(struct iwx_softc *sc, int readnvm);
+    int  iwx_bz_port_oldsn_workaround(struct iwx_softc *sc, struct ieee80211_node *ni, int tid,     struct iwx_reorder_buffer *buffer, uint32_t reorder_data, uint32_t gp2);
+    void  iwx_bz_port_rx_mpdu_mq(struct iwx_softc *sc, mbuf_t m, void *pktdata,                size_t maxlen, struct mbuf_list *ml);
+    void  iwx_bz_port_rx_tx_cmd_single(struct iwx_softc *sc, struct iwx_rx_packet *pkt,                      struct iwx_tx_data *txd);
+    void  iwx_bz_port_clear_oactive(struct iwx_softc *sc, struct iwx_tx_ring *ring);
+    int  iwx_send_rlc_config(struct iwx_softc *sc, struct iwx_phy_ctxt *ctxt,                     uint32_t rx_chain_info);
+    int  iwx_bz_port_phy_ctxt_cmd_v3(struct iwx_softc *sc, struct iwx_phy_ctxt *ctxt,     uint8_t chains_static, uint8_t chains_dynamic, uint32_t action,     uint32_t apply_time);
+    int  iwx_bz_port_phy_ctxt_cmd(struct iwx_softc *sc, struct iwx_phy_ctxt *ctxt,                  uint8_t chains_static, uint8_t chains_dynamic, uint32_t action,                  uint32_t apply_time);
+    const struct iwx_rate * iwx_bz_port_tx_fill_cmd(struct iwx_softc *sc, struct iwx_node *in,                 struct ieee80211_frame *wh, uint32_t *flags, uint32_t *rate_n_flags);
+    void  iwx_bz_port_tx_update_byte_tbl(struct iwx_softc *sc, struct iwx_tx_ring *txq, int idx, uint16_t byte_cnt,                        uint16_t num_tbs);
+    int  iwx_bz_port_flush_sta_tids(struct iwx_softc *sc, int sta_id, uint16_t tids);
+    int  iwx_bz_port_flush_sta(struct iwx_softc *sc, struct iwx_node *in);
+    int  iwx_bz_port_add_sta_cmd(struct iwx_softc *sc, struct iwx_node *in, int update);
+    int  iwx_bz_port_add_aux_sta(struct iwx_softc *sc);
+    int  iwx_bz_port_rm_sta_cmd(struct iwx_softc *sc, struct iwx_node *in);
+    uint8_t  iwx_bz_port_umac_scan_fill_channels(struct iwx_softc *sc,                             struct iwx_scan_channel_cfg_umac *chan, int n_ssids, int bgscan);
+    int  iwx_bz_port_config_umac_scan(struct iwx_softc *sc);
+    int  iwx_bz_port_umac_scan_size(struct iwx_softc *sc);
+    int  iwx_bz_port_umac_scan(struct iwx_softc *sc, int bgscan);
+    int  iwx_bz_port_umac_scan_v12(struct iwx_softc *sc, int bgscan);
+    int  iwx_umac_scan_v14_and_above(struct iwx_softc *sc, int bgscan, uint8_t scan_ver);
+    int  iwx_bz_port_scan(struct iwx_softc *sc);
+    int  iwx_bz_port_scan_abort(struct iwx_softc *sc);
+    int  iwx_bz_port_enable_mgmt_queue(struct iwx_softc *sc);
+    uint16_t  iwx_bz_port_rs_fw_get_config_flags(struct iwx_softc *sc);
+    int  iwx_bz_port_rs_init(struct iwx_softc *sc, struct iwx_node *in, bool update);
+    void  iwx_bz_port_rs_update(struct iwx_softc *sc, struct iwx_tlc_update_notif *notif);
+    int  iwx_bz_port_auth(struct iwx_softc *sc);
+    int  iwx_bz_port_deauth(struct iwx_softc *sc);
+    void  iwx_mld_probe(struct iwx_softc *sc, uint32_t step, int err);
+    int  iwx_mld_mac_config_cmd(struct iwx_softc *sc, struct iwx_node *in,                        uint32_t action, int assoc);
+    int  iwx_mld_link_config_cmd(struct iwx_softc *sc, struct iwx_node *in,                         uint32_t action, uint32_t modify_mask, int active);
+    int  iwx_mld_sta_config_cmd(struct iwx_softc *sc, struct iwx_node *in, int assoc);
+    int  iwx_mld_sta_remove_cmd(struct iwx_softc *sc);
+    int  iwx_mld_disable_txq(struct iwx_softc *sc, int sta_id, int tid);
+    int  iwx_mld_rm_sta(struct iwx_softc *sc, struct iwx_node *in);
+    int  iwx_mld_auth(struct iwx_softc *sc, struct iwx_node *in);
+    int  iwx_mld_deauth(struct iwx_softc *sc, struct iwx_node *in);
+    int  iwx_wait_txq_empty(struct iwx_softc *sc, int qid);
+    void  iwx_mld_send_leave(struct iwx_softc *sc, enum ieee80211_state ostate);
+    int  iwx_mld_run(struct iwx_softc *sc, struct iwx_node *in);
+    int  iwx_mld_run_stop(struct iwx_softc *sc, struct iwx_node *in);
+    int  iwx_mld_sec_key_cmd(struct iwx_softc *sc, struct ieee80211_node *ni,                     struct ieee80211_key *k, uint32_t action);
+    int  iwx_bz_port_run(struct iwx_softc *sc);
+    int  iwx_bz_port_run_stop(struct iwx_softc *sc);
+    static int  iwx_bz_port_set_key(struct ieee80211com *ic, struct ieee80211_node *ni,             struct ieee80211_key *k);
+    static void  iwx_bz_port_delete_key(struct ieee80211com *ic, struct ieee80211_node *ni,                struct ieee80211_key *k);
+    int  iwx_bz_port_media_change(struct _ifnet *ifp);
+    void  iwx_bz_port_endscan(struct iwx_softc *sc);
+    int  iwx_bz_port_send_soc_conf(struct iwx_softc *sc);
+    int  iwx_bz_port_send_update_mcc_cmd(struct iwx_softc *sc, const char *alpha2);
+    int  iwx_bz_port_init_hw(struct iwx_softc *sc);
+    int  iwx_read_error_table(struct iwx_softc *sc, uint32_t base, void *table,                      size_t size, bool supplied_by_tlv);
+    void  iwx_bz_capture_error_tables(struct iwx_softc *sc);
+    void  iwx_bz_port_nic_umac_error(struct iwx_softc *sc);
+    void  iwx_nic_lmac_error(struct iwx_softc *sc);
+    void  iwx_bz_port_nic_error(struct iwx_softc *sc);
 
 };
 

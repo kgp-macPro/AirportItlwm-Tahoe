@@ -1,3 +1,5 @@
+// ZC19 retains KGP restart correction 120ab2c61f0bbe0e6462f4eeea9fd7e5da29a7f2.
+// See docs/ZC19_CHANGE_PROVENANCE.md; existing IWM/IWN dispatch is unchanged.
 /*
 * Copyright (C) 2020  钟先耀
 *
@@ -28,6 +30,10 @@ IOCommandGate *_fCommandGate;
 bool AirportItlwm::init(OSDictionary *properties)
 {
     bool ret = super::init(properties);
+    currentStatus = 0;
+    fLinkStateHandoff = false;
+    fLinkStateCallbackSeen = false;
+    fLinkStateCallbackOK = false;
     awdlSyncEnable = true;
     power_state = 0;
     memset(geo_location_cc, 0, sizeof(geo_location_cc));
@@ -454,6 +460,9 @@ void AirportItlwm::watchdogAction(IOTimerEventSource *timer)
 {
     struct _ifnet *ifp = &fHalService->get80211Controller()->ic_ac.ac_if;
     (*ifp->if_watchdog)(ifp);
+    // ZC19: reuse the existing watchdog (ZC11 c1b1d9a72aaae80ee3819996ecaa35a0d568c0ed).
+    // IWX only, nonblocking health snapshot; no per-packet observer or new timer.
+    if (auto *iwx = OSDynamicCast(ItlIwx, fHalService)) iwx->zc19Publish();
     watchdogTimer->setTimeoutMS(kWatchDogTimerPeriod);
 }
 
@@ -529,47 +538,103 @@ void AirportItlwm::stop(IOService *provider)
     releaseAll();
 }
 
+// P6: IO80211Interface arms its one-shot BSD LinkUp/Down event inside
+// setLinkState, then calls the controller's setLinkStatus. Publishing before
+// that transition drops the event; caching the status then suppresses its
+// callback. Keep the interface and controller halves on the same workloop gate.
 bool AirportItlwm::
-setLinkStatus(UInt32 status, const IONetworkMedium * activeMedium, UInt64 speed, OSData * data)
+setLinkStatus(UInt32 status, const IONetworkMedium *activeMedium, UInt64 speed, OSData *data)
 {
-    struct _ifnet *ifq = &fHalService->get80211Controller()->ic_ac.ac_if;
-    if (status == currentStatus) {
-        return true;
+    auto *loop = getWorkLoop();
+    if (!loop) return false;
+    if (!loop->inGate()) {
+        auto *gate = getCommandGate();
+        if (!gate) return false;
+        // Synchronous runAction: borrowed medium/data and this stack request
+        // remain valid until return. No asynchronous work or retained pointers.
+        LinkStatusRequest request = {status, activeMedium, speed, data, false};
+        const IOReturn result = gate->runAction(setLinkStatusGated, &request);
+        return result == kIOReturnSuccess && request.result;
     }
-    bool ret = super::setLinkStatus(status, activeMedium, speed, data);
-    currentStatus = status;
-    if (fNetIf) {
-        if (status & kIONetworkLinkActive) {
-#ifdef __PRIVATE_SPI__
-            fNetIf->startOutputThread();
-#endif
-            getCommandGate()->runAction(setLinkStateGated, (void *)kIO80211NetworkLinkUp, (void *)0);
-            fNetIf->setLinkQualityMetric(100);
-        } else if (!(status & kIONetworkLinkNoNetworkChange)) {
-#ifdef __PRIVATE_SPI__
-            fNetIf->stopOutputThread();
-            fNetIf->flushOutputQueue();
-#endif
-            ifq_flush(&ifq->if_snd);
-            mq_purge(&fHalService->get80211Controller()->ic_mgtq);
-            getCommandGate()->runAction(setLinkStateGated, (void *)kIO80211NetworkLinkDown, (void *)fHalService->get80211Controller()->ic_deauth_reason);
-        }
-    }
-    return ret;
+    return setLinkStatusInGate(status, activeMedium, speed, data);
 }
 
 IOReturn AirportItlwm::
-setLinkStateGated(OSObject *target, void *arg0, void *arg1, void *arg2, void *arg3)
+setLinkStatusGated(OSObject *target, void *arg0, void *, void *, void *)
 {
-    AirportItlwm *that = OSDynamicCast(AirportItlwm, target);
-    IOReturn ret = that->getNetworkInterface()->setLinkState((IO80211LinkState)(uint64_t)arg0, (unsigned int)(uint64_t)arg1);
-    if (that->fAWDLInterface) {
-#if __IO80211_TARGET >= __MAC_13_0
-        that->fAWDLInterface->setEnabledBySystem(true);
-#endif
-        that->fAWDLInterface->setLinkState((IO80211LinkState)(uint64_t)arg0, (unsigned int)(uint64_t)arg1);
+    auto *that = OSDynamicCast(AirportItlwm, target);
+    auto *request = static_cast<LinkStatusRequest *>(arg0);
+    if (!that || !request) return kIOReturnBadArgument;
+    request->result = that->setLinkStatusInGate(request->status, request->medium,
+                                               request->speed, request->data);
+    return request->result ? kIOReturnSuccess : kIOReturnError;
+}
+
+bool AirportItlwm::
+setLinkStatusInGate(UInt32 status, const IONetworkMedium *activeMedium, UInt64 speed, OSData *data)
+{
+    if (!getWorkLoop() || !getWorkLoop()->inGate()) return false;
+    if (fLinkStateHandoff) {
+        // The framework has armed inputEvent before this synchronous callback.
+        // Do not recurse into setLinkState or repeat queue start/flush work.
+        fLinkStateCallbackSeen = true;
+        const bool result = super::setLinkStatus(status, activeMedium, speed, data);
+        fLinkStateCallbackOK = fLinkStateCallbackOK && result;
+        if (result) currentStatus = status;
+        return result;
     }
-    return ret;
+    if (status == currentStatus) return true;
+    if (!fNetIf || (!(status & kIONetworkLinkActive) &&
+                    (status & kIONetworkLinkNoNetworkChange))) {
+        // Preserve early/no-interface and wake-without-network-change behavior.
+        const bool result = super::setLinkStatus(status, activeMedium, speed, data);
+        if (result) currentStatus = status;
+        return result;
+    }
+    if (!fHalService) return false;
+    struct _ifnet *ifq = &fHalService->get80211Controller()->ic_ac.ac_if;
+    const bool active = (status & kIONetworkLinkActive) != 0;
+    const IO80211LinkState state = active ? kIO80211NetworkLinkUp : kIO80211NetworkLinkDown;
+    const unsigned reason = active ? 0 : fHalService->get80211Controller()->ic_deauth_reason;
+    if (active) {
+#ifdef __PRIVATE_SPI__
+        ifq_start_pull(&ifq->if_snd);
+        fNetIf->startOutputThread();
+#endif
+    } else {
+#ifdef __PRIVATE_SPI__
+        ifq_stop_pull(&ifq->if_snd);
+        fNetIf->stopOutputThread();
+        fNetIf->flushOutputQueue();
+#endif
+        ifq_flush(&ifq->if_snd);
+        mq_purge(&fHalService->get80211Controller()->ic_mgtq);
+    }
+    fLinkStateHandoff = true;
+    fLinkStateCallbackSeen = false;
+    fLinkStateCallbackOK = true;
+    const bool interfaceOK = fNetIf->setLinkState(state, reason);
+    fLinkStateHandoff = false;
+    // A framework-initiated transition can already be in setLinkState when it
+    // calls us: the nested same-state call returns without another callback.
+    // Only in that successful no-callback case publish here. Never retry a
+    // failed callback blindly, nor turn bool(true) into IOReturn(1).
+    bool published = fLinkStateCallbackSeen ? fLinkStateCallbackOK : false;
+    if (interfaceOK && !fLinkStateCallbackSeen) {
+        published = super::setLinkStatus(status, activeMedium, speed, data);
+        if (published) currentStatus = status;
+    }
+    const bool result = interfaceOK && published;
+    if (result) {
+        if (active) fNetIf->setLinkQualityMetric(100);
+        if (fAWDLInterface) {
+#if __IO80211_TARGET >= __MAC_13_0
+            fAWDLInterface->setEnabledBySystem(true);
+#endif
+            fAWDLInterface->setLinkState(state, reason);
+        }
+    }
+    return result;
 }
 
 void AirportItlwm::releaseAll()
@@ -647,9 +712,27 @@ IOReturn AirportItlwm::disable(IONetworkInterface *netif)
     return kIOReturnSuccess;
 }
 
+IOReturn AirportItlwm::zc16AdapterPowerGated(OSObject *owner, void *netif,
+                                             void *enable, void *, void *)
+{
+    // ZC16: use the same recursive workloop gate as PM and POWER requests.
+    // No waiting for a worker/firmware completion is introduced by this handoff.
+    auto *that = static_cast<AirportItlwm *>(owner);
+    auto *interface = static_cast<IONetworkInterface *>(netif);
+    if (enable) return that->enableAdapter(interface);
+    that->disableAdapter(interface);
+    return kIOReturnSuccess;
+}
+
 IOReturn AirportItlwm::enableAdapter(IONetworkInterface *netif)
 {
-    fHalService->enable(netif);
+    if (OSDynamicCast(ItlIwx, fHalService) && !getWorkLoop()->inGate())
+        return getCommandGate()->runAction(zc16AdapterPowerGated, netif,
+                                          reinterpret_cast<void *>(uintptr_t(1)));
+    // ZC16 preserves IO80211's established restart policy and callback order.
+    // No PM-triggered enable or new radio-intent/deferred-restart state.
+    const IOReturn result = fHalService->enable(netif);
+    if (OSDynamicCast(ItlIwx, fHalService) && result != kIOReturnSuccess) return result;
     watchdogTimer->setTimeoutMS(kWatchDogTimerPeriod);
     watchdogTimer->enable();
     return kIOReturnSuccess;
@@ -657,6 +740,10 @@ IOReturn AirportItlwm::enableAdapter(IONetworkInterface *netif)
 
 void AirportItlwm::disableAdapter(IONetworkInterface *netif)
 {
+    if (OSDynamicCast(ItlIwx, fHalService) && !getWorkLoop()->inGate()) {
+        getCommandGate()->runAction(zc16AdapterPowerGated, netif, nullptr);
+        return;
+    }
     watchdogTimer->cancelTimeout();
     watchdogTimer->disable();
     fHalService->disable(netif);
@@ -693,52 +780,85 @@ IOReturn AirportItlwm::getHardwareAddressForInterface(
 #ifdef __PRIVATE_SPI__
 IOReturn AirportItlwm::outputStart(IONetworkInterface *interface, IOOptionBits options)
 {
-    struct _ifnet *ifp = &fHalService->get80211Controller()->ic_ac.ac_if;
-    mbuf_t m = NULL;
-    if (ifq_is_oactive(&ifp->if_snd))
-        return kIOReturnNoResources;
-    while (kIOReturnSuccess == interface->dequeueOutputPackets(1, &m)) {
-        if (outputPacket(m, NULL)!= kIOReturnOutputSuccess ||
-            ifq_is_oactive(&ifp->if_snd))
+    auto *ifp = &fHalService->get80211Controller()->ic_ac.ac_if;
+    for (;;) {
+        if (ifq_is_oactive(&ifp->if_snd)) return kIOReturnNoResources;
+        ifq_reservation ticket = {};
+        // ZC8: capacity exists BEFORE macOS transfers any packet. The limit
+        // bounds each host dequeue and amortizes the HAL start/gate request.
+        const uint32_t count = ifq_reserve_batch(&ifp->if_snd, &ticket, 32);
+        if (!count) return kIOReturnNoResources;
+        mbuf_t m = nullptr;
+        const IOReturn result = interface->dequeueOutputPackets(count, &m);
+        if (result != kIOReturnSuccess) {
+            ifq_cancel(&ticket);
+            return result == kIOReturnNoFrames ? kIOReturnSuccess : result;
+        }
+        if (outputReservedBatch(m, &ticket) != kIOReturnOutputSuccess)
             return kIOReturnNoResources;
     }
-    return kIOReturnSuccess;
 }
 #endif
 
+// ZC8 BATCH BEGIN: no packet access after the successful ownership transfer.
+UInt32 AirportItlwm::outputReservedBatch(mbuf_t m, struct ifq_reservation *ticket)
+{
+    auto *ic = fHalService->get80211Controller();
+    auto *ifp = &ic->ic_ac.ac_if;
+    bool valid = m && ticket->queue && ic->ic_state == IEEE80211_S_RUN;
+    uint32_t count = 0;
+    for (auto p = m; p; p = mbuf_nextpkt(p)) {
+        ++count;
+        if (count > ticket->count || mbuf_type(p) == MBUF_TYPE_FREE ||
+            !(mbuf_flags(p) & MBUF_PKTHDR)) valid = false;
+    }
+    if (valid && ifq_commit(ticket, m)) {
+        // One start per committed batch. EAPOL/push callers keep their existing
+        // immediate start. The consumer never waits for a full batch to exist.
+        (*ifp->if_start)(ifp);
+        return kIOReturnOutputSuccess;
+    }
+    ifq_cancel(ticket); // Also returns unused slots; no-op after failed commit.
+    while (m) {
+        auto next = mbuf_nextpkt(m);
+        mbuf_setnextpkt(m, nullptr);
+        if (mbuf_type(m) != MBUF_TYPE_FREE) freePacket(m);
+        m = next;
+    }
+    if (ifp->netStat) ifp->netStat->outputErrors += count;
+    return kIOReturnOutputDropped; // Lifecycle/invalid-input failure, no replay.
+}
+// ZC8 BATCH END
+
 UInt32 AirportItlwm::outputPacket(mbuf_t m, void *param)
 {
-//    XYLog("%s\n", __FUNCTION__);
-    IOReturn ret = kIOReturnOutputSuccess;
-    struct _ifnet *ifp = &fHalService->get80211Controller()->ic_ac.ac_if;
-    
-    if (fHalService->get80211Controller()->ic_state != IEEE80211_S_RUN || ifp->if_snd.queue == NULL) {
-        if (m && mbuf_type(m) != MBUF_TYPE_FREE)
-            freePacket(m);
+    // Push callers already transferred ownership; only pull callers can reserve
+    // before dequeue. Internal producers share the same bounded capacity lock.
+    return outputReservedPacket(m, nullptr);
+}
+
+UInt32 AirportItlwm::outputReservedPacket(mbuf_t m, struct ifq_reservation *ticket)
+{
+    auto *ic = fHalService->get80211Controller();
+    auto *ifp = &ic->ic_ac.ac_if;
+    const bool live = m && mbuf_type(m) != MBUF_TYPE_FREE;
+    if (!live || !(mbuf_flags(m) & MBUF_PKTHDR) ||
+        ic->ic_state != IEEE80211_S_RUN || !ifp->if_snd.queue) {
+        if (ticket) ifq_cancel(ticket);
+        if (live) freePacket(m);
+        if (ifp->netStat) ++ifp->netStat->outputErrors;
+        return kIOReturnOutputDropped; // No dereference after freeing/invalid m.
+    }
+    const bool accepted = ticket ? ifq_commit(ticket, m) : ifp->if_snd.queue->lockEnqueue(m);
+    if (!accepted) {
+        // Reserved failure means lifecycle cancellation (not ordinary pressure).
+        // The caller owns m until commit succeeds, so dispose exactly once.
+        freePacket(m);
+        if (ifp->netStat) ++ifp->netStat->outputErrors;
         return kIOReturnOutputDropped;
     }
-    if (m == NULL) {
-        XYLog("%s m==NULL!!\n", __FUNCTION__);
-        ifp->netStat->outputErrors++;
-        ret = kIOReturnOutputDropped;
-    }
-    if (!(mbuf_flags(m) & MBUF_PKTHDR) ){
-        XYLog("%s pkthdr is NULL!!\n", __FUNCTION__);
-        ifp->netStat->outputErrors++;
-        freePacket(m);
-        ret = kIOReturnOutputDropped;
-    }
-    if (mbuf_type(m) == MBUF_TYPE_FREE) {
-        XYLog("%s mbuf is FREE!!\n", __FUNCTION__);
-        ifp->netStat->outputErrors++;
-        ret = kIOReturnOutputDropped;
-    }
-    if (!ifp->if_snd.queue->lockEnqueue(m)) {
-        freePacket(m);
-        ret = kIOReturnOutputDropped;
-    }
     (*ifp->if_start)(ifp);
-    return ret;
+    return kIOReturnOutputSuccess;
 }
 
 UInt32 AirportItlwm::getFeatures() const

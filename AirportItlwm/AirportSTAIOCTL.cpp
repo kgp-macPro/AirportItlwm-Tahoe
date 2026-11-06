@@ -1,3 +1,5 @@
+// ZC19 retains KGP restart correction 120ab2c61f0bbe0e6462f4eeea9fd7e5da29a7f2.
+// See docs/ZC19_CHANGE_PROVENANCE.md; existing IWM/IWN dispatch is unchanged.
 //
 //  AirportSTAIOCTL.cpp
 //  AirportItlwm
@@ -7,6 +9,7 @@
 //
 
 #include "AirportItlwm.hpp"
+#include "../include/Airport/ScanResultBounds.hpp"
 #include <sys/_netstat.h>
 
 extern IOCommandGate *_fCommandGate;
@@ -995,12 +998,25 @@ getPOWERSAVE(OSObject *object, struct apple80211_powersave_data *pd)
     return kIOReturnSuccess;
 }
 
+IOReturn AirportItlwm::zc16SetPowerGated(OSObject *owner, void *object,
+                                        void *data, void *, void *)
+{
+    // ZC16: serialize radio intent with PM Off/On, including user Off during
+    // sleep. runAction is synchronous; the caller owns data until return.
+    return static_cast<AirportItlwm *>(owner)->setPOWER(
+        static_cast<OSObject *>(object), static_cast<apple80211_power_data *>(data));
+}
+
 IOReturn AirportItlwm::
 setPOWER(OSObject *object,
                          struct apple80211_power_data *pd)
 {
     if (!pd)
         return kIOReturnError;
+    // ZC16: the PM callbacks already execute under this same workloop gate.
+    // Re-enter only from outside it; preserve IWM/IWN dispatch unchanged.
+    if (OSDynamicCast(ItlIwx, fHalService) && !getWorkLoop()->inGate())
+        return getCommandGate()->runAction(zc16SetPowerGated, object, pd);
     IOLog("itlwm: setPOWER: num_radios[%d]  power_state(0:%u  1:%u  2:%u  3:%u)\n", pd->num_radios, pd->power_state[0], pd->power_state[1], pd->power_state[2], pd->power_state[3]);
     if (pd->num_radios > 0) {
         bool isRunning = (fHalService->get80211Controller()->ic_ac.ac_if.if_flags & (IFF_UP | IFF_RUNNING)) != 0;
@@ -1393,6 +1409,7 @@ setSCAN_REQ_MULTIPLE(OSObject *object, struct apple80211_scan_multiple_data *sd)
 IOReturn AirportItlwm::
 getSCAN_RESULT(OSObject *object, struct apple80211_scan_result **sr)
 {
+    if (!sr) return kIOReturnBadArgument;
     struct ieee80211com *ic = fHalService->get80211Controller();
     
     if (fNextNodeToSend == NULL) {
@@ -1407,6 +1424,7 @@ getSCAN_RESULT(OSObject *object, struct apple80211_scan_result **sr)
     }
 //    XYLog("%s ni_bssid=%s ni_essid=%s channel=%d flags=%d asr_cap=%d asr_nrates=%d asr_ssid_len=%d asr_ie_len=%d asr_rssi=%d\n", __FUNCTION__, ether_sprintf(fNextNodeToSend->ni_bssid), fNextNodeToSend->ni_essid, ieee80211_chan2ieee(ic, fNextNodeToSend->ni_chan), ieeeChanFlag2apple(fNextNodeToSend->ni_chan->ic_flags), fNextNodeToSend->ni_capinfo, fNextNodeToSend->ni_rates.rs_nrates, fNextNodeToSend->ni_esslen, fNextNodeToSend->ni_rsnie_tlv == NULL ? 0 : fNextNodeToSend->ni_rsnie_tlv_len, fNextNodeToSend->ni_rssi);
     apple80211_scan_result* result = (apple80211_scan_result* )fNextNodeToSend->verb;
+    if (!result) return kIOReturnNoMemory;
     bzero(result, sizeof(*result));
     result->version = APPLE80211_VERSION;
     if (fNextNodeToSend->ni_rsnie_tlv && fNextNodeToSend->ni_rsnie_tlv_len > 0) {
@@ -1414,7 +1432,11 @@ getSCAN_RESULT(OSObject *object, struct apple80211_scan_result **sr)
 #if __IO80211_TARGET < __MAC_12_0
         result->asr_ie_data = fNextNodeToSend->ni_rsnie_tlv;
 #else
-        memcpy(result->asr_ie_data, fNextNodeToSend->ni_rsnie_tlv, MIN(result->asr_ie_len, sizeof(result->asr_ie_data)));
+        // P8: the advertised length describes the bytes actually exported,
+        // and ends on an IE boundary rather than a truncated element.
+        result->asr_ie_len = airportScanIEPrefix(fNextNodeToSend->ni_rsnie_tlv,
+            fNextNodeToSend->ni_rsnie_tlv_len,sizeof(result->asr_ie_data));
+        memcpy(result->asr_ie_data,fNextNodeToSend->ni_rsnie_tlv,result->asr_ie_len);
 #endif
     } else {
         result->asr_ie_len = 0;
@@ -1423,9 +1445,12 @@ getSCAN_RESULT(OSObject *object, struct apple80211_scan_result **sr)
 #endif
     }
     result->asr_beacon_int = fNextNodeToSend->ni_intval;
-    for (int i = 0; i < result->asr_nrates; i++ )
+    // bzero above set asr_nrates to zero. Set the bounded count BEFORE
+    // copying, otherwise every scan result advertises an empty rate array.
+    result->asr_nrates = MIN(fNextNodeToSend->ni_rates.rs_nrates,
+        sizeof(result->asr_rates)/sizeof(result->asr_rates[0]));
+    for (int i = 0; i < result->asr_nrates; i++)
         result->asr_rates[i] = fNextNodeToSend->ni_rates.rs_rates[i];
-    result->asr_nrates = fNextNodeToSend->ni_rates.rs_nrates;
     result->asr_age = (uint32_t)(airport_up_time() - fNextNodeToSend->ni_age_ts);
     result->asr_cap = fNextNodeToSend->ni_capinfo;
     result->asr_channel.version = APPLE80211_VERSION;
@@ -1438,7 +1463,7 @@ getSCAN_RESULT(OSObject *object, struct apple80211_scan_result **sr)
     result->asr_noise = -fHalService->getDriverInfo()->getBSSNoise();
     result->asr_rssi = -(0 - IWM_MIN_DBM - fNextNodeToSend->ni_rssi);
     memcpy(result->asr_bssid, fNextNodeToSend->ni_bssid, IEEE80211_ADDR_LEN);
-    result->asr_ssid_len = fNextNodeToSend->ni_esslen;
+    result->asr_ssid_len = MIN(fNextNodeToSend->ni_esslen,sizeof(result->asr_ssid));
     if (result->asr_ssid_len != 0)
         memcpy(&result->asr_ssid, fNextNodeToSend->ni_essid, result->asr_ssid_len);
 

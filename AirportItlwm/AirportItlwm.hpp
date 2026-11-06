@@ -73,6 +73,8 @@ public:
     virtual IOReturn enable(IONetworkInterface *netif) override;
     virtual IOReturn disable(IONetworkInterface *netif) override;
     virtual UInt32 outputPacket(mbuf_t, void * param) override;
+    UInt32 outputReservedPacket(mbuf_t, struct ifq_reservation *);
+    UInt32 outputReservedBatch(mbuf_t, struct ifq_reservation *);
     virtual IOReturn setPromiscuousMode(IOEnetPromiscuousMode mode) override;
     virtual IOReturn setMulticastMode(IOEnetMulticastMode mode) override;
     virtual IOReturn setMulticastList(IOEthernetAddress* addr, UInt32 len) override;
@@ -88,7 +90,15 @@ public:
                                UInt64                  speed        = 0,
                                OSData *                data         = 0) override;
     
-    static IOReturn setLinkStateGated(OSObject *target, void *arg0, void *arg1, void *arg2, void *arg3);
+    struct LinkStatusRequest {
+        UInt32 status;
+        const IONetworkMedium *medium;
+        UInt64 speed;
+        OSData *data;
+        bool result;
+    };
+    static IOReturn setLinkStatusGated(OSObject *target, void *arg0, void *arg1, void *arg2, void *arg3);
+    bool setLinkStatusInGate(UInt32 status, const IONetworkMedium *medium, UInt64 speed, OSData *data);
     
 #ifdef __PRIVATE_SPI__
     virtual IOReturn outputStart(IONetworkInterface *interface, IOOptionBits options) override;
@@ -229,6 +239,8 @@ public:
     virtual IOReturn setWakeOnMagicPacket( bool active ) override;
     void setPowerStateOff(void);
     void setPowerStateOn(void);
+    static IOReturn zc16SetPowerGated(OSObject *, void *, void *, void *, void *);
+    static IOReturn zc16AdapterPowerGated(OSObject *, void *, void *, void *, void *);
     void unregistPM();
     
     bool createMediumTables(const IONetworkMedium **primary);
@@ -264,6 +276,10 @@ public:
     u_int32_t current_authtype_upper;
     UInt64 currentSpeed;
     UInt32 currentStatus;
+    // Gate-owned, synchronous primary-interface transition only; no DMA lease.
+    bool fLinkStateHandoff;
+    bool fLinkStateCallbackSeen;
+    bool fLinkStateCallbackOK;
     bool disassocIsVoluntary;
     char geo_location_cc[3];
     

@@ -1,0 +1,18 @@
+ZC26 uses the maintained shared runner, not a new measurement protocol.
+Protocol AIRPORTITLWM_3X14_NO_PROFILER_V1; runner revision shared-2026-10-19-r2.
+Only identity/schema support adds ZC26. Measurement command/order/duration/gaps,
+all42 original JSON/server outputs and directional networkQuality reporting
+are byte-equivalent to sharedr1, whose measurement was checked against frozen22.
+Equal adjacent health accepted; rollback against LAST rejected; FINAL>INITIAL;
+UUID/marker/actualmode/fault/generation/reset/command epochs remain strict.
+Archive retains executed copy/hash/protocol/effective settings and validates
+runner immutability. Historical candidate-local runners remain unchanged.
+
+KGP future mapped AX210 command after installing/verifying the candidate himself:
+  bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC26
+Conventional qualified configuration, selected only by KGP:
+  EXPECTED_MODE=conventional bash "$HOME/Desktop/AirportItlwm/TOOLS/AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh" ZC26
+Server IP is prompted. Verify ASIX peer and Wi-Fi source interface. No profiler,
+extra warm-up, repeated registry polling or network reconfiguration is added.
+Tester handover remains deferred. AX211 and AX201 physical qualification remain
+outstanding; AX201 is conventional-only. Never infer mode from AppleVTD alone.

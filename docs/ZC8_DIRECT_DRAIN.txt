@@ -1,0 +1,21 @@
+ZC8 AX210 DIRECT-ROUTE DEFERRED DRAIN
+
+SOURCE-PROVEN: ZC7 direct iwx_start discarded attemptAction return; if the gate
+was owned by another thread, that call did not drain and did not arm the existing
+2M software event. Future enqueue or completion might rescue it, but a last
+accepted batch with no inflight descriptor had no scheduling guarantee.
+This is a source-level missing guarantee, not a measured cause of the ~223 Mbps
+receiver ceiling. Reducing starts to one per batch makes this fallback necessary.
+
+ZC8 uses the existing nonblocking attempt + coalesced 2M event for AX210 direct
+as well as mapped routing. The gate dispatcher marks entry before routing into
+the unchanged conventional packet body. Setup, init arm, stop/reset pause,
+epoch cancellation, synchronous workloop fence and event removal are unchanged.
+No new thread, timer, queue or periodic polling. No busy self-reschedule.
+No calls under the 2M simple lock acquire the gate. Ring full/flush/RUNNING checks
+remain in both consumers. Non-AX210 conventional dispatch stays historical.
+The data/DMA/lifetime/PC1 code is not changed by this scheduling correction.
+
+MODEL LIMIT: extracted production scheduling methods are tested with recursive
+workloop/gate mocks, including real host threads for contention and lifecycle
+races. They do not prove XNU event timing, device completion or physical recovery.

@@ -29,6 +29,27 @@ struct _ifqueue {
     IOPacketQueue *queue;
 };
 
+// A private, single-use reservation; zero initialize, then commit OR cancel.
+// Holding it retains the queue across stop/flush; it never owns a packet.
+struct ifq_reservation {
+    IOPacketQueue *queue;
+    uint64_t epoch;
+    uint32_t count; // Reserved queue slots, never a packet owner.
+};
+bool ifq_reserve(struct _ifqueue *, struct ifq_reservation *);
+uint32_t ifq_reserve_batch(struct _ifqueue *, struct ifq_reservation *, uint32_t limit);
+bool ifq_commit(struct ifq_reservation *, mbuf_t);
+void ifq_cancel(struct ifq_reservation *);
+void ifq_start_pull(struct _ifqueue *);
+void ifq_stop_pull(struct _ifqueue *);
+
+// ZC28 single-use token retains only queue lifetime, never a packet or node.
+// Begin/end in existing IWX main-gated service; snapshot8words under queue lock.
+struct ifq_service { IOPacketQueue *queue; };
+void ifq_begin_service(struct _ifqueue *, struct ifq_service *);
+void ifq_end_service(struct ifq_service *);
+bool ifq_service_snapshot(struct _ifqueue *, uint64_t *);
+
 void ifq_init(struct _ifqueue *ifq, struct _ifnet *ifp, unsigned int maxLen);
 
 void ifq_destroy(struct _ifqueue *ifq);
