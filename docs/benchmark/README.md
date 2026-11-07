@@ -77,8 +77,8 @@ WIFI_IFACE=en2 DEVICE_LABEL=AX210 CANDIDATE_LABEL=AX210-2.0.0 EXPECTED_MODE=mapp
 ```
 
 For BE200 add `BENCHMARK_PROFILE=be200`, use `DEVICE_LABEL=BE200` and
-`CANDIDATE_LABEL=BE200-2.0.0`, mapped. For AX201/CNVW use `AX201-2.0.0` with
-`EXPECTED_MODE=conventional`, even if system AppleVTD is enabled. For an AX211
+`CANDIDATE_LABEL=BE200-2.0.0`, mapped. For AX201/CNVW, follow the separate
+[mapped and conventional commands below](#ax201cnvw-mapped-and-conventional-comparisons). For an AX211
 use its matching `AX211-2.0.0` profile and **observed** runtime mode; new HE/BF
 hardware validation remains pending. Profiles are not a device-identification
 shortcut: the runner verifies the actual Intel PCI provider, controller and
@@ -90,6 +90,44 @@ IP/interface route, actual DMA and faults. The path does not install it.
 `IPERF_SERVER=your.server.ipv4` bypasses the prompt; changing an expected mode
 cannot change the actual driver mode. Missing optional AX diagnosis cannot
 block BE200. Retained P10/R9 profiles have their original different pins.
+
+## AX201/CNVW: mapped and conventional comparisons
+
+Fulvio’s successful historical ZC28 campaign records **actual mapped Mode 2**
+on PCI `8086:7a70`, subsystem `8086:0074`, under CNVW. The previous blanket
+“AX201/CNVW conventional only” instruction is withdrawn. These historical results
+retain their original driver/framework context; they do not qualify the new
+2.0.0 HE/BF code on AX201. [Evidence and correction history](../AX201_DMA.md).
+
+Use the full **r13** package and profile **AX201-2.0.0** with the already loaded
+2.0.0 bundle as the identity reference. The runner discovers and verifies the
+actual PCI → controller → Wi-Fi interface chain. Fulvio’s historical interface
+was en0; add `WIFI_IFACE=en0` only if that is still the verified interface on
+his system. Neither that name nor CNVW determines the DMA route.
+
+Fulvio’s main command for his **mapped** configuration:
+
+```sh
+TOOLS="$HOME/Downloads/AirportItlwm-Tahoe-Benchmark-Tools-r13"
+KEXT="$HOME/Downloads/AirportItlwm-Tahoe-2.0.0/AirportItlwm.kext"
+BENCHMARK_PROFILE=kgp DEVICE_LABEL=AX201 CANDIDATE_LABEL=AX201-2.0.0 EXPECTED_MODE=mapped \
+  /bin/bash "$TOOLS/AirportItlwm_3x20_PORTABLE_IP_PROMPT.sh" "$KEXT"
+```
+
+Separate command for an already configured **conventional** comparison:
+
+```sh
+BENCHMARK_PROFILE=kgp DEVICE_LABEL=AX201 CANDIDATE_LABEL=AX201-2.0.0 EXPECTED_MODE=conventional \
+  /bin/bash "$TOOLS/AirportItlwm_3x20_PORTABLE_IP_PROMPT.sh" "$KEXT"
+```
+
+`EXPECTED_MODE=mapped` requires actual driver Mode 2; `conventional` requires
+Mode 1. **It is an assertion, not a mode switch.** A mismatch must stop the run;
+do not change the expectation just to bypass a rejection. AppleVTD being active
+is a separate observation. Keep UUID/hash, device/interface, DMA and health guards.
+For these standard VHT comparisons, verify **1000Base-T** on the wired peer;
+HE/HE+BF comparisons use **2500Base-T** and the matching runner, not 5/10 GbE.
+The server IP is prompted, unless `IPERF_SERVER` is explicitly supplied.
 
 ## Matrices and timing
 

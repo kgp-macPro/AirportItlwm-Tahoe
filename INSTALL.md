@@ -18,9 +18,16 @@ The documented AppleVTD configuration keeps OpenCore `DisableIoMapper=false`
 with usable platform/DMAR settings and confirmed active AppleVTD. This flag
 alone does not prove runtime IOMMU state or mapped Wi-Fi DMA. The runner checks
 actual driver Mode 2 (mapped) or Mode 1 (conventional); it does not select the path.
-BE200/AX210 campaigns prove AppleVTD+mapped. AX201/CNVW remains conventional
-with AppleVTD enabled. AX211's historical Alpha 2 mapped evidence is not new HE
-qualification. Conventional configurations remain supported within their
+BE200/AX210 campaigns prove AppleVTD+mapped. Fulvio’s successful historical
+AX201/CNVW ZC28 tests also record actual **Mode 2 (mapped)**; the previous blanket
+conventional-only restriction was withdrawn. Separately configured conventional
+Mode 1 comparisons remain valid. Do not derive the DMA route from the card label
+or a Registry name such as CNVW. Use the [AX201 r13 commands](docs/benchmark/README.md#ax201cnvw-mapped-and-conventional-comparisons)
+with profile `AX201-2.0.0`: Fulvio’s mapped command uses `EXPECTED_MODE=mapped`;
+the separate conventional command uses `EXPECTED_MODE=conventional`. This variable
+checks the actual mode and **does not switch it**. The historical result is not
+a new 2.0.0 HE/BF hardware validation. AX211’s historical Alpha 2 mapped evidence
+is likewise not new HE qualification. Conventional configurations remain supported within their
 established device/firmware/runtime boundaries; do not change the whole
 machine's IOMMU configuration merely to force a profile label.
 

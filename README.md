@@ -47,8 +47,14 @@ replace root patching. This is not a native Tahoe/Sonoma Skywalk frontend port.
 |---|---|---|---|
 | **BE200**, PCI 8086:272B, BZ/GL92 |P10, 60 tests +online; VHT160|P10, six campaigns / 360 tests +online, including HE and BF opt-in|AppleVTD active and **mapped** verified in these campaigns|
 | **AX210**, PCI 8086:2725 |Historical P10 VHT160, 60 tests +online|Final R9 HE160 /HE+BF-opt-in:180/180 tests +3 online|AppleVTD active and **mapped** verified|
-| **AX201 / CNVW** |Historical community VHT results retain their original version/setup|AX HE code present; new HE/BF hardware validation **pending**; some profiles lack required firmware 63|CNVW uses **conventional**, including with AppleVTD enabled; check actual runtime mode|
+| **AX201 / CNVW** |Fulvio’s successful historical ZC28 VHT tests include actual **mapped Mode 2**; retain their original build/setup|AX HE code present; new HE/BF hardware validation **pending**; some profiles lack required firmware 63|Both mapped and conventional configurations are supported where qualified; check the **actual runtime mode**, never infer it from AX201/CNVW naming|
 | **AX211** |Historical Alpha 2/P8R1:42/42 **mapped** tests; 80 MHz per KGP, not a 160 MHz proof|AX HE code present; new HE/BF hardware validation **pending**; some profiles lack firmware 63|Use captured runtime mode; historical mapped result does not qualify a new HE build|
+
+Fulvio’s mapped results supersede the old “AX201/CNVW conventional only” guidance.
+Use the [AX201 r13 commands](docs/benchmark/README.md#ax201cnvw-mapped-and-conventional-comparisons):
+`AX201-2.0.0` with `EXPECTED_MODE=mapped` for his mapped configuration, or a
+separate conventional comparison. `EXPECTED_MODE` **checks**, and never switches,
+the driver’s DMA route. See [evidence and correction history](docs/AX201_DMA.md).
 
 2.0.0 is a versioned rebuild of the final tested R9 implementation. Campaigns
 retain their original **P10** or **R9** binary UUID/hash; the release binary has
