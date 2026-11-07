@@ -34,3 +34,7 @@ Use the [AX201 r13 mapped/conventional commands](benchmark/README.md#ax201cnvw-m
 with `AX201-2.0.0` and the exact loaded 2.0.0 bundle. Fulvio’s main expectation is
 `EXPECTED_MODE=mapped`; a separately configured comparison can use `conventional`.
 The expectation checks the actual route; it cannot select or change it.
+
+The unchanged original r13 asset contains the old sentence in START_COMMANDS.txt.
+The corrected online guide and release body explicitly supersede that sentence;
+the archive and its checksum are preserved.

@@ -105,6 +105,10 @@ actual PCI → controller → Wi-Fi interface chain. Fulvio’s historical inter
 was en0; add `WIFI_IFACE=en0` only if that is still the verified interface on
 his system. Neither that name nor CNVW determines the DMA route.
 
+The original r13 archive remains unchanged. Its `START_COMMANDS.txt` contains an
+obsolete AX201/CNVW conventional-only sentence; **the corrected commands below
+supersede that sentence**. Keep the original runner and all its safety checks.
+
 Fulvio’s main command for his **mapped** configuration:
 
 ```sh
