@@ -19,7 +19,9 @@ with usable platform/DMAR settings and confirmed active AppleVTD. This flag
 alone does not prove runtime IOMMU state or mapped Wi-Fi DMA. The runner checks
 actual driver Mode 2 (mapped) or Mode 1 (conventional); it does not select the path.
 BE200/AX210 campaigns prove AppleVTD+mapped. Fulvio’s successful historical
-AX201/CNVW ZC28 tests also record actual **Mode 2 (mapped)**; the previous blanket
+AX201/CNVW Alpha-2 tests from 4 November also record actual **Mode 2 (mapped)**
+throughout all eight boundaries, 42/42 tests +online; a separate conventional
+Mode 1 campaign also completed 42/42 +online. [Original evidence](docs/AX201_DMA.md); the previous blanket
 conventional-only restriction was withdrawn. Separately configured conventional
 Mode 1 comparisons remain valid. Do not derive the DMA route from the card label
 or a Registry name such as CNVW. Use the [AX201 r13 commands](docs/benchmark/README.md#ax201cnvw-mapped-and-conventional-comparisons)

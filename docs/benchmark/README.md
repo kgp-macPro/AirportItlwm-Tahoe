@@ -93,10 +93,11 @@ block BE200. Retained P10/R9 profiles have their original different pins.
 
 ## AX201/CNVW: mapped and conventional comparisons
 
-Fulvio’s successful historical ZC28 campaign records **actual mapped Mode 2**
-on PCI `8086:7a70`, subsystem `8086:0074`, under CNVW. The previous blanket
-“AX201/CNVW conventional only” instruction is withdrawn. These historical results
-retain their original driver/framework context; they do not qualify the new
+Fulvio’s successful **Alpha-2** campaigns from 4 November completed 42/42 tests
+plus online in mapped Mode 2 and, separately, conventional Mode 1. All eight
+Health/raw IORegistry boundaries agree per run. They bind PCI `8086:7a70`, subsystem `8086:0074`, under CNVW. The previous blanket
+“AX201/CNVW conventional only” instruction is withdrawn. These historical 3×14 results
+retain their original Alpha-2 driver/framework context; they do not qualify the new
 2.0.0 HE/BF code on AX201. [Evidence and correction history](../AX201_DMA.md).
 
 Use the full **r13** package and profile **AX201-2.0.0** with the already loaded

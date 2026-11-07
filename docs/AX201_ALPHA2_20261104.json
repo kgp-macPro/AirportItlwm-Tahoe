@@ -1,0 +1,187 @@
+{
+  "original_archive": "AX201_test_results.zip",
+  "sha256": "1770c5cb8270f4d80f86b03cf4bb05b185b8ff6481699d0d7bec81036e0c3cff",
+  "zip_crc": "PASS",
+  "version": "1.2.0 Alpha2/P8R1, NOT2.0.0",
+  "campaigns": [
+    {
+      "directory": "AX201-ALPHA2_AX201_3X14_conventional_20261104_191309_anIld7",
+      "manifest_entries": 283,
+      "completion": {
+        "STATUS": "COMPLETE_42_AND_ONLINE",
+        "EXIT_CODE": "0",
+        "COMPLETED_IPERF_TESTS": "42",
+        "EXPECTED_IPERF_TESTS": "42",
+        "ONLINE_STATUS": "PASS",
+        "LAST_STAGE": "COMPLETE",
+        "VALIDATION_PROFILE": "kgp",
+        "FINISHED_LOCAL": "2026-11-04T19:19:54+0100",
+        "FINISHED_UTC": "2026-11-04T18:19:54Z"
+      },
+      "numeric_mode": 1,
+      "health_snapshots": 8,
+      "raw_registry_modes": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "identity_boundaries": 8,
+      "binding_boundaries": 8,
+      "pci": "8086:7a70/8086:0074",
+      "provider": "CNVW",
+      "interface": "en0",
+      "loaded_uuid": "E4414AAB-1D58-3E40-93A5-6838D3CDCD20",
+      "executable_sha256": "8e4a38121b06941630afa98728b245cbaeec813c14139c46715dc44723461f63",
+      "source_build_correspondence": "Archived frozen identity only; archive does not independently prove source-to-binary correspondence",
+      "tcp": {
+        "TCP_TX_P1": {
+          "receiver_mbps_by_round": [
+            205.88883518608026,
+            265.71448936566213,
+            243.23098957702263
+          ],
+          "receiver_mean_mbps": 238.27810470958835,
+          "sender_retransmits_by_round": [
+            358,
+            56,
+            609
+          ]
+        },
+        "TCP_TX_P4": {
+          "receiver_mbps_by_round": [
+            223.3943734015345,
+            276.01396354075354,
+            287.9614586703456
+          ],
+          "receiver_mean_mbps": 262.45659853754455,
+          "sender_retransmits_by_round": [
+            2331,
+            625,
+            954
+          ]
+        },
+        "TCP_RX_P1": {
+          "receiver_mbps_by_round": [
+            761.286861405096,
+            721.4499962755232,
+            890.6883264197157
+          ],
+          "receiver_mean_mbps": 791.141728033445,
+          "sender_retransmits_by_round": [
+            null,
+            null,
+            null
+          ]
+        },
+        "TCP_RX_P4": {
+          "receiver_mbps_by_round": [
+            769.6432236285971,
+            598.2055790844457,
+            783.0988193903175
+          ],
+          "receiver_mean_mbps": 716.9825407011201,
+          "sender_retransmits_by_round": [
+            null,
+            null,
+            null
+          ]
+        }
+      }
+    },
+    {
+      "directory": "AX201-ALPHA2_AX201_3X14_mapped_20261104_190359_4ylfzR",
+      "manifest_entries": 283,
+      "completion": {
+        "STATUS": "COMPLETE_42_AND_ONLINE",
+        "EXIT_CODE": "0",
+        "COMPLETED_IPERF_TESTS": "42",
+        "EXPECTED_IPERF_TESTS": "42",
+        "ONLINE_STATUS": "PASS",
+        "LAST_STAGE": "COMPLETE",
+        "VALIDATION_PROFILE": "kgp",
+        "FINISHED_LOCAL": "2026-11-04T19:10:50+0100",
+        "FINISHED_UTC": "2026-11-04T18:10:50Z"
+      },
+      "numeric_mode": 2,
+      "health_snapshots": 8,
+      "raw_registry_modes": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "identity_boundaries": 8,
+      "binding_boundaries": 8,
+      "pci": "8086:7a70/8086:0074",
+      "provider": "CNVW",
+      "interface": "en0",
+      "loaded_uuid": "E4414AAB-1D58-3E40-93A5-6838D3CDCD20",
+      "executable_sha256": "8e4a38121b06941630afa98728b245cbaeec813c14139c46715dc44723461f63",
+      "source_build_correspondence": "Archived frozen identity only; archive does not independently prove source-to-binary correspondence",
+      "tcp": {
+        "TCP_TX_P1": {
+          "receiver_mbps_by_round": [
+            398.05289479702367,
+            401.9235367460583,
+            391.5914551580086
+          ],
+          "receiver_mean_mbps": 397.1892955670302,
+          "sender_retransmits_by_round": [
+            95,
+            155,
+            640
+          ]
+        },
+        "TCP_TX_P4": {
+          "receiver_mbps_by_round": [
+            389.14848806806424,
+            408.989360704257,
+            401.51420014592424
+          ],
+          "receiver_mean_mbps": 399.88401630608183,
+          "sender_retransmits_by_round": [
+            3435,
+            2703,
+            244
+          ]
+        },
+        "TCP_RX_P1": {
+          "receiver_mbps_by_round": [
+            824.553132033416,
+            845.1935261878426,
+            849.7191787599439
+          ],
+          "receiver_mean_mbps": 839.8219456604008,
+          "sender_retransmits_by_round": [
+            null,
+            null,
+            null
+          ]
+        },
+        "TCP_RX_P4": {
+          "receiver_mbps_by_round": [
+            834.1942400957511,
+            843.5520870956478,
+            835.7271573459731
+          ],
+          "receiver_mean_mbps": 837.8244948457907,
+          "sender_retransmits_by_round": [
+            null,
+            null,
+            null
+          ]
+        }
+      }
+    }
+  ],
+  "mapped_higher_in_all_four_tcp_means": true
+}
