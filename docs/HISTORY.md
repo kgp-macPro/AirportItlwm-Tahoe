@@ -19,3 +19,12 @@ P10-VHT; the genuine older Alpha 2/P8R1 dataset stays distinct.
 
 [All P10/R9 campaigns used for 2.0.0](results/2.0.0.md). Separate AWDL/BLE
 experiments and analysis were not integrated into the 2.0.0 source.
+
+## Superseded r13 instruction package
+
+The [original r13 ZIP](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.0.0/AirportItlwm-Tahoe-Benchmark-Tools-r13.zip) and
+[original release checksum asset](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.0.0/SHA256SUMS.txt) are retained unchanged.
+r13 `START_COMMANDS.txt` incorrectly required conventional DMA for AX201/CNVW;
+that sentence is withdrawn. Use the [r14 guide](benchmark/README.md) for current
+instructions. AX201 mapped Mode 2 is proven; no repeat campaign is needed to
+establish it. r14 preserves the exact r13 runner/profile/helper/guard bytes.

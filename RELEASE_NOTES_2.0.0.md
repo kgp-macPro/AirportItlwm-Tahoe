@@ -1,10 +1,50 @@
-# AirportItlwm-Tahoe 2.0.0
-
 **Intel Wi-Fi for macOS Tahoe with AppleVTD / IOMMU support.** BE200, AX210, AX201 and AX211; VHT, HE and optional HE + BF through the Ventura Legacy stack.
 
-[Download the complete kext](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.0.0/AirportItlwm-Tahoe-2.0.0.zip) · [Installation and rollback](https://github.com/kgp-macPro/AirportItlwm-Tahoe/blob/main/INSTALL.md) · [Test guide](https://github.com/kgp-macPro/AirportItlwm-Tahoe/blob/main/docs/benchmark/README.md) · [SHA256SUMS](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.0.0/SHA256SUMS.txt)
+[Download the complete kext](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.0.0/AirportItlwm-Tahoe-2.0.0.zip) · [Installation and rollback](https://github.com/kgp-macPro/AirportItlwm-Tahoe/blob/main/INSTALL.md) · [Test guide](https://github.com/kgp-macPro/AirportItlwm-Tahoe/blob/main/docs/benchmark/README.md) · [SHA256SUMS](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.0.0/SHA256SUMS-r14.txt)
 
-**Requires [OCLP-CustoMac 3.0.0+](https://github.com/kgp-macPro/OCLP-CustoMac/releases) and matching Ventura Legacy wireless root patches.** OCLP supplies the framework/patch environment; this separate Intel driver supplies device-specific DMA handling. BE200 and AX210 campaigns verified AppleVTD enabled and mapped DMA. AX201/CNVW remains conventional even with AppleVTD enabled. AX211 has older mapped VHT evidence; the new AX201/AX211 HE/BF code still needs hardware validation, and some firmware-63-dependent profiles remain unavailable.
+**Requires [OCLP-CustoMac 3.0.0+](https://github.com/kgp-macPro/OCLP-CustoMac/releases) and matching Ventura Legacy wireless root patches.** OCLP supplies the framework/patch environment; this separate Intel driver supplies device-specific DMA handling. BE200 and AX210 campaigns verified AppleVTD enabled and mapped DMA. AX201/CNVW supports mapped DMA: Fulvio's historical Alpha-2 originals prove Mode 2 and a separate Mode 1 comparison. His regular configuration is mapped; conventional is not an AX201 requirement. See [AX201 evidence and correction history](https://github.com/kgp-macPro/AirportItlwm-Tahoe/blob/main/docs/AX201_DMA.md). AX211 has older mapped VHT evidence. Fulvio’s new 2.0.0 original records one HE160 mapped run (60/60 +online), with BF setting and wired-peer media unknown; controlled AX201 HE/BF comparison and AX211 HE/BF hardware validation remain pending. Some firmware-63-dependent profiles remain unavailable.
+
+## DMA configuration: mapped and conventional
+
+**AX201/CNVW supports mapped DMA. Fulvio's regular configuration is mapped
+Mode 2; conventional is a separate comparison, not an AX201 requirement.**
+
+| DMA configuration | OpenCore Kernel → Quirks → DisableIoMapper | Runner expectation | Actual driver mode |
+|---|---|---|---|
+| mapped | **false** | `EXPECTED_MODE=mapped` | **Mode 2** |
+| conventional | **true** | `EXPECTED_MODE=conventional` | **Mode 1** |
+
+**Reboot after changing the EFI quirk or Wi-Fi boot arguments.** These are
+manual test configurations. Record active AppleVTD separately for mapped;
+the flag alone is not runtime proof. `EXPECTED_MODE` checks the loaded driver's
+actual mode and cannot select it. Keep every identity, binding and health guard.
+
+## AX201/CNVW: current test instructions and evidence
+
+Fulvio's regular path is **mapped Mode 2**. Configure OpenCore **Kernel → Quirks → DisableIoMapper=false**, reboot, and use `EXPECTED_MODE=mapped`. For a separately configured conventional comparison, set **DisableIoMapper=true**, reboot, and use `EXPECTED_MODE=conventional` (actual Mode 1). The variable **checks the actual route; it does not switch it**. Neither a card name nor CNVW Registry naming establishes the DMA mode.
+
+The **r14 instruction package** keeps every r13 runner, profile, helper and guard byte-identical. Runtime provenance correctly remains r13. The original r13 ZIP/checksum are retained as history; use r14's corrected `START_COMMANDS.txt`.
+
+| Separate campaign | Boot arguments | Wired second-device link | Runner |
+|---|---|---|---|
+| VHT | No `-itlwmhe` / `-itlwmbf` | **1000Base-T / 1 Gbit/s** | Standard 3×20 |
+| HE | `-itlwmhe`, without BF | **2500Base-T / 2.5 Gbit/s** | UDP1300 |
+| HE+BF opt-in | `-itlwmhe -itlwmbf` | **2500Base-T / 2.5 Gbit/s** | The same UDP1300 |
+
+No `-novht`. Reboot after changing boot arguments. These are separate campaigns, not commands to run consecutively without the configuration changes. Record the **actual negotiated Ethernet media**, client boot arguments and WLAN PHY/channel width for every original ZIP. Do not infer the peer link from throughput or the radio mode from a runner filename. These peer-link conditions are the project's comparison methodology, not universal hardware requirements.
+
+Example VHT command for Fulvio's mapped configuration after the corresponding reboot; verify his Wi-Fi interface is still en0 and let the runner prompt for the server IP:
+
+```sh
+TOOLS="$HOME/Downloads/AirportItlwm-Tahoe-Benchmark-Tools-r14"
+KEXT="$HOME/Downloads/AirportItlwm-Tahoe-2.0.0/AirportItlwm.kext"
+WIFI_IFACE=en0 BENCHMARK_PROFILE=kgp DEVICE_LABEL=AX201 CANDIDATE_LABEL=AX201-2.0.0 EXPECTED_MODE=mapped \
+  /bin/bash "$TOOLS/AirportItlwm_3x20_PORTABLE_IP_PROMPT.sh" "$KEXT"
+```
+
+For the separate conventional VHT boot, the same command uses `EXPECTED_MODE=conventional`. For the separately booted HE or HE+BF configuration, use `AirportItlwm_3x20_UDP1300_PORTABLE_IP_PROMPT.sh` in **both** cases and the matching actual DMA expectation. [All exact commands and setup](https://github.com/kgp-macPro/AirportItlwm-Tahoe/blob/main/docs/benchmark/README.md#ax201-three-separate-wi-fi-mode-campaigns).
+
+Fulvio's **7 November 2.0.0 original** completed **60/60 plus online**, with **374 verified manifest entries** and actual **Mode 2 at all eight raw/health boundaries**. It establishes **one HE160 run**. The BF setting and peer Ethernet media were not supplied; it is **not** a complete or controlled VHT/HE/HE+BF comparison. Earlier 4 November Alpha-2 mapped/conventional 42-test runs keep their historical version assignment. [Original-data audit, identities and correction history](https://github.com/kgp-macPro/AirportItlwm-Tahoe/blob/main/docs/AX201_DMA.md).
 
 ## Included changes
 
@@ -19,8 +59,8 @@ See [technical scope and lineage](https://github.com/kgp-macPro/AirportItlwm-Tah
 
 | Mode | Boot arguments | Required wired second-Mac link for these campaigns |
 |---|---|---|
-| VHT | No HE/BF opt-in | **1000Base-T / 1 Gbit/s** |
-| HE | `-itlwmhe` | **2500Base-T / 2.5 Gbit/s** |
+| VHT | No `-itlwmhe` or `-itlwmbf` | **1000Base-T / 1 Gbit/s** |
+| HE | `-itlwmhe`, without `-itlwmbf` | **2500Base-T / 2.5 Gbit/s** |
 | HE + SU-Beamformee opt-in | `-itlwmhe -itlwmbf` | **2500Base-T / 2.5 Gbit/s** |
 
 No `-novht` for these campaigns. **Do not use 5000Base-T or 10GBase-T** for the comparison methodology, even with a 10-GbE-capable adapter. Record the actual negotiated peer link. These are comparison conditions, not general IEEE requirements. LAN iperf3 is separate from the final Internet test, which was limited by KGP's 80/30-Mbit/s Internet connection.
@@ -39,7 +79,7 @@ All **180/180** tests plus three online tests completed; no complete zero interv
 
 TCP-P4 retransmits remain, and complete UDP stress tests are not necessarily loss-free. HE-only RX1700 reported about 35% loss in all rounds, with other HE-only spikes retained. BF-opt-in RX through 1500 reported 0% in all rounds; RX1700 reported about 34%, 35% and 0% (last receiver about 1705 Mbit/s). UDP-TX sender ceilings/loss and all per-round retries remain in the data. There is no universal stability or BF-performance claim.
 
-**AX210 HE160 with optional HE SU-Beamformee support, hardware-tested with the opt-in enabled.** Confirmed boot arguments, screenshots and throughput do not alone prove on-air sounding/feedback or BF gain. AX201/AX211 HE/BF remains hardware-unvalidated. No new Wi-Fi 7/EHT, MLO, 6-GHz, 320-MHz or AirDrop/AWDL/BLE functionality is included. Planned BE200 Wi-Fi 7 work is a future project, dependent on implementation and hardware testing, not this release.
+**AX210 HE160 with optional HE SU-Beamformee support, hardware-tested with the opt-in enabled.** Confirmed boot arguments, screenshots and throughput do not alone prove on-air sounding/feedback or BF gain. AX201 has one 2.0.0 HE160 mapped capture with unrecorded BF/peer-link conditions; controlled HE/BF comparison remains pending. AX211 HE/BF remains hardware-unvalidated. No new Wi-Fi 7/EHT, MLO, 6-GHz, 320-MHz or AirDrop/AWDL/BLE functionality is included. Planned BE200 Wi-Fi 7 work is a future project, dependent on implementation and hardware testing, not this release.
 
 ## BE200 — P10 hardware results: VHT, HE and HE with BF opt-in
 
@@ -402,9 +442,10 @@ UDP target is the case name, not an achieved sender rate. Values below keep **se
 ## Downloads and identities
 
 - [Complete kext package](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.0.0/AirportItlwm-Tahoe-2.0.0.zip), including license, identity and provenance.
-- [Benchmark tools r13](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.0.0/AirportItlwm-Tahoe-Benchmark-Tools-r13.zip): all five 3×20 runners (standard, UDP1200, UDP1300, UDP1600, UDP1700), resources, profiles, optional AX diagnostics and failure capture. Extended TX remains capped at 600 Mbit/s; UDP1700 is a stress test, not a loss-free guarantee. Identity/binding/DMA guards remain strict.
+- [Benchmark tools r14](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.0.0/AirportItlwm-Tahoe-Benchmark-Tools-r14.zip): all five 3×20 runners (standard, UDP1200, UDP1300, UDP1600, UDP1700), resources, profiles, optional AX diagnostics and failure capture. Extended TX remains capped at 600 Mbit/s; UDP1700 is a stress test, not a loss-free guarantee. Identity/binding/DMA guards remain strict.
+- [r14 ZIP checksum](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.0.0/AirportItlwm-Tahoe-Benchmark-Tools-r14.zip.sha256) and [combined release/r14 checksums](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.0.0/SHA256SUMS-r14.txt). The original r13 package and original checksum asset remain unchanged historical downloads.
 - [Reproducible result data](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.0.0/AirportItlwm-Tahoe-2.0.0-Results.zip), original JSON with per-file hashes and campaign/source identities.
-- [Build identity](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.0.0/AirportItlwm-Tahoe-2.0.0-BUILD-IDENTITY.json) and [checksums](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.0.0/SHA256SUMS.txt).
+- [Build identity](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.0.0/AirportItlwm-Tahoe-2.0.0-BUILD-IDENTITY.json) and [checksums](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.0.0/SHA256SUMS-r14.txt).
 
 Release build source: `4b948ae16a7cbe82699dc7078cf4c917456eff89`. UUID **E01CC22A-6A2D-3E0D-A8FD-229ED62C1751**; executable SHA-256 **ab8688febf2ccc78984ea6b2b9be933cb14317bc7951983330ffadab32d3a2f8**. This newly versioned 2.0.0 rebuild has the final R9 functional inputs and new version metadata; it is **not byte-identical to the tested P10/R9 binaries**. Original campaigns retain their original UUID/hash. [Build details](https://github.com/kgp-macPro/AirportItlwm-Tahoe/blob/main/docs/BUILD.md).
 

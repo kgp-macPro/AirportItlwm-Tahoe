@@ -1,0 +1,278 @@
+{
+  "source_archive": "AX201-2_0_0_AX201_3X20_mapped_20261107_185335_rxIkoY.zip",
+  "source_archive_sha256": "7dfa64d4a1447b9a5a4575cc32a2e3672219b49a1c783abb7e36343ca3aad632",
+  "capture_date": "2026-11-07",
+  "driver": "AirportItlwm-Tahoe 2.0.0",
+  "loaded_uuid": "E01CC22A-6A2D-3E0D-A8FD-229ED62C1751",
+  "executable_sha256": "ab8688febf2ccc78984ea6b2b9be933cb14317bc7951983330ffadab32d3a2f8",
+  "verified_manifest_files": 374,
+  "completed_local_tests": 60,
+  "online_status": "PASS",
+  "dma_mode": 2,
+  "health_and_raw_boundaries": 8,
+  "new_fault_or_reset_at_boundaries": false,
+  "radio_evidence": "HE runtime counters and valid firmware HE rate reports; 160 MHz, two-stream TX observed; BF setting and wired peer media not supplied",
+  "scope": "One 3x20 standard-matrix HE capture. Not three VHT/HE/HE+BF campaigns; not controlled HE/BF qualification. No private registry or account data published.",
+  "tests": {
+    "T01_TCP_TX_P1": {
+      "receiver_mbps": [
+        252.747,
+        322.813,
+        294.792
+      ],
+      "receiver_mean_mbps": 290.117,
+      "sender_mean_mbps": 291.909
+    },
+    "T02_TCP_RX_P1": {
+      "receiver_mbps": [
+        709.569,
+        667.05,
+        665.951
+      ],
+      "receiver_mean_mbps": 680.857,
+      "sender_mean_mbps": 683.72
+    },
+    "T03_TCP_TX_P4": {
+      "receiver_mbps": [
+        319.674,
+        313.898,
+        300.842
+      ],
+      "receiver_mean_mbps": 311.471,
+      "sender_mean_mbps": 315.875
+    },
+    "T04_TCP_RX_P4": {
+      "receiver_mbps": [
+        711.994,
+        489.008,
+        641.595
+      ],
+      "receiver_mean_mbps": 614.199,
+      "sender_mean_mbps": 625.624
+    },
+    "T05_UDP_TX100": {
+      "receiver_mbps": [
+        99.919,
+        99.924,
+        99.919
+      ],
+      "receiver_mean_mbps": 99.921,
+      "sender_mean_mbps": 100.0,
+      "loss_percent": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "T06_UDP_RX100": {
+      "receiver_mbps": [
+        99.741,
+        99.877,
+        99.71
+      ],
+      "receiver_mean_mbps": 99.776,
+      "sender_mean_mbps": 99.785,
+      "loss_percent": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "T07_UDP_TX250": {
+      "receiver_mbps": [
+        249.68,
+        248.634,
+        249.56
+      ],
+      "receiver_mean_mbps": 249.291,
+      "sender_mean_mbps": 249.996,
+      "loss_percent": [
+        0.023039705091774824,
+        0.4569401139662402,
+        0.1036683228001198
+      ]
+    },
+    "T08_UDP_RX250": {
+      "receiver_mbps": [
+        249.403,
+        249.304,
+        247.662
+      ],
+      "receiver_mean_mbps": 248.79,
+      "sender_mean_mbps": 249.042,
+      "loss_percent": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "T09_UDP_TX400": {
+      "receiver_mbps": [
+        368.846,
+        360.913,
+        369.355
+      ],
+      "receiver_mean_mbps": 366.372,
+      "sender_mean_mbps": 378.473,
+      "loss_percent": [
+        2.867424373850676,
+        0.08292090180392075,
+        0.694760244555606
+      ]
+    },
+    "T10_UDP_RX400": {
+      "receiver_mbps": [
+        353.066,
+        349.434,
+        381.347
+      ],
+      "receiver_mean_mbps": 361.283,
+      "sender_mean_mbps": 361.563,
+      "loss_percent": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "T11_UDP_TX500": {
+      "receiver_mbps": [
+        354.727,
+        348.817,
+        372.006
+      ],
+      "receiver_mean_mbps": 358.517,
+      "sender_mean_mbps": 365.609,
+      "loss_percent": [
+        0.09394833908944843,
+        0.4477083132025639,
+        0.11982890252904713
+      ]
+    },
+    "T12_UDP_RX500": {
+      "receiver_mbps": [
+        404.723,
+        358.087,
+        449.399
+      ],
+      "receiver_mean_mbps": 404.07,
+      "sender_mean_mbps": 405.059,
+      "loss_percent": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "T13_UDP_TX600": {
+      "receiver_mbps": [
+        368.877,
+        332.418,
+        360.312
+      ],
+      "receiver_mean_mbps": 353.869,
+      "sender_mean_mbps": 361.535,
+      "loss_percent": [
+        0.4817112169172513,
+        0.1485681107942417,
+        0.526425193576885
+      ]
+    },
+    "T14_UDP_RX600": {
+      "receiver_mbps": [
+        357.059,
+        430.181,
+        357.925
+      ],
+      "receiver_mean_mbps": 381.722,
+      "sender_mean_mbps": 383.341,
+      "loss_percent": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "T15_UDP_TX700": {
+      "receiver_mbps": [
+        353.084,
+        289.299,
+        345.135
+      ],
+      "receiver_mean_mbps": 329.172,
+      "sender_mean_mbps": 352.336,
+      "loss_percent": [
+        0.853768817490292,
+        14.003444566447248,
+        0.4963726613211149
+      ]
+    },
+    "T16_UDP_RX700": {
+      "receiver_mbps": [
+        398.584,
+        370.319,
+        334.468
+      ],
+      "receiver_mean_mbps": 367.79,
+      "sender_mean_mbps": 368.803,
+      "loss_percent": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "T17_UDP_TX800": {
+      "receiver_mbps": [
+        361.972,
+        328.225,
+        368.395
+      ],
+      "receiver_mean_mbps": 352.864,
+      "sender_mean_mbps": 360.845,
+      "loss_percent": [
+        0.859999690276222,
+        0.17719348385252928,
+        0.136174221093694
+      ]
+    },
+    "T18_UDP_RX800": {
+      "receiver_mbps": [
+        339.908,
+        380.443,
+        385.188
+      ],
+      "receiver_mean_mbps": 368.513,
+      "sender_mean_mbps": 374.974,
+      "loss_percent": [
+        0.0,
+        0.0,
+        4.816701817578616
+      ]
+    },
+    "T19_UDP_TX900": {
+      "receiver_mbps": [
+        357.556,
+        330.61,
+        365.556
+      ],
+      "receiver_mean_mbps": 351.241,
+      "sender_mean_mbps": 362.96,
+      "loss_percent": [
+        3.883836274939148,
+        0.38362735291443123,
+        0.25606420591872653
+      ]
+    },
+    "T20_UDP_RX900": {
+      "receiver_mbps": [
+        367.215,
+        351.936,
+        403.648
+      ],
+      "receiver_mean_mbps": 374.266,
+      "sender_mean_mbps": 380.281,
+      "loss_percent": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  }
+}

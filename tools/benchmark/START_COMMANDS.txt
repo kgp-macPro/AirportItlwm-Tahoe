@@ -1,13 +1,67 @@
-AirportItlwm-Tahoe 2.0.0 / benchmark tools r13
+AirportItlwm-Tahoe 2.0.0 / benchmark tools r14 (instruction correction)
 
-Full current instructions: https://github.com/kgp-macPro/AirportItlwm-Tahoe/blob/main/docs/benchmark/README.md
+AX201/CNVW SUPPORTS MAPPED DMA. Fulvio's regular configuration is mapped Mode 2.
+Conventional Mode 1 is a separate comparison, not an AX201 requirement.
+The old r13 AX201-conventional-only sentence is wrong and is superseded here.
+All five actual runner files, profiles, helper resources and guards are unchanged
+from r13. Their recorded runner revision remains r13; the package revision is r14.
 
-Wired Mac: identify its Ethernet interface and verify negotiated 1000Base-T for VHT, 2500Base-T for HE/HE+BF. Never 5000Base-T/10GBase-T for these campaigns.
-Server: iperf3 -s -B YOUR_WIRED_SERVER_IPV4 -p 5201
+Full guide: https://github.com/kgp-macPro/AirportItlwm-Tahoe/blob/main/docs/benchmark/README.md
 
-Client example (replace interface, paths and labels for your device):
-WIFI_IFACE=en2 DEVICE_LABEL=AX210 CANDIDATE_LABEL=AX210-2.0.0 EXPECTED_MODE=mapped /bin/bash "$HOME/Downloads/AirportItlwm-Tahoe-Benchmark-Tools-r13/AirportItlwm_3x20_PORTABLE_IP_PROMPT.sh" "$HOME/Downloads/AirportItlwm-Tahoe-2.0.0/AirportItlwm.kext"
+1. Select the DMA configuration in your existing OpenCore EFI:
+   Kernel -> Quirks -> DisableIoMapper=false : mapped; EXPECTED_MODE=mapped; Mode 2.
+   Kernel -> Quirks -> DisableIoMapper=true  : conventional; EXPECTED_MODE=conventional; Mode 1.
+   Reboot after changing this setting. EXPECTED_MODE checks the mode; it does not
+   switch the driver. Record AppleVTD state separately for mapped. Keep all guards.
 
-The server IP is prompted. Standard runner is the VHT starting point. For HE use -itlwmhe and an appropriate extended runner after confirming 2500Base-T. HE+BF additionally uses -itlwmbf. No -novht.
-BE200: add BENCHMARK_PROFILE=be200, DEVICE_LABEL=BE200, CANDIDATE_LABEL=BE200-2.0.0. AX201/CNVW uses conventional, not forced mapped. AX211 uses observed runtime mode. New AX201/AX211 HE/BF remains hardware-unvalidated.
-Return the full result ZIP. The candidate path is an identity reference to the already loaded bundle, not an installation command.
+2. Select ONE Wi-Fi campaign and reboot after changing its boot arguments:
+   VHT:   remove -itlwmhe and -itlwmbf; wired peer 1000Base-T / 1 Gbit/s.
+   HE:    -itlwmhe, without -itlwmbf;   wired peer 2500Base-T / 2.5 Gbit/s.
+   HE+BF: -itlwmhe -itlwmbf;           wired peer 2500Base-T / 2.5 Gbit/s.
+   No -novht. Keep unrelated boot arguments, AP and patch settings unchanged.
+   Do not use 5000Base-T or 10GBase-T for these comparison campaigns.
+
+3. On the WIRED SECOND MAC, select and verify the actual Ethernet link speed.
+   Disable its Wi-Fi manually. Keep the Wi-Fi client's competing Ethernet path
+   disabled. Identify the server Ethernet interface and record its media:
+
+   networksetup -listallhardwareports
+   SERVER_IFACE=enX                  # replace with the actual wired interface
+   ifconfig "$SERVER_IFACE"
+   iperf3 --version
+   iperf3 -s -B YOUR_WIRED_SERVER_IPV4 -p 5201
+
+   Keep the server terminal open. If 2.5 Gbit/s is unavailable on your peer/link,
+   report that limitation before treating an HE run as a comparable 2.5G test.
+
+4. On Fulvio's AX201 Wi-Fi client (verified en0), set paths and DMA expectation:
+
+   TOOLS="$HOME/Downloads/AirportItlwm-Tahoe-Benchmark-Tools-r14"
+   KEXT="$HOME/Downloads/AirportItlwm-Tahoe-2.0.0/AirportItlwm.kext"
+   EXPECTED_MODE=mapped              # use conventional only after its EFI change/reboot
+
+   VHT ONLY, after verifying 1000Base-T at the wired peer:
+   WIFI_IFACE=en0 BENCHMARK_PROFILE=kgp DEVICE_LABEL=AX201 CANDIDATE_LABEL=AX201-2.0.0 EXPECTED_MODE="$EXPECTED_MODE" /bin/bash "$TOOLS/AirportItlwm_3x20_PORTABLE_IP_PROMPT.sh" "$KEXT"
+
+   HE ONLY, after verifying 2500Base-T and -itlwmhe without -itlwmbf:
+   WIFI_IFACE=en0 BENCHMARK_PROFILE=kgp DEVICE_LABEL=AX201 CANDIDATE_LABEL=AX201-2.0.0 EXPECTED_MODE="$EXPECTED_MODE" /bin/bash "$TOOLS/AirportItlwm_3x20_UDP1300_PORTABLE_IP_PROMPT.sh" "$KEXT"
+
+   HE+BF ONLY, after verifying 2500Base-T and -itlwmhe -itlwmbf:
+   WIFI_IFACE=en0 BENCHMARK_PROFILE=kgp DEVICE_LABEL=AX201 CANDIDATE_LABEL=AX201-2.0.0 EXPECTED_MODE="$EXPECTED_MODE" /bin/bash "$TOOLS/AirportItlwm_3x20_UDP1300_PORTABLE_IP_PROMPT.sh" "$KEXT"
+
+   Run these separately with the correct boot configuration, not back-to-back
+   without a reboot/configuration change. Three campaigns per DMA configuration;
+   six complete ZIPs if comparing both DMA configurations in all three modes.
+   The server IPv4 is prompted. The candidate path refers to the complete bundle
+   already loaded; it is not an installation command. en0 is Fulvio's verified
+   interface, not a universal value for every tester.
+
+5. Save each complete original ZIP without editing its contents. Separately
+   label which ZIP is VHT, HE or HE+BF and mapped or conventional. Include:
+   sysctl -n kern.bootargs            # on the Wi-Fi client
+   negotiated Wi-Fi PHY/width, server media output and iperf3 version.
+   Preserve any failed/partial ZIP and the exact error; do not bypass guards.
+
+BE200: BENCHMARK_PROFILE=be200, DEVICE_LABEL=BE200, CANDIDATE_LABEL=BE200-2.0.0.
+AX210/AX211: use their corresponding 2.0.0 profile and verified Wi-Fi interface.
+Never infer a DMA route solely from AX201/CNVW or any other device label.

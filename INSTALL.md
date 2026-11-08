@@ -1,7 +1,7 @@
 # Installing AirportItlwm-Tahoe 2.0.0
 
 Install the complete **AirportItlwm.kext** from the [2.0.0 release](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/tag/v2.0.0).
-Verify [SHA256SUMS.txt](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.0.0/SHA256SUMS.txt) before use. Do not substitute a CI artifact.
+Verify [SHA256SUMS-r14.txt](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.0.0/SHA256SUMS-r14.txt) before use. Do not substitute a CI artifact.
 
 ## Required framework and AppleVTD environment
 
@@ -24,7 +24,7 @@ throughout all eight boundaries, 42/42 tests +online; a separate conventional
 Mode 1 campaign also completed 42/42 +online. [Original evidence](docs/AX201_DMA.md); the previous blanket
 conventional-only restriction was withdrawn. Separately configured conventional
 Mode 1 comparisons remain valid. Do not derive the DMA route from the card label
-or a Registry name such as CNVW. Use the [AX201 r13 commands](docs/benchmark/README.md#ax201cnvw-mapped-and-conventional-comparisons)
+or a Registry name such as CNVW. Use the [AX201 r14 commands](docs/benchmark/README.md#ax201cnvw-mapped-and-conventional-comparisons)
 with profile `AX201-2.0.0`: Fulvio’s mapped command uses `EXPECTED_MODE=mapped`;
 the separate conventional command uses `EXPECTED_MODE=conventional`. This variable
 checks the actual mode and **does not switch it**. The historical result is not
@@ -32,6 +32,23 @@ a new 2.0.0 HE/BF hardware validation. AX211’s historical Alpha 2 mapped evide
 is likewise not new HE qualification. Conventional configurations remain supported within their
 established device/firmware/runtime boundaries; do not change the whole
 machine's IOMMU configuration merely to force a profile label.
+
+Fulvio’s 7 November 2.0.0 original completed 60/60 plus online in mapped Mode 2 and records HE160. Its BF setting and wired-peer link are unknown; this is not a controlled VHT/HE/HE+BF comparison. [Evidence and limits](docs/AX201_DMA.md#additional-200-mapped-evidence-from-7-november-2026).
+
+## DMA configuration: mapped and conventional
+
+**AX201/CNVW supports mapped DMA. Fulvio's regular configuration is mapped
+Mode 2; conventional is a separate comparison, not an AX201 requirement.**
+
+| DMA configuration | OpenCore Kernel → Quirks → DisableIoMapper | Runner expectation | Actual driver mode |
+|---|---|---|---|
+| mapped | **false** | `EXPECTED_MODE=mapped` | **Mode 2** |
+| conventional | **true** | `EXPECTED_MODE=conventional` | **Mode 1** |
+
+**Reboot after changing the EFI quirk or Wi-Fi boot arguments.** These are
+manual test configurations. Record active AppleVTD separately for mapped;
+the flag alone is not runtime proof. `EXPECTED_MODE` checks the loaded driver's
+actual mode and cannot select it. Keep every identity, binding and health guard.
 
 ## Manual installation and rollback
 

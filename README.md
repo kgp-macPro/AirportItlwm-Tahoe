@@ -19,7 +19,7 @@ and this Wi-Fi device actually using mapped DMA are separate facts.
 
 **[Download 2.0.0](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.0.0/AirportItlwm-Tahoe-2.0.0.zip)** ·
 [Regular Latest release](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/latest) ·
-[SHA256 checksums](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.0.0/SHA256SUMS.txt) ·
+[Release + r14 SHA256 checksums](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.0.0/SHA256SUMS-r14.txt) ·
 [Installation](INSTALL.md) · [Modes and benchmark guide](docs/benchmark/README.md)
 
 **Required: [OCLP-CustoMac 3.0.0 or newer](https://github.com/kgp-macPro/OCLP-CustoMac/releases),
@@ -36,10 +36,28 @@ replace root patching. This is not a native Tahoe/Sonoma Skywalk frontend port.
 2. Choose VHT (no HE/BF opt-in), HE (`-itlwmhe`) or HE with optional SU-Beamformee
    (`-itlwmhe -itlwmbf`). Do not use `-novht` for these VHT/HE campaigns.
 3. Check the loaded build, PCI-to-driver-to-interface binding and actual DMA
-   mode; then use the [complete r13 benchmark package](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.0.0/AirportItlwm-Tahoe-Benchmark-Tools-r13.zip).
+   mode; then use the [complete r14 benchmark package](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.0.0/AirportItlwm-Tahoe-Benchmark-Tools-r14.zip).
    The standard 3×20 runner is the VHT starting point; extended RX matrices
    are for HE stress comparisons. A runner's candidate path is an identity
    reference to the already loaded bundle, not an installation command.
+   [Verify the r14 ZIP](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.0.0/AirportItlwm-Tahoe-Benchmark-Tools-r14.zip.sha256);
+   [release and r14 asset checksums](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.0.0/SHA256SUMS-r14.txt).
+   r14 changes instructions and package metadata; its runtime files remain r13.
+
+## DMA configuration: mapped and conventional
+
+**AX201/CNVW supports mapped DMA. Fulvio's regular configuration is mapped
+Mode 2; conventional is a separate comparison, not an AX201 requirement.**
+
+| DMA configuration | OpenCore Kernel → Quirks → DisableIoMapper | Runner expectation | Actual driver mode |
+|---|---|---|---|
+| mapped | **false** | `EXPECTED_MODE=mapped` | **Mode 2** |
+| conventional | **true** | `EXPECTED_MODE=conventional` | **Mode 1** |
+
+**Reboot after changing the EFI quirk or Wi-Fi boot arguments.** These are
+manual test configurations. Record active AppleVTD separately for mapped;
+the flag alone is not runtime proof. `EXPECTED_MODE` checks the loaded driver's
+actual mode and cannot select it. Keep every identity, binding and health guard.
 
 ## Device, mode and validation scope
 
@@ -47,12 +65,13 @@ replace root patching. This is not a native Tahoe/Sonoma Skywalk frontend port.
 |---|---|---|---|
 | **BE200**, PCI 8086:272B, BZ/GL92 |P10, 60 tests +online; VHT160|P10, six campaigns / 360 tests +online, including HE and BF opt-in|AppleVTD active and **mapped** verified in these campaigns|
 | **AX210**, PCI 8086:2725 |Historical P10 VHT160, 60 tests +online|Final R9 HE160 /HE+BF-opt-in:180/180 tests +3 online|AppleVTD active and **mapped** verified|
-| **AX201 / CNVW** |Fulvio’s 4 Nov **Alpha 2** campaigns:42/42 mapped Mode 2 and42/42 conventional Mode 1, each +online; retain their original build/setup|AX HE code present; new HE/BF hardware validation **pending**; some profiles lack required firmware 63|Both mapped and conventional configurations are supported where qualified; check the **actual runtime mode**, never infer it from AX201/CNVW naming|
+| **AX201 / CNVW** |Fulvio’s 4 Nov **Alpha 2** campaigns:42/42 mapped Mode 2 and42/42 conventional Mode 1, each +online; retain their original build/setup|One **2.0.0 HE160** mapped capture:60/60 +online; BF setting and peer link unknown. Controlled HE/BF comparisons **pending**; some profiles lack firmware 63|Both mapped and conventional configurations are supported where qualified; check the **actual runtime mode**, never infer it from AX201/CNVW naming|
 | **AX211** |Historical Alpha 2/P8R1:42/42 **mapped** tests; 80 MHz per KGP, not a 160 MHz proof|AX HE code present; new HE/BF hardware validation **pending**; some profiles lack firmware 63|Use captured runtime mode; historical mapped result does not qualify a new HE build|
 
 Fulvio’s independently checked [Alpha-2 originals from 4 November](docs/AX201_DMA.md#alpha-2-evidence-from-4-november-2026) confirm mapped Mode 2; these are historical results, not new 2.0.0 tests.
+Fulvio’s 7 November 2.0.0 original completed 60/60 plus online in mapped Mode 2 and records HE160. Its BF setting and wired-peer link are unknown; this is not a controlled VHT/HE/HE+BF comparison. [Original-data audit](docs/AX201_DMA.md#additional-200-mapped-evidence-from-7-november-2026).
 His mapped results supersede the old “AX201/CNVW conventional only” guidance.
-Use the [AX201 r13 commands](docs/benchmark/README.md#ax201cnvw-mapped-and-conventional-comparisons):
+Use the [AX201 r14 commands](docs/benchmark/README.md#ax201cnvw-mapped-and-conventional-comparisons):
 `AX201-2.0.0` with `EXPECTED_MODE=mapped` for his mapped configuration, or a
 separate conventional comparison. `EXPECTED_MODE` **checks**, and never switches,
 the driver’s DMA route. See [evidence and correction history](docs/AX201_DMA.md).
@@ -285,7 +304,7 @@ KGP directs, reviews and validates this work. The [full approved KGP credit and 
 
 ## Limits and historical records
 
-AX201/AX211 HE/BF hardware validation, some firmware 63 profiles, longer-load/
+Controlled AX201 HE/BF comparison and AX211 HE/BF hardware validation, some firmware 63 profiles, longer-load/
 Sleep-Wake qualification, remaining loss/retry attribution and actual BF-use
 proof remain open. Little Snitch and Avast were active according to KGP;
 BE200 and AX210-VHT also work with them. No general filter/environment cause

@@ -1,4 +1,35 @@
-# AX201/CNVW DMA documentation correction — 7 November 2026
+# AX201/CNVW DMA documentation correction — 8 November 2026
+
+## DMA configuration: mapped and conventional
+
+**AX201/CNVW supports mapped DMA. Fulvio's regular configuration is mapped
+Mode 2; conventional is a separate comparison, not an AX201 requirement.**
+
+| DMA configuration | OpenCore Kernel → Quirks → DisableIoMapper | Runner expectation | Actual driver mode |
+|---|---|---|---|
+| mapped | **false** | `EXPECTED_MODE=mapped` | **Mode 2** |
+| conventional | **true** | `EXPECTED_MODE=conventional` | **Mode 1** |
+
+**Reboot after changing the EFI quirk or Wi-Fi boot arguments.** These are
+manual test configurations. Record active AppleVTD separately for mapped;
+the flag alone is not runtime proof. `EXPECTED_MODE` checks the loaded driver's
+actual mode and cannot select it. Keep every identity, binding and health guard.
+
+## Additional 2.0.0 mapped evidence from 7 November 2026
+
+The newly supplied original `AX201-2_0_0_AX201_3X20_mapped_20261107_185335_rxIkoY.zip`
+completed **60/60 local tests plus online**, with all **374 manifest entries**
+verified. All eight health records and raw boundaries report **mapped Mode 2**,
+with unchanged generation/reset epochs and no health faults at those boundaries.
+The loaded release UUID/hash match 2.0.0. Runtime HE counters and valid firmware
+rate reports establish an HE capture, with 160-MHz/two-stream TX observed.
+
+This is **one** standard-matrix HE run. The BF setting and wired peer's negotiated
+Ethernet media were not supplied; it is not a three-mode VHT/HE/HE+BF comparison
+or a controlled HE/BF qualification. Do not call it VHT solely from the runner
+filename or infer a 1/2.5-Gbit/s peer from throughput. The aggregate-only
+[original-data audit](AX201_2_0_0_20261107.json) preserves actual receiver/sender
+rates and losses without publishing raw registries or private identifiers.
 
 ## Alpha-2 evidence from 4 November 2026
 
@@ -60,18 +91,46 @@ AX201 is not automatically conventional and offered a mapped command. The
 2.0.0 release body repeated the regressed wording during publication. This is
 a documentation reconciliation error, not new adverse hardware evidence.
 
-The present correction restores the already established policy in those three
-current documents and the live release body. Historical records remain tied
+The 7 November correction (commit `efa5f863b94975aa09da3905706600afb37ef355`)
+restored the established policy in those three current documents and the live
+release body, but left the downloadable start commands and local release notes
+unchanged. The 8 November completion below closes those remaining entry points. Historical records remain tied
 to their original revisions. Driver source, release binary/tag/assets, r13 tools,
 profile identities and safety checks are unchanged.
 
 ## Current commands
 
-Use the [AX201 r13 mapped/conventional commands](benchmark/README.md#ax201cnvw-mapped-and-conventional-comparisons)
+Use the [AX201 r14 mapped/conventional commands](benchmark/README.md#ax201cnvw-mapped-and-conventional-comparisons)
 with `AX201-2.0.0` and the exact loaded 2.0.0 bundle. Fulvio’s main expectation is
 `EXPECTED_MODE=mapped`; a separately configured comparison can use `conventional`.
 The expectation checks the actual route; it cannot select or change it.
 
-The unchanged original r13 asset contains the old sentence in START_COMMANDS.txt.
-The corrected online guide and release body explicitly supersede that sentence;
-the archive and its checksum are preserved.
+## Completion of the instruction correction — 8 November 2026
+
+The first online correction did not repair every current entry point:
+`RELEASE_NOTES_2.0.0.md` still contained the blanket conventional claim,
+`README_TESTS.txt` still pointed to Alpha 2/r12, and the downloadable r13 package
+retained its wrong `START_COMMANDS.txt` sentence. Those active instructions are
+corrected together in the r14 instruction package and current repository docs.
+
+The r14 package keeps all five executable r13 runners, helper resources, profile
+identities and guards byte-identical. It changes the packaged instructions and
+package metadata; actual runner provenance still identifies r13. The old r13
+archive/checksum remain historical, and driver binaries/tags remain unchanged.
+
+The prescribed configurations are explicit: `DisableIoMapper=false` → mapped
+Mode 2; `DisableIoMapper=true` → conventional Mode 1, with a manual reboot after
+changes. VHT requires a 1-Gbit/s peer; HE and HE+BF require a 2.5-Gbit/s peer for
+these comparisons. Record actual negotiated media, boot arguments and PHY/width
+per campaign. These rules also belong at the top of the canonical handover.
+
+The stale `README_TESTS.txt` was last rewritten in `dbec9b8dddbac06c5f9a656df2c1500caecd3380`
+for the then-current Alpha-2/r12 entry flow. It was not updated during 2.0.0
+publishing. The wrong r13 `START_COMMANDS.txt` and local release-note claim
+originated in `c4be2dfb59bb4f7aa5c7eee7804753efd628ecc3`. No adverse DMA evidence
+caused these statements; the failure was incomplete documentation reconciliation.
+
+The original r13 ZIP and `SHA256SUMS.txt` remain unchanged historical assets.
+Use [r14](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.0.0/AirportItlwm-Tahoe-Benchmark-Tools-r14.zip), its
+[ZIP checksum](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.0.0/AirportItlwm-Tahoe-Benchmark-Tools-r14.zip.sha256) and the
+[combined release/r14 checksums](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.0.0/SHA256SUMS-r14.txt).

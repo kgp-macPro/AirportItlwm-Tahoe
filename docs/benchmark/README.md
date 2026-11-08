@@ -1,6 +1,6 @@
-# AirportItlwm-Tahoe 2.0.0 benchmark guide — tools r13
+# AirportItlwm-Tahoe 2.0.0 benchmark guide — tools r14
 
-[Download all five runners and resources](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.0.0/AirportItlwm-Tahoe-Benchmark-Tools-r13.zip)
+[Download all five runners and resources](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.0.0/AirportItlwm-Tahoe-Benchmark-Tools-r14.zip)
 · [Release/checksums](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/tag/v2.0.0) · [Installation](../../INSTALL.md)
 
 **OCLP-CustoMac 3.0.0+ and matching Ventura Legacy patches are required.**
@@ -8,6 +8,23 @@ See [AppleVTD versus actual DMA mode](../../INSTALL.md#required-framework-and-ap
 Use the 2.0.0 release as the active starting point. Old 3×14/r12 and comparison
 builds remain [historical downloads](../HISTORY.md), not a second conflicting
 current installation path. Retained laobamac comparison builds do not support BE200.
+
+[r14 ZIP checksum](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.0.0/AirportItlwm-Tahoe-Benchmark-Tools-r14.zip.sha256) · [Release + r14 checksums](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.0.0/SHA256SUMS-r14.txt).
+
+## DMA configuration: mapped and conventional
+
+**AX201/CNVW supports mapped DMA. Fulvio's regular configuration is mapped
+Mode 2; conventional is a separate comparison, not an AX201 requirement.**
+
+| DMA configuration | OpenCore Kernel → Quirks → DisableIoMapper | Runner expectation | Actual driver mode |
+|---|---|---|---|
+| mapped | **false** | `EXPECTED_MODE=mapped` | **Mode 2** |
+| conventional | **true** | `EXPECTED_MODE=conventional` | **Mode 1** |
+
+**Reboot after changing the EFI quirk or Wi-Fi boot arguments.** These are
+manual test configurations. Record active AppleVTD separately for mapped;
+the flag alone is not runtime proof. `EXPECTED_MODE` checks the loaded driver's
+actual mode and cannot select it. Keep every identity, binding and health guard.
 
 ## Required peer link, before every comparison
 
@@ -61,7 +78,7 @@ Unzip the full tools package; do not copy an individual shell file without its
 Example for AX210 mapped (the server IPv4 is prompted when IPERF_SERVER is unset):
 
 ```sh
-TOOLS="$HOME/Downloads/AirportItlwm-Tahoe-Benchmark-Tools-r13"
+TOOLS="$HOME/Downloads/AirportItlwm-Tahoe-Benchmark-Tools-r14"
 KEXT="$HOME/Downloads/AirportItlwm-Tahoe-2.0.0/AirportItlwm.kext"
 WIFI_IFACE=en2 DEVICE_LABEL=AX210 CANDIDATE_LABEL=AX210-2.0.0 EXPECTED_MODE=mapped \
   /bin/bash "$TOOLS/AirportItlwm_3x20_PORTABLE_IP_PROMPT.sh" "$KEXT"
@@ -100,26 +117,32 @@ Health/raw IORegistry boundaries agree per run. They bind PCI `8086:7a70`, subsy
 retain their original Alpha-2 driver/framework context; they do not qualify the new
 2.0.0 HE/BF code on AX201. [Evidence and correction history](../AX201_DMA.md).
 
-Use the full **r13** package and profile **AX201-2.0.0** with the already loaded
+Fulvio’s 7 November 2.0.0 original completed 60/60 plus online in mapped Mode 2 and records HE160. Its BF setting and wired-peer link are unknown; this is not a controlled VHT/HE/HE+BF comparison. See the [separate 2.0.0 evidence](../AX201_DMA.md#additional-200-mapped-evidence-from-7-november-2026).
+
+Use the full **r14** package and profile **AX201-2.0.0** with the already loaded
 2.0.0 bundle as the identity reference. The runner discovers and verifies the
 actual PCI → controller → Wi-Fi interface chain. Fulvio’s historical interface
 was en0; add `WIFI_IFACE=en0` only if that is still the verified interface on
 his system. Neither that name nor CNVW determines the DMA route.
 
-The original r13 archive remains unchanged. Its `START_COMMANDS.txt` contains an
-obsolete AX201/CNVW conventional-only sentence; **the corrected commands below
-supersede that sentence**. Keep the original runner and all its safety checks.
+**Use the r14 instruction-corrected package.** Its five executable runners,
+profiles, helpers, traffic and guards are byte-identical to r13; runner-generated
+provenance therefore still reports the r13 runner revision. The older r13 ZIP
+is retained for history, including its erroneous AX201-conventional-only sentence;
+it is superseded by r14. No release kext or existing tag has changed.
 
-Fulvio’s main command for his **mapped** configuration:
+Fulvio’s main command after booting with **`DisableIoMapper=false` (mapped)**:
 
 ```sh
-TOOLS="$HOME/Downloads/AirportItlwm-Tahoe-Benchmark-Tools-r13"
+TOOLS="$HOME/Downloads/AirportItlwm-Tahoe-Benchmark-Tools-r14"
 KEXT="$HOME/Downloads/AirportItlwm-Tahoe-2.0.0/AirportItlwm.kext"
 BENCHMARK_PROFILE=kgp DEVICE_LABEL=AX201 CANDIDATE_LABEL=AX201-2.0.0 EXPECTED_MODE=mapped \
   /bin/bash "$TOOLS/AirportItlwm_3x20_PORTABLE_IP_PROMPT.sh" "$KEXT"
 ```
 
-Separate command for an already configured **conventional** comparison:
+For the separate **conventional** comparison, set
+`Kernel → Quirks → DisableIoMapper=true` in the existing EFI and **reboot**;
+then run:
 
 ```sh
 BENCHMARK_PROFILE=kgp DEVICE_LABEL=AX201 CANDIDATE_LABEL=AX201-2.0.0 EXPECTED_MODE=conventional \
@@ -133,6 +156,55 @@ is a separate observation. Keep UUID/hash, device/interface, DMA and health guar
 For these standard VHT comparisons, verify **1000Base-T** on the wired peer;
 HE/HE+BF comparisons use **2500Base-T** and the matching runner, not 5/10 GbE.
 The server IP is prompted, unless `IPERF_SERVER` is explicitly supplied.
+
+## AX201: three separate Wi-Fi-mode campaigns
+
+For each DMA configuration being compared, change the Wi-Fi boot arguments and
+peer link as below, reboot, then run the corresponding command. Keep unrelated
+EFI/AP/patch settings fixed. Use the same extended matrix for HE and HE+BF.
+
+| Separate campaign | Boot arguments | Wired second-device media | Runner |
+|---|---|---|---|
+| VHT | Remove `-itlwmhe` and `-itlwmbf` | **1000Base-T / 1 Gbit/s** | Standard |
+| HE | `-itlwmhe`, without `-itlwmbf` | **2500Base-T / 2.5 Gbit/s** | UDP1300 |
+| HE+BF opt-in | `-itlwmhe -itlwmbf` | **2500Base-T / 2.5 Gbit/s** | UDP1300 |
+
+No `-novht`. These are three separate boot configurations, not three commands
+to execute consecutively in one boot. Comparing both DMA configurations means
+six separately identified ZIPs. Existing Mode 2 evidence needs no requalification.
+
+In each new client terminal, define the paths and **one** correct expectation:
+
+```sh
+TOOLS="$HOME/Downloads/AirportItlwm-Tahoe-Benchmark-Tools-r14"
+KEXT="$HOME/Downloads/AirportItlwm-Tahoe-2.0.0/AirportItlwm.kext"
+EXPECTED_MODE=mapped       # after DisableIoMapper=false and reboot
+# For a booted conventional comparison instead: EXPECTED_MODE=conventional
+```
+
+Fulvio's verified Wi-Fi interface is en0; other testers must use their actual
+interface. Run only the command matching the current boot and wired peer media:
+
+```sh
+# VHT, peer 1000Base-T
+WIFI_IFACE=en0 BENCHMARK_PROFILE=kgp DEVICE_LABEL=AX201 CANDIDATE_LABEL=AX201-2.0.0 EXPECTED_MODE="$EXPECTED_MODE" \
+  /bin/bash "$TOOLS/AirportItlwm_3x20_PORTABLE_IP_PROMPT.sh" "$KEXT"
+
+# HE, peer 2500Base-T, -itlwmhe without -itlwmbf
+WIFI_IFACE=en0 BENCHMARK_PROFILE=kgp DEVICE_LABEL=AX201 CANDIDATE_LABEL=AX201-2.0.0 EXPECTED_MODE="$EXPECTED_MODE" \
+  /bin/bash "$TOOLS/AirportItlwm_3x20_UDP1300_PORTABLE_IP_PROMPT.sh" "$KEXT"
+
+# HE+BF, peer 2500Base-T, -itlwmhe -itlwmbf
+WIFI_IFACE=en0 BENCHMARK_PROFILE=kgp DEVICE_LABEL=AX201 CANDIDATE_LABEL=AX201-2.0.0 EXPECTED_MODE="$EXPECTED_MODE" \
+  /bin/bash "$TOOLS/AirportItlwm_3x20_UDP1300_PORTABLE_IP_PROMPT.sh" "$KEXT"
+```
+
+Return each complete original ZIP plus separately labelled notes identifying
+VHT/HE/HE+BF, mapped/conventional, actual `sysctl -n kern.bootargs`, negotiated
+Wi-Fi PHY/width, server `ifconfig` media and iperf3 version. Do not edit ZIP
+contents to add labels. The standard runner alone does not identify VHT: a
+standard matrix can also run while HE is enabled. The wired peer media are
+not captured by the client runner; throughput cannot prove their setting.
 
 ## Matrices and timing
 

@@ -1,6 +1,6 @@
 # Archived manual forum drafts — not posted
 
-These r11/3×14 drafts are retained as historical text. The current two-variant entry flow, r12/3×20 package and independently checked 60-test BE200 result are in the [maintained benchmark guide](README.md) and [current repository README](../../README.md). Do not reuse the draft download or candidate instructions below as current guidance.
+These r11/3×14 drafts are historical. Current instructions use AirportItlwm-Tahoe **2.0.0** and the **r14 instruction package** (unchanged r13 runtime files): see the [maintained benchmark guide](README.md) and [repository README](../../README.md). Do not reuse the historical download, candidate or DMA instructions below as current guidance.
 
 ## InsanelyMac
 

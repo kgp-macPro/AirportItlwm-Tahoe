@@ -1,0 +1,73 @@
+{
+  "status": "PASS offline package/instruction checks; no hardware or traffic test",
+  "source_head": "efa5f863b94975aa09da3905706600afb37ef355",
+  "zip": "AirportItlwm-Tahoe-Benchmark-Tools-r14.zip",
+  "zip_sha256": "57d8bf31653321bf8f5cba3a3a9297125e74915b75fa2bc110451bace1327819",
+  "zip_crc": "PASS",
+  "sha256_manifest_files": 20,
+  "bundle_manifest_files": 19,
+  "unchanged_protected_files": 14,
+  "checks": [
+    "Five r13 runner scripts and their embedded matrices/guards unchanged",
+    "Historical runner, server helper, diagnosis, VERIFY_TOOLS, build identity, validation evidence and profile resources unchanged",
+    "Packaged protected files match source HEAD byte-for-byte",
+    "Complete package CRC and both manifests verified",
+    "All five runner scripts and supplied shell command blocks parse with bash -n",
+    "AX201 blanket conventional requirement removed from active packaged instructions"
+  ],
+  "deterministic_rebuild_byte_identical": true,
+  "independent_recheck_20261108": {
+    "R14_PACKAGE_INDEPENDENT_CHECK.json": {
+      "status": "PASS independent r14 vs public r13/source",
+      "r14_sha256": "57d8bf31653321bf8f5cba3a3a9297125e74915b75fa2bc110451bace1327819",
+      "zip_crc": "PASS",
+      "checksum_entries": 20,
+      "bundle_manifest_entries": 19,
+      "protected_runtime_files_unchanged": 14,
+      "license_unchanged": true,
+      "exact_source_payload": true,
+      "deterministic_rebuild_byte_identical": true,
+      "runtime_revision_unchanged": "r13-release-2.0.0",
+      "no_driver_build_or_hardware_test": true
+    },
+    "AX201_ORIGINAL_INDEPENDENT_CHECK.json": {
+      "status": "PASS original archive independently checked",
+      "sha256": "7dfa64d4a1447b9a5a4575cc32a2e3672219b49a1c783abb7e36343ca3aad632",
+      "manifest_entries": 374,
+      "tests": 60,
+      "online": "PASS",
+      "boundaries": 8,
+      "actual_dma_modes": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "lifetime_domains": 1,
+      "valid_rate_bandwidth_codes": [
+        3
+      ],
+      "valid_rate_nss": [
+        2
+      ],
+      "identity": "All eight loaded UUID/hash records match release",
+      "scope": "One HE160 standard-matrix campaign; BF and peer Ethernet media NOT established; not a complete mode comparison",
+      "aggregate_tests_reproduced": 20
+    },
+    "AX201_R14_MODE_GUARDS.json": {
+      "status": "PASS offline actual embedded guards on original AX201 binding fixture",
+      "runners": 5,
+      "positive_modes": 10,
+      "opposite_mode_and_wrong_marker_rejections": 20,
+      "mode_expectation": "assertion only; no hardware or configuration changed"
+    },
+    "release_source_guard": "PASS 1481 protected inputs /17 references; no production code diff",
+    "documented_shell_blocks_parsed": 11,
+    "all_five_extracted_runners_actual_matrices_and_failure_guards": "PASS; VERIFY_TOOLS.py from unchanged r13 payload against exact release and P10 bundles",
+    "original_aggregate_precision": "Means computed from full-precision original rates, then rounded; four prepared UDP means adjusted by0.001 Mbit/s"
+  }
+}

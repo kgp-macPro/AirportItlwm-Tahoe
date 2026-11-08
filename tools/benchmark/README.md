@@ -1,4 +1,30 @@
-# AirportItlwm-Tahoe benchmark tools r13
+# AirportItlwm-Tahoe benchmark tools r14
+
+**r14 corrects the packaged test instructions. The five r13 runners, their
+traffic matrices, helper resources, identity profiles and guards are unchanged.**
+Runner-generated provenance therefore continues to identify the r13 runner.
+
+**AX201/CNVW supports mapped DMA. Fulvio's regular configuration is mapped;
+conventional is a separate comparison, not an AX201 requirement.**
+
+| DMA configuration | OpenCore Kernel → Quirks → DisableIoMapper | Runner expectation | Required actual mode |
+|---|---|---|---|
+| mapped | **false** | `EXPECTED_MODE=mapped` | **Mode 2** |
+| conventional | **true** | `EXPECTED_MODE=conventional` | **Mode 1** |
+
+Reboot after changing the EFI quirk or Wi-Fi boot arguments. The expectation
+only checks the driver mode; it cannot change it. Record active AppleVTD
+separately in the mapped configuration. Preserve all identity and mode guards.
+
+| Wi-Fi campaign | Wi-Fi boot arguments | Wired peer media | Runner |
+|---|---|---|---|
+| VHT | No `-itlwmhe` or `-itlwmbf` | **1000Base-T / 1 Gbit/s** | Standard 3×20 |
+| HE | `-itlwmhe`, no `-itlwmbf` | **2500Base-T / 2.5 Gbit/s** | 3×20 UDP1300 |
+| HE + BF opt-in | `-itlwmhe -itlwmbf` | **2500Base-T / 2.5 Gbit/s** | 3×20 UDP1300 |
+
+No `-novht`. Record actual negotiated peer media, Wi-Fi PHY/width and boot
+arguments for each separate campaign. Keep the same extended matrix for HE and
+HE+BF. Higher UDP1600/1700 matrices remain separate stress comparisons.
 
 All five 3×20 runners, runner_profiles, optional AX diagnosis and offline checks
 are included. [Complete guide](https://github.com/kgp-macPro/AirportItlwm-Tahoe/blob/main/docs/benchmark/README.md).

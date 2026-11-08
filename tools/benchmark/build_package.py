@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""Build the complete flat-layout r13 tool ZIP; no network or driver operation."""
+"""Build the r14 documentation-corrected tool ZIP; r13 runners are unchanged."""
 from pathlib import Path
 import argparse,hashlib,json,tempfile,shutil,zipfile
 B=Path(__file__).resolve().parent
-NAME='AirportItlwm-Tahoe-Benchmark-Tools-r13'
-REV='r13-release-2.0.0'
+NAME='AirportItlwm-Tahoe-Benchmark-Tools-r14'
+REV='r14-release-2.0.0-instructions'
 def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 def build(out):
  out.mkdir(parents=True,exist_ok=True)
  runners=sorted(B.glob('AirportItlwm_3x20*PORTABLE_IP_PROMPT.sh'));assert len(runners)==5
- identity=dict(revision=REV,runners={p.name:sha(p)for p in runners},resources={str(p.relative_to(B)):sha(p)for p in (B/'runner_profiles').glob('*')if p.is_file()},historical_3x14_sha256=sha(B/'AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh'),binary_identity=json.loads((B/'BUILD_IDENTITY.json').read_text()),scope='Offline packaging only. Strict original and release identity profiles retained; AX diagnosis optional on BE200.')
+ identity=dict(revision=REV,runners={p.name:sha(p)for p in runners},resources={str(p.relative_to(B)):sha(p)for p in sorted((B/'runner_profiles').glob('*'))if p.is_file()},historical_3x14_sha256=sha(B/'AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh'),binary_identity=json.loads((B/'BUILD_IDENTITY.json').read_text()),scope='Offline packaging only. Strict original and release identity profiles retained; AX diagnosis optional on BE200.')
  (B/'RUNNER_IDENTITY.json').write_text(json.dumps(identity,indent=2)+'\n')
  names=[p.name for p in runners]+['AirportItlwm_3x14_PORTABLE_IP_PROMPT.sh','AirportItlwm_IPERF3_WIRED_SERVER.sh','AX_HE_DIAG_CAPTURE.py','VERIFY_TOOLS.py','BUILD_IDENTITY.json','RUNNER_IDENTITY.json','README.md','START_COMMANDS.txt','LICENSE','build_package.py','runner_profiles','evidence/PACKAGE_VALIDATION.json']
- with tempfile.TemporaryDirectory(prefix='tahoe-r13-')as tmp:
+ with tempfile.TemporaryDirectory(prefix='tahoe-r14-')as tmp:
   root=Path(tmp)/NAME;root.mkdir()
   for name in names:
    src=B/name;dst=root/name;dst.parent.mkdir(parents=True,exist_ok=True)
