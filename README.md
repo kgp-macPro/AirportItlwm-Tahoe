@@ -4,6 +4,10 @@
        width="100%">
 </p>
 
+> **AirDrop beta testing — R49:** Testers with Intel **BE200, AX210, AX211 and AX201** are welcome.
+> [Jump to Beta testing](#beta-testing) for the tested setup, known limitations and screenshots.
+> **2.0.0 remains the regular Wi-Fi release.**
+
 # AirportItlwm-Tahoe 2.0.0
 
 **Intel Wi-Fi for macOS Tahoe with AppleVTD / IOMMU support**
@@ -295,13 +299,6 @@ Follow their own dependencies and instructions. Hackintool's
 “Apple / THIRD_PARTY_DONGLE / 0x004C” does not identify the physical Bluetooth
 chip. The separate Bananz0 BLE/AWDL analysis is not integrated into2.0.0.
 
-## AI-assisted development and human direction
-
-- **OpenAI ChatGPT** — Collaborative analysis, technical discussion, critical review, documentation, handover preparation and release planning under KGP’s continuous direction.
-- **OpenAI Codex CLI** — AI-assisted implementation, debugging, builds, automated checks, REA/Ghidra-assisted binary investigation and repository integration under KGP’s continuous supervision, review and hardware validation.
-
-KGP directs, reviews and validates this work. The [full approved KGP credit and all developer, tester and tool acknowledgements](CREDITS.md) are retained. These acknowledgements do not imply endorsement or support by OpenAI. [Verified GitHub co-author attribution](docs/AI_ATTRIBUTION.md) is limited to tools that actually contributed; it does not replace human responsibility or hardware validation.
-
 ## Limits and historical records
 
 Controlled AX201 HE/BF comparison and AX211 HE/BF hardware validation, some firmware 63 profiles, longer-load/
@@ -315,5 +312,421 @@ No new AirDrop/AWDL/BLE functionality is included. A published interface or a
 AWDL/BLE work was not merged. [Historical releases, qualification and downloads](docs/HISTORY.md)
 remain available, including 1.0.0, 1.1.0 Beta, 1.2.0 Alpha and the old 3×14 runner.
 
-[Credits and attribution](CREDITS.md) · [Technical lineage](docs/TECHNICAL_LINEAGE.md) ·
+[Technical lineage](docs/TECHNICAL_LINEAGE.md) ·
 [Build and identity](docs/BUILD.md) · [License](LICENSE)
+
+
+---
+
+## Inherited licenses and attribution
+
+Existing LICENSE, source copyrights and firmware/SDK notices remain unchanged. The [preserved upstream README](docs/UPSTREAM_README.md) retains upstream credits in their original context, including Acidanthera/MacKernelSDK, Apple, AppleIntelWiFi, ErrorErrorError, Intel firmware/iwlwifi, Linux, mercurysquad/Voodoo80211, OpenBSD/net80211/iwn/iwm/iwx, pigworlds, rpeshkov/black80211, usr-sse2 and zxystd. This project attribution does not replace those notices.
+
+
+---
+
+## Beta testing
+
+### Experimental AirDrop — R49
+
+**Testers with Intel BE200, AX210, AX211 and AX201 are welcome.** R49 extends
+this project's AppleVTD-capable Wi-Fi driver with experimental native AirDrop.
+The aim is to send and receive files through Finder and the normal iPhone
+sharing menu while keeping the infrastructure Wi-Fi connection usable.
+
+R49 is a separate experimental pre-release. **2.0.0 remains the regular
+infrastructure Wi-Fi release**; the benchmarks and configuration above belong
+to that release.
+
+### What works, and what still needs testing
+
+Successful file transfers in both directions have been demonstrated on
+**BE200 and AX210**. Earlier BE200 captures established actual AWDL file
+transport alongside working Internet access. The final BE200 check with R49
+and the matching Bluetooth package confirmed successful Hackintosh ↔ iPhone
+transfers and usable Internet access by observation. AX210 R49 recordings
+also contain successful bidirectional AWDL transfers. These are different
+forms of evidence; the earlier BE200 packet captures are not new R49 captures.
+
+**MacBook Pro ↔ Hackintosh transfers can still be delayed or fail.** Successful
+sessions coexist with unsuccessful attempts, and results vary by peer and
+session. iPhone transfers have generally been more consistent in the reported
+tests. Connection setup, repeatability and transfer speed remain active areas
+of development. A visible peer or an active `awdl0` interface alone does not
+establish a successful file transfer.
+
+| Card | Beta scope | AirDrop hardware evidence |
+|---|---|---|
+| **BE200** | GL92 firmware backend; testing welcome. | Bidirectional transfers demonstrated; earlier captured AWDL successes and a final R49 visual check. |
+| **AX210** | AX firmware backend; testing welcome. | Bidirectional AWDL transfers captured with R49; delays and failed attempts also recorded. |
+| **AX211** | Applicable AX firmware path included; testing welcome. | Additional AirDrop hardware testing is needed. |
+| **AX201** | Applicable AX firmware paths included, including the documented CNVW/Mapped-2 configuration; testing welcome. | Existing infrastructure results remain valid; AirDrop hardware testing is needed. |
+
+AX201, AX210 and AX211 share the applicable AX AWDL implementation, with
+selection of the transport, firmware and command versions required by the
+actual device. This does not make their firmware interchangeable. Existing
+AX201 mapped support is retained. Inclusion in this beta invitation does not
+mean every card, subsystem or platform has already passed an AirDrop test.
+
+### Where the implementation comes from
+
+This beta combines upstream work with development carried out in the
+AirportItlwm-Tahoe project. Its driver foundation remains
+**OpenIntelWireless/itlwm and AirportItlwm**, including the OpenBSD networking
+code inherited through that project. It continues our Ventura Legacy and
+AppleVTD integration, together with the BE200 and AX Wi-Fi work described in
+the 2.0.0 section above. R49 continues our P10R9 infrastructure and
+R30/R42/R44-derived AWDL line; the separate P1 experiment is not its runtime
+foundation.
+
+**Intel/Linux iwlwifi and iwlmvm implementations were ported and adapted**
+for the firmware backends. This includes MAC/PHY/LINK resource handling,
+AP/GO setup, station types, transmit queues, beacon timing and firmware
+command layouts. For BE200, the GL92 backend adapts the appropriate Intel
+MLD firmware structures and role/filter contracts. For AX, the GO integration
+adapts relevant `mvm/mac-ctxt.c`, `mvm/mac80211.c` and `mvm/sta.c` mechanisms.
+These are substantial implementation sources, not just background reading.
+They are integrated into our macOS/Legacy and DMA lifetimes; Linux's complete
+mac80211/cfg80211 stack is not run here, and Linux does not supply a finished
+AirDrop stack. Intel's firmware files retain their separate license.
+
+**Bananz0's AirportItlwm-Tahoe-AWDL work** supplied host-side AWDL foundations
+that were retained and adapted: frame templates, protocol parsing and
+composition, service information, peer handling, synchronization and channel
+sequence structures. The original Glen Muthoka copyright and license notices
+remain. That experimental IWM/9560 firmware implementation was not treated as
+an interchangeable BE200 or AX backend. The separate Bluetooth package also
+adapts BLE patch mechanisms from Bananz0's BrcmPatchRAM-Tahoe-BLE work to the
+native image used by our setup.
+
+**laobamac's work and crazyhulk's experimental AWDL implementation in
+[laobamac PR #53](https://github.com/laobamac/itlwm/pull/53)** supplied
+additional native-integration and P2P/PHY/binding/station mechanisms for
+adaptation and comparison. laobamac also supplied the AX HE reference used
+for our Legacy adaptation. Their complete WCL/Skywalk frontend, dynamic
+listen planning and peer-window buffers were not imported as a single
+identical runtime path.
+
+**retropineaple's [ForbiddenItlwm](https://github.com/retropineaple/ForbiddenItlwm)**
+is a concrete comparison source for LISTENER roles, receive filters,
+infrastructure isolation, peer windows, queues and ACK/Block-Ack behavior.
+Its mechanism for omitting optional infrastructure information from AWDL's
+Data-Path TLV was specifically adapted here. Our Legacy version retains
+additional AWDL address fields. R49 does not import Forbidden's complete
+Skywalk packet pools, LISTENER/BA/peer-pause implementation or channel policy.
+
+**Our own integration** connects these contributed and adapted foundations
+to the Legacy/native AWDL interface and mapper-aware DMA. It includes typed
+native interfaces, original-packet ownership, peer/cache handling, firmware
+generations and resource lifetimes, RX/BSS isolation, completion/watchdog
+ownership and recovery. Within that integration we developed and checked
+the GL92 GO receive-filter correction and subsequent AX startup,
+transmit-format and clock-synchronization corrections. Paired captures and
+real file arrivals are used to assess the resulting behavior. The combined
+implementation is not a byte-for-byte port of any single upstream project.
+
+### What is shared, and what differs
+
+All three projects build on Intel Wi-Fi driver work and use macOS services
+for AirDrop discovery, session establishment and file transfer. The driver
+provides the AWDL radio/data path; it does not replace Finder or implement a
+new AirDrop application. Their frontend and firmware choices differ:
+
+| Area | AirportItlwm-Tahoe R49 | Relationship to the upstream references |
+|---|---|---|
+| **macOS integration** | Restored Ventura `IO80211FamilyLegacy` environment, with this project's AppleVTD-capable driver. | The compared laobamac/Forbidden native/WCL paths are references; their frontend is not substituted for our Legacy integration. |
+| **Channel policy** | Infrastructure primary channel **44**; private AWDL context **44/20 MHz**, without channel hopping. | The examined laobamac PR53 follows channel/peer sequences. Forbidden's policy varies by version: earlier references use 149/6; newer references also handle 44. R49 does not inherit their complete channel policy. |
+| **Private data role** | **GO firmware data role, PROMISC off**, with a private PHY context separate from the infrastructure PHY. | The Forbidden LISTENER approach was examined, but is not the shipping R49 data role. GO here describes an Intel firmware role, not the AWDL master-election role. |
+| **Card backends** | Separate GL92 and AX firmware adaptations beneath the shared native/host integration. | Command formats, queue handling and station setup follow the actual device and firmware contracts. |
+| **Bluetooth** | Separately packaged modified BlueToolFixup plus original IntelBluetoothFirmware and IntelBTPatcher. | This beta uses its own documented Bluetooth setup; Forbidden's BTLEAdvFixup and boot-argument list are not its installation instructions. |
+
+The fixed-channel choice deliberately keeps this beta's scope narrow. The
+tested infrastructure connection can retain 160 MHz while the private AWDL
+context uses 20 MHz on primary channel 44. Separate firmware PHY contexts do
+not mean separate physical radios. Other AP channels and automatic channel
+following are outside the documented R49 setup.
+
+### Requirements and setup
+
+- The same **OCLP-CustoMac 3.0.0+ and matching Legacy wireless root patches**
+  required for 2.0.0.
+- **Infrastructure Wi-Fi on 5 GHz primary channel 44.** The current AWDL
+  implementation uses a fixed channel; other AP channels are not covered.
+- **HE without beamforming** for the documented beta setup. Keep `-itlwmbf`
+  disabled initially. The infrastructure reference uses 160 MHz; the private
+  AWDL context uses 20 MHz on the same primary channel.
+- The tested Bluetooth combination: project-modified **BlueToolFixup 2.7.5**, original
+  **IntelBluetoothFirmware 2.5.3** and **IntelBTPatcher 2.5.3**.
+
+Use these additional boot arguments for the documented beta configuration:
+
+```text
+-itlwmhe -itlwm-awdl -itlwmbeawdldpnoinfra -kgpble
+```
+
+`-kgpble` enables the additional BLE patches in the modified BlueToolFixup.
+`-itlwmbeawdldpnoinfra` selects the adapted Data-Path-TLV form without optional
+infrastructure details; it does **not** disable the normal Wi-Fi connection.
+The 2.7.5 label identifies this project's modified build, not an official
+Acidanthera release. IntelBluetoothFirmware and IntelBTPatcher 2.5.3 are
+unmodified lshbluesky releases.
+Use the beta's Bluetooth instructions rather than the historical 2.0.0
+Bluetooth versions listed above. No BTLEAdvFixup is required by this setup.
+
+**[Download 2.1.0 Beta 1 — RELEASE.zip](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.1.0-beta.1/AirportItlwm-Tahoe-2.1.0-beta.1-RELEASE.zip)** ·
+[Complete SOURCE.zip](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.1.0-beta.1/AirportItlwm-Tahoe-2.1.0-beta.1-SOURCE.zip) ·
+[SHA256 checksums](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.1.0-beta.1/SHA256SUMS.txt) ·
+[Beta release and instructions](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/tag/v2.1.0-beta.1) ·
+[Tagged sources](https://github.com/kgp-macPro/AirportItlwm-Tahoe/tree/v2.1.0-beta.1)
+
+The beta Wi-Fi and Bluetooth drivers are separate components supplied in one
+RELEASE.zip, under `Wi-Fi/` and `Bluetooth/`. Follow the included INSTALL.md,
+back up the current kexts and boot configuration,
+and retain a known working setup for rollback. All installation and reboot
+steps are manual.
+
+### Current status
+
+| Feature | Status |
+|---|---|
+| **AirDrop — BE200 and AX210** | Successful bidirectional transfers demonstrated; reliability varies by peer and session. |
+| **Mac-to-Mac transfers** | Connection setup can be slow, and some transfers fail. Start latency and transfer speed remain development priorities. |
+| **Personal Hotspot** | The adapted laobamac WPA2/WPA3 compatibility change is included. Historical connections succeeded, but current attempts can fail during BLE setup or WLAN network matching. Not reliably qualified. |
+| **Continuity Camera** | Not qualified by the AirDrop results. |
+| **AX201 and AX211** | Included for beta testing; actual AirDrop hardware results are still needed. |
+
+R49 is not locked to one Tahoe build number. Later macOS builds still require
+a compatible Legacy wireless environment; future compatibility is not guaranteed.
+
+### Personal Hotspot: included change and remaining limits
+
+The WLAN driver includes a Legacy adaptation of **mingww64's WPA2/WPA3
+transition-mode changes from laobamac PR #36**. This allows qualified mixed
+PSK/SAE networks to use the WPA2 mode supported by this driver. It is a WLAN
+security/association change, separate from `-kgpble` and the Bluetooth patches.
+
+Historical tests reached Hotspot activation, WLAN connection and DHCP.
+Subsequent attempts have also failed before WLAN join during BLE connection
+setup, or later while matching the enabled Hotspot to a scanned network.
+The included WPA change does not establish a complete Instant Hotspot fix.
+Reliable menu-based Instant Hotspot remains open; the screenshots below
+document an earlier successful session rather than a reliability promise.
+
+### Screenshots
+
+These preserved **BE200** screenshots show earlier development milestones:
+AirDrop with **R25 + BLE-R25-01 on 12 November 2026**, and Personal Hotspot
+with **R27 + BLE-R25-01 on 13 November 2026**. They are historical examples,
+not R49 screenshots; the current limitations above still apply.
+
+**Hackintosh → iPhone and MacBook Pro:** both destinations show **Sent**.
+File arrivals were also confirmed by the user.
+
+<p>
+  <a href="Assets/AWDL-Beta/Historical/AirDrop-Hack-to-iPhone-and-MBP.png"><img src="Assets/AWDL-Beta/Historical/AirDrop-Hack-to-iPhone-and-MBP.png" alt="Historical R25 milestone: Hackintosh AirDrop dialog shows Sent for iPhone and MacBook Pro" width="363"></a>
+</p>
+
+<details>
+<summary>More AirDrop screenshots — return directions and full desktop</summary>
+
+**MacBook Pro → Hackintosh:** native sender confirmation.
+
+<p>
+  <a href="Assets/AWDL-Beta/Historical/AirDrop-MBP-to-Hack.png"><img src="Assets/AWDL-Beta/Historical/AirDrop-MBP-to-Hack.png" alt="Historical R25: MacBook Pro shows Sent for the Hackintosh" width="780"></a>
+</p>
+
+**iPhone → Hackintosh:** the iPhone shows **Gesendet** (Sent).
+
+<p>
+  <a href="Assets/AWDL-Beta/Historical/AirDrop-iPhone-to-Hack.png"><img src="Assets/AWDL-Beta/Historical/AirDrop-iPhone-to-Hack.png" alt="Historical R25: iPhone shows Gesendet for Mac Pro" width="300"></a>
+</p>
+
+**Full desktop:** the same two outgoing confirmations as the first image.
+
+<p>
+  <a href="Assets/AWDL-Beta/Historical/AirDrop-Hack-to-iPhone-and-MBP-full.png"><img src="Assets/AWDL-Beta/Historical/AirDrop-Hack-to-iPhone-and-MBP-full.png" alt="Historical R25: full Hackintosh desktop with the same two AirDrop confirmations" width="780"></a>
+</p>
+
+</details>
+
+<details>
+<summary>Historical Personal Hotspot connection — current reliability remains limited</summary>
+
+**iPhone 18 Pro — Connected.** The preserved R27 run also records a WLAN link
+and an iPhone-issued DHCP address.
+
+<p>
+  <a href="Assets/AWDL-Beta/Historical/Hotspot-connected.png"><img src="Assets/AWDL-Beta/Historical/Hotspot-connected.png" alt="Historical R27 Hotspot connection: iPhone 18 Pro Connected" width="420"></a>
+</p>
+
+**Personal Hotspot in the Wi-Fi menu.**
+
+<p>
+  <a href="Assets/AWDL-Beta/Historical/Hotspot-menu.png"><img src="Assets/AWDL-Beta/Historical/Hotspot-menu.png" alt="Historical R27 Hotspot connection in the Wi-Fi menu" width="309"></a>
+</p>
+
+**Network settings:** Wi-Fi connected; Ethernet services disconnected or inactive.
+
+<p>
+  <a href="Assets/AWDL-Beta/Historical/Hotspot-network-settings.png"><img src="Assets/AWDL-Beta/Historical/Hotspot-network-settings.png" alt="Historical Hotspot session: Wi-Fi connected and Ethernet services inactive or disconnected" width="420"></a>
+</p>
+
+**Browser session:** a loaded GitHub page during the reported Hotspot use.
+This image alone does not establish the browser request's network route.
+
+<p>
+  <a href="Assets/AWDL-Beta/Historical/Hotspot-browser.png"><img src="Assets/AWDL-Beta/Historical/Hotspot-browser.png" alt="Loaded GitHub page during the historical Hotspot session" width="780"></a>
+</p>
+
+</details>
+
+### Testing and feedback
+
+Please report the card, macOS version, loaded WLAN/Bluetooth versions, AP
+channel and transfer direction. Distinguish discovery from an actual file
+arrival, and note delays, failures and whether Internet access remained usable.
+
+For AX201 and AX211 in particular, please include PCI device/subsystem IDs and
+the firmware identity when available. Report the configuration actually used,
+including AppleVTD/mapped status, rather than inferring it from the card name.
+
+For a useful Wi-Fi check, turn Ethernet off on both Macs during the test.
+AirDrop may still use the local Wi-Fi network through the AP; this is a valid
+transport choice. Existing paired capture helpers are optional and allow
+AWDL and local-Wi-Fi transfers to be distinguished.
+
+Start with normal Wi-Fi after login, then open AirDrop and send a small file
+in each direction. If that works, repeat with the same larger file to compare
+setup delay and transfer time. A transfer over the existing local Wi-Fi
+network is a valid AirDrop result; captures are needed when specifically
+qualifying the AWDL path. Please keep failed attempts in the report as well
+as successes.
+
+
+
+---
+
+## Credits
+
+AirportItlwm-Tahoe builds on work by several projects and developers. The
+credits below cover the regular Wi-Fi release and the experimental AirDrop
+beta; beta contributions are identified explicitly.
+
+### Driver foundations and contributed work
+
+- **[zxystd and OpenIntelWireless](https://github.com/OpenIntelWireless/itlwm)**
+  — itlwm/AirportItlwm, the Intel wireless driver foundation and the original
+  Apple wireless integration. **[DexterSLamb](https://github.com/DexterSLamb)**
+  — the pinned upstream fork used as this project's starting point.
+- **Intel and the Linux iwlwifi/iwlmvm contributors** — firmware API
+  definitions and implementations ported/adapted for MAC/PHY/LINK resources,
+  AP/GO roles, stations, queues, beacons and TSF timing. The GL92 backend and
+  AX GO integration depend on this work. Credit includes **Intel Corporation,
+  Intel Mobile Communications GmbH and Intel Deutschland GmbH**, as named in
+  the source; original SPDX and copyright notices are retained. Intel's
+  firmware files remain separately licensed.
+- **[gsfront](https://github.com/gsfront)** — contributed BE200 HE and optional
+  HE SU-Beamformee support, firmware/link/station setup, HE information-element
+  corrections and receive aggregation/reordering work through
+  [PR #5](https://github.com/kgp-macPro/AirportItlwm-Tahoe/pull/5).
+  Original commits, authorship and co-author notices are preserved.
+- **[laobamac](https://github.com/laobamac/itlwm)** — AX HE implementation used
+  as a reference and adapted to our Ventura Legacy path; native Wi-Fi and
+  macOS integration sources for adaptation and comparison.
+  **[crazyhulk](https://github.com/crazyhulk)** — authored the experimental
+  AWDL/P2P implementation submitted as
+  [laobamac PR #53](https://github.com/laobamac/itlwm/pull/53), including
+  mechanisms adapted for our AX backend. Our Legacy frontend, DMA lifetimes
+  and final integration remain distinct project work.
+- **[mingww64](https://github.com/mingww64)** — authored
+  [laobamac PR #36](https://github.com/laobamac/itlwm/pull/36), the WPA2/WPA3
+  transition-mode association changes. The beta adapts the relevant scan-IE
+  conversion and PSK-selection mechanisms to the Legacy driver. This credits
+  the contributed WLAN change without claiming reliable Instant Hotspot.
+  [PR #55](https://github.com/laobamac/itlwm/pull/55) was separately examined
+  as an LQM/structure-layout reference; its WCL message path is not claimed
+  as an R49 import.
+- **[Bananz0](https://github.com/Bananz0), and Glen Muthoka as credited in
+  the original source** —
+  [AirportItlwm-Tahoe-AWDL](https://github.com/Bananz0/AirportItlwm-Tahoe-AWDL)
+  host-protocol code retained and adapted for AWDL templates, frame/service
+  handling, peer synchronization and channel structures; original copyright
+  and GPL notices remain. Additional mechanisms from the companion
+  [Tahoe BLE work](https://github.com/Bananz0/BrcmPatchRAM-Tahoe-BLE) were
+  adapted into our separate modified BlueToolFixup.
+- **[retropineaple](https://github.com/retropineaple)** — author of
+  [ForbiddenItlwm](https://github.com/retropineaple/ForbiddenItlwm), an important
+  AWDL mechanism and comparison reference. Announcement framing, service
+  handling, peer timing and coexistence behavior informed adaptations and
+  investigations here. The Data-Path-TLV infrastructure-omission mechanism
+  was specifically adapted, with Legacy address fields retained.
+  R49's Legacy frontend, fixed-channel GO role and
+  BE200/AX firmware implementation are described separately in the beta
+  section.
+- **NorthKoreanNoodles / maddog860** — published the direct virtual-interface
+  attach/publication approach, subsequently validated and adopted for this
+  project's Legacy AWDL interface.
+- **[Acidanthera](https://github.com/acidanthera)** — Lilu, MacKernelSDK and
+  the original BlueToolFixup/BrcmPatchRAM foundation.
+  **zxystd, OpenIntelWireless and
+  [lshbluesky](https://github.com/lshbluesky/IntelBluetoothFirmware)** —
+  IntelBluetoothFirmware and IntelBTPatcher, including the unchanged 2.5.3
+  components in the tested bundle. The beta's modified BlueToolFixup and BLE
+  integration combine these foundations, Bananz0's patch mechanisms and our
+  native-image/controller-selection adaptations.
+
+### Project development, testing and research
+
+**[KGP / kgp-macPro](https://github.com/kgp-macPro) — Project lead, maintainer
+and integration coordinator.** Project concept and technical goals;
+continuous human direction, supervision and critical review of AI-assisted
+development and reverse engineering; integration and refinement of upstream
+contributions; regression investigation; software and hardware validation
+across driver revisions, devices and macOS builds; and the design, execution
+and analysis of reproducible benchmark campaigns.
+
+KGP also coordinates community testing, reviews conflicting findings,
+challenges assumptions and redirects investigations, maintains technical
+documentation and evidence-backed handovers, and manages release preparation
+and publication. Development combines AI-assisted implementation and binary
+analysis with sustained human judgment, hands-on hardware testing and
+repeated validation on real systems.
+
+- **[netiave](https://github.com/netiave)** — historical AX201/CNVW testing,
+  including the documented mapped/AppleVTD configuration.
+  **[LuizMeliga](https://github.com/luizmeliga)** — historical AX211 testing.
+  Their earlier infrastructure results are credited without implying that
+  they tested the current AirDrop beta. Thanks also to the community members
+  reporting reproducible successes, failures and regressions.
+- **[Mieze / IntelLucy](https://github.com/Mieze/IntelLucy)** — prior art
+  informing mapper-aware DMA and lifetime design; reference work, not a claim
+  of copied implementation or co-development.
+- **OpenBSD and the net80211/iwn/iwm/iwx contributors** — inherited wireless
+  stack and Intel driver ancestry, with original per-file notices retained.
+- **[seemoo-lab / Open Wireless Link](https://github.com/seemoo-lab/owl)** —
+  AWDL protocol and timing research used as a reference; no OWL implementation
+  code is imported into this driver.
+- **OCLP contributors and
+  [OCLP-CustoMac](https://github.com/kgp-macPro/OCLP-CustoMac)** — the restored
+  wireless framework/root-patch environment used by this project's setup.
+- **[REA](https://github.com/morluto/rea) and
+  [Ghidra](https://github.com/NationalSecurityAgency/ghidra)** — binary-analysis
+  tools used to investigate specific native interfaces and compiled paths.
+  Their results do not substitute for firmware or hardware validation.
+
+### AI-assisted development and human direction
+
+- **OpenAI ChatGPT** — Collaborative analysis, technical discussion, critical review, documentation, handover preparation and release planning under KGP’s continuous direction.
+- **OpenAI Codex CLI** — AI-assisted implementation, debugging, builds, automated checks, REA/Ghidra-assisted binary investigation and repository integration under KGP’s continuous supervision, review and hardware validation.
+
+KGP directs, reviews and validates this work and controls project and release
+decisions. These acknowledgements do not imply endorsement or support by
+OpenAI. [Verified GitHub co-author attribution](docs/AI_ATTRIBUTION.md) is
+limited to tools that actually contributed; it does not replace human
+responsibility or hardware validation.
+
+Inherited source copyrights, co-author notices and the [license](LICENSE)
+remain applicable.
+These acknowledgements distinguish contributed code, adapted work,
+references, testing and tools; they do not imply joint maintenance or
+endorsement by the named projects.
