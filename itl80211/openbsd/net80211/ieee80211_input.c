@@ -284,7 +284,7 @@ ieee80211_inputm(struct _ifnet *ifp, mbuf_t m, struct ieee80211_node *ni,
     struct ieee80211_frame *wh;
     u_int16_t *orxseq, nrxseq, qos;
     u_int8_t dir, type, subtype, tid;
-    int hdrlen, hasqos;
+    int hdrlen, hasqos, scan_only;
     
     _KASSERT(ni != NULL);
     
@@ -313,6 +313,15 @@ ieee80211_inputm(struct _ifnet *ifp, mbuf_t m, struct ieee80211_node *ni,
     dir = wh->i_fc[1] & IEEE80211_FC1_DIR_MASK;
     type = wh->i_fc[0] & IEEE80211_FC0_TYPE_MASK;
     subtype = wh->i_fc[0] & IEEE80211_FC0_SUBTYPE_MASK;
+
+    /* A foreign scan observation is never authority for this BSS's control,
+     * sequence, quality or inactivity state. Keep normal beacon/probe parsing
+     * and scan-node updates, including while a background scan is active. */
+    scan_only = !!(rxi->rxi_flags & IEEE80211_RXI_SCAN_ONLY);
+    if (scan_only && (type != IEEE80211_FC0_TYPE_MGT ||
+        (subtype != IEEE80211_FC0_SUBTYPE_BEACON &&
+         subtype != IEEE80211_FC0_SUBTYPE_PROBE_RESP)))
+        goto out;
     
     if (type != IEEE80211_FC0_TYPE_CTL) {
         hdrlen = ieee80211_get_hdrlen(wh);
@@ -411,7 +420,7 @@ ieee80211_inputm(struct _ifnet *ifp, mbuf_t m, struct ieee80211_node *ni,
     }
     
     /* duplicate detection (see 9.2.9) */
-    if (ieee80211_has_seq(wh) &&
+    if (!scan_only && ieee80211_has_seq(wh) &&
         ic->ic_state != IEEE80211_S_SCAN) {
         nrxseq = letoh16(*(u_int16_t *)wh->i_seq) >>
         IEEE80211_SEQ_SEQ_SHIFT;
@@ -433,7 +442,7 @@ ieee80211_inputm(struct _ifnet *ifp, mbuf_t m, struct ieee80211_node *ni,
         }
         *orxseq = nrxseq;
     }
-    if (ic->ic_state > IEEE80211_S_SCAN) {
+    if (!scan_only && ic->ic_state > IEEE80211_S_SCAN) {
         ni->ni_rssi = rxi->rxi_rssi;
         ni->ni_rstamp = rxi->rxi_tstamp;
         ni->ni_inact = 0;
@@ -1969,7 +1978,8 @@ ieee80211_recv_probe_resp(struct ieee80211com *ic, mbuf_t m,
      * When operating in station mode, check for state updates
      * while we're associated.
      */
-    if (ic->ic_opmode == IEEE80211_M_STA &&
+    if (!(rxi->rxi_flags & IEEE80211_RXI_SCAN_ONLY) &&
+        ic->ic_opmode == IEEE80211_M_STA &&
         ic->ic_state == IEEE80211_S_RUN &&
         ni->ni_state == IEEE80211_STA_BSS) {
         int updateprot = 0;
@@ -2068,7 +2078,8 @@ ieee80211_recv_probe_resp(struct ieee80211com *ic, mbuf_t m,
      * We do not try to update EDCA parameters if QoS was not negotiated
      * with the AP at association time.
      */
-    if (ni->ni_flags & IEEE80211_NODE_QOS) {
+    if (!(rxi->rxi_flags & IEEE80211_RXI_SCAN_ONLY) &&
+        (ni->ni_flags & IEEE80211_NODE_QOS)) {
         /* always prefer EDCA IE over Wi-Fi Alliance WMM IE */
         if ((edcaie != NULL &&
              ieee80211_parse_edca_params(ic, edcaie) == 0) ||

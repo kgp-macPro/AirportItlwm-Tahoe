@@ -11,7 +11,12 @@
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU General Public License for more details.
 */
+#include <Airport/BeAwdlNativeTx.hpp>
+#include <Airport/LegacyAwdlServiceEvidence.hpp>
 #include "Apple80211.h"
+#include "AwdlTransport.hpp"
+#include <Airport/BeAwdlAvailability.hpp>
+#include <Airport/AwdlP9.hpp>
 
 #include "IOKit/network/IOGatedOutputQueue.h"
 #include <libkern/c++/OSString.h>
@@ -138,7 +143,108 @@ public:
     virtual SInt32 enableFeature(IO80211FeatureCode code, void* data) override;
     virtual void requestPacketTx(void*, UInt) override;
     virtual int bpfOutputPacket(OSObject *,UInt,mbuf_t) override;
-    int outputActionFrame(OSObject *, mbuf_t m);
+    int outputActionFrame(IO80211Interface *, mbuf_t m) override;
+    static void beAwdlTimerAction(OSObject *, IOTimerEventSource *);
+    void beAwdlStep();
+    void beAwdlAvailabilityStep();
+    void beAwdlSendAction();
+    void beAwdlReceiveData();
+    void beAwdlReceiveActions();
+    void beAwdlServiceData();
+    void beAwdlCancelNativeData(IO80211VirtualInterface *);
+    IOReturn beAwdlCacheRequest(IO80211VirtualInterface *,const void *);
+    struct BeAwdlCacheRecord {
+        uint8_t bytes[0x1d0]={};IO80211VirtualInterface *vif=nullptr;
+        uint64_t publication=0,serial=0;uint32_t generation=0,epoch=0,state=0,lastError=0;
+    };
+    BeAwdlCacheRecord beAwdlCache[4];
+    uint64_t beAwdlCacheFault[16]={222,1,128}; // first actual cache error survives ring rollover
+    uint64_t beAwdlCacheTrace[200]={216,1,1600}; // bounded16 cache transactions; no native state writes
+    void beAwdlCacheEvent(unsigned,const uint8_t *,unsigned,uint32_t,uint64_t);
+    struct BeAwdlOriginal {mbuf_t packet=nullptr;IO80211VirtualInterface *vif=nullptr;uint64_t ticket=0,hostNs=0,publication=0;uint32_t generation=0,epoch=0;};
+    BeAwdlOriginal beAwdlOriginals[8];
+    be_awdl::DataCompletionEvidence beAwdlDataCompletions;
+    uint64_t beAwdlTxDetailPublished=UINT64_MAX;
+    uint64_t beAwdlDataNative[32]={208,1,256};
+    uint64_t beAwdlDataTicket=0,beAwdlCacheTicket=0;UInt beAwdlDataWanted=0;
+    uint64_t beAwdlMulticastDeferredSinceNs=0;
+    bool beAwdlCancelBusy=false; // withdrawing native CPU work cannot admit replacement requests
+    bool beAwdlDataBusy=false,beAwdlDataStopWanted=false,beAwdlDataStopTried=false;
+
+    bool beAwdlDataInputBusy=false;
+    int beAwdlOutputAction(OSObject *, mbuf_t);
+    void beAwdlRequestTx(OSObject *, UInt);
+    uint64_t beAwdlTxGateDrops=0;
+    be_awdl::NativeActions beAwdlNativeActions;
+    be_awdl::NativeActions::Item beAwdlNativeAction;
+    be_awdl::NativeActions::Item beAwdlAutoMi={};
+    bool beAwdlAutoMiValid=false;
+    struct BeAwdlOob {
+        IO80211VirtualInterface *vif=nullptr;OSObject *manager=nullptr;
+        uint64_t ticket=0,queuedNs=0,publication=0;
+        uint32_t generation=0,epoch=0;uint8_t destination[6]={};
+        bool submitted=false;int status=-1;
+    } beAwdlOob[4];
+    uint64_t beAwdlAutoMiTicket=0; // distinct from queue-full diagnostics
+    uint64_t beAwdlOobTicket=0,beAwdlOobStats[16]={215,1,128};
+    bool beAwdlOobBusy=false,beAwdlActionTxBusy=false;
+    bool beAwdlAfTxModeKnown=false;uint32_t beAwdlAfTxMode=0; // ignored until real SET208
+    IOReturn beAwdlOobRequest(IO80211VirtualInterface *,const apple80211_awdl_oob_request *);
+    void beAwdlServiceOob();
+    uint64_t beAwdlTxStats[32] = {204,1,256};
+    uint64_t beAwdlFlowStats[32] = {211,1,256}; // bounded native peer/election/request observations
+    uint64_t beAwdlPeerAdmission[64] = {217,1,512}; // MAC-qualified native PPP/cache state, read only
+    void beAwdlObserveAdmission(OSObject *,const uint8_t *,unsigned);
+    uint64_t beAwdlPeerStats[64] = {212,1,512}; // read-only, exact Legacy peer state; four last distinct sources
+    IOReturn beAwdlCreate(apple80211_virt_if_create_data *);
+    IOReturn beAwdlDelete(apple80211_virt_if_delete_data *);
+    bool beAwdlVifBusy = false;
+    struct BeAwdlVifCall { unsigned action; ether_addr *ether; UInt role; IO80211VirtualInterface *vif; SInt32 result; };
+    static IOReturn beAwdlVifAction(OSObject *, void *, void *, void *, void *);
+    struct BeAwdlIoctl { UInt type; int number; IO80211VirtualInterface *vif; void *data; SInt32 result; };
+    static IOReturn beAwdlIoctlAction(OSObject *, void *, void *, void *, void *);
+    bool beAwdlEnabled = false, beAwdlVirtualEnabled = false;
+    bool beAwdlDpStateNoInfra = false; // optional R29 comparison, default off
+    be_awdl::LegacyServiceEvidence beAwdlServiceEvidence;
+    uint64_t beAwdlServiceWord(OSObject *,const uint8_t *);
+    uint64_t beAwdlDpStateTest[16] = {225,1,128}; // counts/last edit, no pointers
+    IOTimerEventSource *beAwdlTimer = nullptr;
+    IO80211VirtualInterface *beAwdlVif = nullptr; // borrowed while attached; subtype clears before detach
+    uint8_t beAwdlAddress[6] = {};
+    uint16_t beAwdlSequence = 0;
+    uint16_t beAwdlMulticastSequence[4] = {}; // private AWDL payload AC streams; independent of dot11
+    uint32_t beAwdlPublishTick = 0;
+    uint64_t beAwdlRadioGeneration = UINT64_MAX, beAwdlRadioEpoch = UINT64_MAX;
+    bool beAwdlStepBusy = false, beAwdlParamsValid = false, beAwdlSequenceValid = false;
+    apple80211_awdl_sync_params beAwdlNativeParams = {};
+    apple80211_awdl_sync_channel_sequence beAwdlNativeSequence = {};
+    ItlIwx::BeAwdlFrame beAwdlRxFrame;
+    ItlIwx::BeAwdlFrame beAwdlActionRxFrame; // separate scratch across native reentry
+    // Independent producers have independent busy guards. Never let a
+    // nested Action/data service overwrite the other request's prepared bytes.
+    uint8_t beAwdlTxBytes[4096] = {};
+    uint8_t beAwdlDataTxBytes[4096] = {};
+    // Native RX allocation/callbacks may reenter TX on this same workloop.
+    // The RX busy guard protects this independent CPU-only conversion buffer.
+    uint8_t beAwdlDataRxBytes[4096] = {};
+    itlwm_awdl::TransportState beAwdlTransport;
+    // Read-only channel-contract evidence: native requests vs configured radio.
+    uint64_t beAwdlChannelStats[24]={226,1,192};
+    awdl_p9::Template beAwdlTemplate;
+    uint64_t beAwdlStats[28] = {};
+    uint64_t beAwdlRxServiceStats[16] = {214,1,128}; // bounded native Action service/age, no pointers
+    uint64_t beAwdlNativeStats[16] = {1}; // bounded read-only native gate/return observations
+    apple80211_awdl_sync_state beAwdlNativeSyncRequest = {};
+    bool beAwdlNativeSyncValid = false, beAwdlAvailabilityBusy = false;
+    uint32_t beAwdlFastTick = 0;
+    uint64_t beAwdlWindowNativeStats[32] = {2};
+    uint64_t beAwdlWindowMismatch = UINT64_MAX;
+    uint64_t beAwdlNextWindowNs = 0, beAwdlPostedWindow = 0;
+    uint64_t beAwdlWindowGeneration = UINT64_MAX, beAwdlWindowEpoch = UINT64_MAX;
+    uint64_t beAwdlWindowPlanSerial = 0, beAwdlWindowPlanPublication = 0;
+    be_awdl::NativeConfig beAwdlWindowPlanConfig = {};
+    bool beAwdlWindowAnnounced = false;
+    uint64_t beAwdlLastActionNs = 0, beAwdlLastNativeActionNs = 0;
     int bpfOutput80211Radio(OSObject *, mbuf_t m);
     
     
@@ -303,3 +409,13 @@ public:
     uint32_t btcOptions;
     bool awdlSyncEnable;
 };
+
+#if __IO80211_TARGET == __MAC_13_0
+// Minimal KGP 2O VIF concept, reconciled with current native ABI and BE gate.
+class BeAwdlInterface : public IO80211P2PInterface {
+    OSDeclareDefaultStructors(BeAwdlInterface)
+public:
+    bool deleteRequested = false;
+    void detach(IOService *) override;
+};
+#endif

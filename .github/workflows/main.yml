@@ -10,6 +10,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   validate:
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v2.0.')
     name: Pinned 2.0.0 inputs, AX and BE200 regressions, compatibility build
     runs-on: macos-15-intel
     timeout-minutes: 45

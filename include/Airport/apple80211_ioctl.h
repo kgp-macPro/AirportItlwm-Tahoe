@@ -987,8 +987,16 @@ struct apple80211_awdl_election_rssi_thresholds {
 } __attribute__((packed));
 
 struct apple80211_channel_sequence {
-    uint16_t    flags;
-    uint8_t     pad;
+#if __IO80211_TARGET == __MAC_13_0
+    // REA: Legacy setChannelSequenceUnconditional 0x1782a writes a u32
+    // channel at header+16+i*12 into a zeroed 400-byte allocation.
+    uint32_t flags;
+    uint32_t reserved0;
+    uint32_t reserved1;
+#else
+    uint16_t flags;
+    uint8_t pad;
+#endif
 } __attribute__((packed));
 
 struct apple80211_awdl_sync_channel_sequence {
@@ -1000,7 +1008,11 @@ struct apple80211_awdl_sync_channel_sequence {
     uint8_t     duplicate_count;    // 8
     uint8_t     fill_channel;       // 9
     uint8_t     pad2[6];
+    #if __IO80211_TARGET == __MAC_13_0
+    struct apple80211_channel_sequence seqs[32];
+#else
     struct apple80211_channel_sequence seqs[APPLE80211_MAX_CHANNELS];
+#endif
 } __attribute__((packed));
 
 static_assert(__offsetof(apple80211_awdl_sync_channel_sequence, seqs) == 16, "seqs offset error");
@@ -1023,7 +1035,12 @@ struct apple80211_awdl_extension_state_machine_parameter {
 struct apple80211_awdl_sync_state {
     uint32_t    version;
     uint32_t    state;
+    // Exact Ventura Legacy4C07538B GET/SET134 wrappers copy24 bytes, not8.
+    // Master at+8 and mode byte+16 are consumed by the matched adapter.
+    // Other bytes remain opaque; do not invent meanings or overwrite them.
+    uint8_t     native_detail[16];
 } __attribute__((packed));
+static_assert(sizeof(apple80211_awdl_sync_state)==24,"matched native sync-state request");
 
 struct apple80211_awdl_sync_params {
     uint32_t    version;
@@ -1034,13 +1051,25 @@ struct apple80211_awdl_sync_params {
 } __attribute__((packed));
 
 struct apple80211_awdl_cap {
+#if __IO80211_TARGET == __MAC_13_0
+    // Exact Legacy enableAWDL0x20b7c reads u16 version/u16 length/u8 flags.
+    uint16_t    version;
+    uint16_t    length;
+#else
     uint32_t    version;
+#endif
     uint8_t     cap;
 } __attribute__((packed));
 
 struct apple80211_awdl_af_tx_mode {
     uint32_t    version;
+#if __IO80211_TARGET == __MAC_13_0
+    // Exact Legacy get/set marshallers0x801f8/0x8b068 copy exactly8 bytes;
+    // native consumers0x48422/0x484fe read a dword at+4, not a qword.
+    uint32_t    mode;
+#else
     uint64_t    mode;
+#endif
 } __attribute__((packed));
 
 #define AWDL_OOB_AF_PARAMS_SIZE 38
@@ -1051,7 +1080,12 @@ struct apple80211_awdl_oob_request {
     uint32_t    unk2;               // 8
     uint32_t    unk3;               // 12
     uint32_t    unk4;               // 16
+#if __IO80211_TARGET == __MAC_13_0
+    uint16_t    channel;            // 20; historical name, semantics NOT proven.
+                                   // sendUnicastMI0x41e0c writes6 here; not authority to retune.
+#else
     uint16_t    pad1;
+#endif
     uint32_t    unk5;               // 22
     uint16_t    unk6;               // 26
     uint32_t    pad2;
@@ -1059,9 +1093,20 @@ struct apple80211_awdl_oob_request {
     uint32_t    pad3;
     uint16_t    data_len;           // 40
     uint32_t    pad4;
-    uint16_t    unk9;               // 44
-    uint8_t     data[1782];         // 48
+    uint16_t    unk9;               // 46
+#if __IO80211_TARGET == __MAC_13_0
+    // Matched Ventura Legacy updatePrimaryPayloadMI0x42327: borrowed CPU
+    // buffer, NOT inline storage. Valid only during synchronous native IOCTL.
+    const uint8_t *data;           // 48
+#else
+    uint8_t     data[1782];         // Unverified older-target declaration kept.
+#endif
 } __attribute__((packed));
+#if __IO80211_TARGET == __MAC_13_0
+static_assert(sizeof(apple80211_awdl_oob_request)==56,"native OOB header size");
+static_assert(__builtin_offsetof(apple80211_awdl_oob_request,data_len)==40,"native OOB length");
+static_assert(__builtin_offsetof(apple80211_awdl_oob_request,data)==48,"native OOB borrowed pointer");
+#endif
 
 //Roam: <airport[565]> DISABLED, 2.4GHz on awdl0 => {
 //    "ROAM_PROF" =     (

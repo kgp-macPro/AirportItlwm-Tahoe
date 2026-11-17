@@ -35,6 +35,9 @@ bool AirportItlwm::init(OSDictionary *properties)
     fLinkStateCallbackSeen = false;
     fLinkStateCallbackOK = false;
     awdlSyncEnable = true;
+    awdlSyncState = awdlElectionId = awdlPresenceMode = 0;
+    awdlMasterChannel = awdlSecondaryMasterChannel = 0;
+    memset(awdlBSSID, 0, sizeof(awdlBSSID));
     power_state = 0;
     memset(geo_location_cc, 0, sizeof(geo_location_cc));
     return ret;
@@ -427,6 +430,18 @@ bool AirportItlwm::start(IOService *provider)
               (unsigned long long)upperTime2G[2], unsigned(timeOK2G));
         return false;
     }
+    beAwdlEnabled = false;
+    int awdlArgument = 0;
+#if __IO80211_TARGET == __MAC_13_0
+    if (auto *iwx = OSDynamicCast(ItlIwx, fHalService)) {
+        beAwdlEnabled = PE_parse_boot_argn("-itlwm-awdl", &awdlArgument, sizeof(awdlArgument)) && iwx->beAwdlSupported();
+        iwx->beAwdlOptIn = beAwdlEnabled;
+        iwx->beAwdlDataOptIn = beAwdlEnabled;
+        beAwdlDpStateNoInfra = iwx->beAwdlDataOptIn && PE_parse_boot_argn("-itlwmbeawdldpnoinfra", &awdlArgument, sizeof(awdlArgument));
+        beAwdlDpStateTest[3] = beAwdlDpStateNoInfra;
+        if(beAwdlEnabled)setProperty("KGP_AWDL_CANDIDATE","AWDL-EXPERIMENTAL-R49");
+    }
+#endif
     if (!attachInterface((IONetworkInterface **)&fNetIf, true)) {
         XYLog("attach to interface fail\n");
         fHalService->detach(pciNub);
@@ -457,6 +472,13 @@ bool AirportItlwm::start(IOService *provider)
     setLinkStatus(kIONetworkLinkValid);
     if (TAILQ_EMPTY(&fHalService->get80211Controller()->ic_ess))
         fHalService->get80211Controller()->ic_flags |= IEEE80211_F_AUTO_JOIN;
+    if (beAwdlEnabled) {
+        beAwdlTimer = IOTimerEventSource::timerEventSource(this, &AirportItlwm::beAwdlTimerAction);
+        if (!beAwdlTimer || _fWorkloop->addEventSource(beAwdlTimer) != kIOReturnSuccess) {
+            OSSafeReleaseNULL(beAwdlTimer); beAwdlEnabled = false;
+            if (auto *iwx = OSDynamicCast(ItlIwx, fHalService)) iwx->beAwdlOptIn = false;
+        } else beAwdlTimer->setTimeoutMS(200);
+    }
     registerService();
     fNetIf->registerService();
     return true;
@@ -645,6 +667,16 @@ setLinkStatusInGate(UInt32 status, const IONetworkMedium *activeMedium, UInt64 s
 
 void AirportItlwm::releaseAll()
 {
+    if (beAwdlTimer) {
+        beAwdlTimer->cancelTimeout(); beAwdlTimer->disable();
+        if (_fWorkloop) _fWorkloop->removeEventSource(beAwdlTimer);
+        OSSafeReleaseNULL(beAwdlTimer);
+    }
+    if (beAwdlEnabled && _fWorkloop) _fWorkloop->runAction([](OSObject *owner,void *,void *,void *,void *) -> IOReturn {
+        static_cast<AirportItlwm *>(owner)->beAwdlCancelNativeData(nullptr);return kIOReturnSuccess;
+    },this);
+    beAwdlEnabled = false; beAwdlVirtualEnabled = false;
+    beAwdlVif = nullptr; // borrowed; native registry/finalization owns the VIF
     if (fHalService) {
         fHalService->release();
         fHalService = NULL;
@@ -1099,11 +1131,14 @@ enableFeature(IO80211FeatureCode code, void *data)
 }
 
 int AirportItlwm::
-outputActionFrame(OSObject *object, mbuf_t m)
+outputActionFrame(IO80211Interface *object, mbuf_t m)
 {
-    XYLog("%s len=%zu\n", __FUNCTION__, mbuf_len(m));
-    mbuf_freem(m);
-    return 0;
+    if (beAwdlEnabled) return beAwdlOutputAction(object,m);
+    // This ABI receives an Action body. The periodic discovery transport owns
+    // its complete raw frame; do not pass an unverified caller layout to DMA.
+    if (beAwdlEnabled) ++beAwdlStats[5];
+    if (m) mbuf_freem(m);
+    return 1; // unsupported, never false TX success
 }
 
 int AirportItlwm::
@@ -1117,6 +1152,11 @@ bpfOutput80211Radio(OSObject *object, mbuf_t m)
 SInt32 AirportItlwm::
 enableVirtualInterface(IO80211VirtualInterface *interface)
 {
+    if (beAwdlEnabled && getWorkLoop() && !getWorkLoop()->inGate()) {
+        BeAwdlVifCall call = {1, nullptr, 0, interface, kIOReturnError};
+        const auto status = getWorkLoop()->runAction(&AirportItlwm::beAwdlVifAction, this, &call);
+        return status == kIOReturnSuccess ? call.result : status;
+    }
     XYLog("%s interface=%s role=%d\n", __FUNCTION__, interface->getBSDName(), interface->getInterfaceRole());
     SInt32 ret = super::enableVirtualInterface(interface);
     if (!ret) {
@@ -1125,6 +1165,7 @@ enableVirtualInterface(IO80211VirtualInterface *interface)
 #endif
         interface->setLinkState(kIO80211NetworkLinkUp, 0);
         interface->postMessage(APPLE80211_M_LINK_CHANGED);
+        if (interface == beAwdlVif) beAwdlVirtualEnabled = true;
         return kIOReturnSuccess;
     }
     return ret;
@@ -1133,7 +1174,13 @@ enableVirtualInterface(IO80211VirtualInterface *interface)
 SInt32 AirportItlwm::
 disableVirtualInterface(IO80211VirtualInterface *interface)
 {
+    if (beAwdlEnabled && getWorkLoop() && !getWorkLoop()->inGate()) {
+        BeAwdlVifCall call = {2, nullptr, 0, interface, kIOReturnError};
+        const auto status = getWorkLoop()->runAction(&AirportItlwm::beAwdlVifAction, this, &call);
+        return status == kIOReturnSuccess ? call.result : status;
+    }
     XYLog("%s interface=%s role=%d\n", __FUNCTION__, interface->getBSDName(), interface->getInterfaceRole());
+    if (interface == beAwdlVif) beAwdlVirtualEnabled = false;
     SInt32 ret = super::disableVirtualInterface(interface);
     if (!ret) {
         interface->setLinkState(kIO80211NetworkLinkDown, 0);
@@ -1146,16 +1193,29 @@ disableVirtualInterface(IO80211VirtualInterface *interface)
 IO80211VirtualInterface *AirportItlwm::
 createVirtualInterface(ether_addr *ether, UInt role)
 {
+    if (beAwdlEnabled && getWorkLoop() && !getWorkLoop()->inGate()) {
+        BeAwdlVifCall call = {0, ether, role, nullptr, kIOReturnError};
+        if (getWorkLoop()->runAction(&AirportItlwm::beAwdlVifAction, this, &call) != kIOReturnSuccess) return nullptr;
+        return call.vif;
+    }
+#if __IO80211_TARGET == __MAC_13_0
+    if (beAwdlEnabled && role == APPLE80211_VIF_AWDL) {
+        if (!ether || IO80211P2PInterface::metaClass->getClassSize() != 0x220 ||
+            sizeof(IO80211P2PInterface) < 0x220) return nullptr;
+        auto *inf = new BeAwdlInterface;
+        if (inf && !inf->init(this, ether, role, "awdl")) {
+            inf->release(); return nullptr;
+        }
+        return inf; // factory reference; alias only after checked attachment
+    }
+#endif
     if (role - 1 > 3)
         return super::createVirtualInterface(ether, role);
     IO80211VirtualInterface *inf = new IO80211VirtualInterface;
     if (inf) {
         if (inf->init(this, ether, role, role == APPLE80211_VIF_AWDL ? "awdl" : "p2p"))
             XYLog("%s role=%d succeed\n", __FUNCTION__, role);
-        else {
-            inf->release();
-            return NULL;
-        }
+        else { inf->release(); return nullptr; }
     }
     return inf;
 }
@@ -1166,15 +1226,18 @@ bpfOutputPacket(OSObject *object, UInt dltType, mbuf_t m)
     XYLog("%s dltType=%d\n", __FUNCTION__, dltType);
     if (dltType == DLT_IEEE802_11_RADIO || dltType == DLT_IEEE802_11)
         return bpfOutput80211Radio(object, m);
+    if (dltType == DLT_RAW && beAwdlEnabled)
+        return beAwdlOutputAction(object,m); // retain the native VIF type
     if (dltType == DLT_RAW)
-        return outputActionFrame(object, m);
+        return outputActionFrame(OSDynamicCast(IO80211Interface, object), m);
     mbuf_freem(m);
     return 1;
 }
 
 void AirportItlwm::
-requestPacketTx(void *object, UInt )
+requestPacketTx(void *object, UInt flags)
 {
+    if (beAwdlEnabled) {beAwdlRequestTx(static_cast<OSObject *>(object),flags);return;}
     UInt32 ret;
     struct TxPacketRequest request;
     if (object == NULL)

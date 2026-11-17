@@ -161,7 +161,10 @@ void ItlIwx::bzStoppedCleanup(struct iwx_softc *sc)
     if(sc->sc_tvqm_ring.desc_dma.cmd || sc->sc_tvqm_ring.cmd_dma.cmd || sc->sc_tvqm_ring.bc_tbl.cmd) {
         iwx_reset_tx_ring(sc,&sc->sc_tvqm_ring);iwx_free_tx_ring(sc,&sc->sc_tvqm_ring);
     }
+    if(beAwdlDataOptIn)beAwdlDataRetiredCleanup(); // private quiescent pool; same positive-stop proof as above
     fBzStats[15]=fBzFault;fBzStats[16]=fBzError;
+    fBeAwdlAPChanging=false;fBeAwdlAPCommands=0;fBeAwdlControlThread=0;fBeAwdlCleanRemoved=false;
+    fBeAwdlActive=false;fBeAwdlStage=fBeAwdlDataStage=0; // physical terminal, not a fabricated native END
     fBzQueueOwned=0;fBzCommands.reset(true);fBzPnvm.reset(true);
     // Positive terminal proof above: firmware no longer owns these MLD objects.
     // Do not carry a management-queue/key presence claim into the next boot.
@@ -320,9 +323,11 @@ int ItlIwx::bzInterrupt(struct iwx_softc *sc)
     if(!kgp_bz::ioValid(fh)||!kgp_bz::ioValid(hw)) {bzFail(16,ENXIO);return 0;}
     IWX_WRITE(sc,IWX_CSR_MSIX_FH_INT_CAUSES_AD,fh);
     IWX_WRITE(sc,IWX_CSR_MSIX_HW_INT_CAUSES_AD,hw);
+    const uint32_t awdlRawFh = fh, awdlRawHw = hw; // R1 first-fault evidence only
     fh &= sc->sc_fh_mask;hw &= sc->sc_hw_mask;
     if((fh & IWX_MSIX_FH_INT_CAUSES_FH_ERR) ||
        (hw & (IWX_MSIX_HW_INT_CAUSES_REG_SW_ERR_V2|IWX_MSIX_HW_INT_CAUSES_REG_HW_ERR))) {
+        beAwdlFatal(awdlRawFh, awdlRawHw); // no SRAM reads/allocations in interrupt path
         bzFail(17,EIO);
         if(!(sc->sc_flags & IWX_FLAG_SHUTDOWN))task_add(systq,&sc->init_task);
         return 1;

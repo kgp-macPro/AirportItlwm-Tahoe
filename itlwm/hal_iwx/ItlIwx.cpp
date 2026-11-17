@@ -1,3 +1,4 @@
+#include <Airport/BeAwdlInfraIsolation.hpp>
 /*
  * Copyright (C) 2020  钟先耀
  *
@@ -517,6 +518,9 @@ void ItlIwx::dma5Report(bool force)
 }
 bool ItlIwx::tx5RingReleasable(const struct iwx_tx_ring *ring) const
 {
+    if(beAwdlOptIn && !bzDevice() && !fBeAwdlAxTerminal && ring->qid>0 && ring->qid<32 &&
+       (fBeAwdlAxQueueOwned&(1U<<ring->qid)))return false;
+
     if(bzDevice() && fBzHardwareOwned && ring->qid>=0 && ring->qid<32 &&
         (fBzQueueOwned & (1U << ring->qid)))
         return false;
@@ -698,22 +702,26 @@ int ItlIwx::tx2IPrepare(struct iwx_tx_data *data, mbuf_t packet, int qid, int id
                        IOPhysicalSegment *segments)
 {
     if (!dma5Leased() || !getMainWorkLoop()->inGate()) {
-        __atomic_fetch_add(&fTx5Telemetry[21],1ULL,__ATOMIC_RELAXED); return 0;
+        __atomic_fetch_add(&fTx5Telemetry[21],1ULL,__ATOMIC_RELAXED);
+        if(beAwdlOptIn)beAwdlTxReject(4,qid,idx,ENOMEM); return 0;
     }
     __atomic_fetch_add(&fTx2IStats[3], 1U, __ATOMIC_RELAXED);
     if (__atomic_load_n(&fTx2IBlocked, __ATOMIC_ACQUIRE)) {
         __atomic_fetch_add(&fTx2IStats[8], 1U, __ATOMIC_RELAXED);
-        __atomic_fetch_add(&fTx5Telemetry[20],1ULL,__ATOMIC_RELAXED); return 0;
+        __atomic_fetch_add(&fTx5Telemetry[20],1ULL,__ATOMIC_RELAXED);
+        if(beAwdlOptIn)beAwdlTxReject(5,qid,idx,ENOMEM); return 0;
     }
     const size_t length = mbuf_pkthdr_len(packet);
     if (!length || length > kTx2ISize || data->m ||
         __atomic_load_n(&data->tx2I_token, __ATOMIC_ACQUIRE)) {
         __atomic_fetch_add(&fTx2IStats[10], 1U, __ATOMIC_RELAXED);
-        tx2IError(0, 10, uint32_t(kIOReturnBadArgument)); return 0;
+        tx2IError(0, 10, uint32_t(kIOReturnBadArgument));
+        if(beAwdlOptIn)beAwdlTxReject(6,qid,idx,ENOMEM); return 0;
     }
     if (!fTx5FreeCount) {
         __atomic_fetch_add(&fTx5Telemetry[6],1ULL,__ATOMIC_RELAXED);
         __atomic_fetch_add(&fTx2IStats[9],1U,__ATOMIC_RELAXED);
+        if(beAwdlOptIn)beAwdlTxReject(7,qid,idx,ENOMEM);
         return 0; // Finite reserve pressure is backpressure, not unsafe reuse.
     }
     const unsigned token=fTx5Free[--fTx5FreeCount];
@@ -721,7 +729,8 @@ int ItlIwx::tx2IPrepare(struct iwx_tx_data *data, mbuf_t packet, int qid, int id
     if (!token || token>kTx2ICount || !__atomic_compare_exchange_n(&fTx2I[token-1].state,
         &claimed,uint32_t(Tx2ICopying),false,__ATOMIC_ACQ_REL,__ATOMIC_RELAXED)) {
         __atomic_store_n(&fTx2IBlocked,1U,__ATOMIC_RELEASE);
-        tx2IError(token,51,uint32_t(kIOReturnBadArgument)); return 0;
+        tx2IError(token,51,uint32_t(kIOReturnBadArgument));
+        if(beAwdlOptIn)beAwdlTxReject(8,qid,idx,ENOMEM); return 0;
     }
     Tx2IBacking &backing = fTx2I[token - 1];
     __atomic_store_n(&backing.owner, data, __ATOMIC_RELEASE); backing.length = uint32_t(length);
@@ -735,6 +744,7 @@ int ItlIwx::tx2IPrepare(struct iwx_tx_data *data, mbuf_t packet, int qid, int id
     __atomic_fetch_add(&fTx5Telemetry[8],1ULL,__ATOMIC_RELAXED);
     if (!copied) __atomic_fetch_add(&fTx5Telemetry[9],uint64_t(length),__ATOMIC_RELAXED);
     if (copied || result != kIOReturnSuccess) {
+        if(beAwdlOptIn)beAwdlTxReject(9,qid,idx,ENOMEM);
         __atomic_fetch_add(&fTx2IStats[copied ? 11 : 12], 1U, __ATOMIC_RELAXED);
         tx2IError(token, copied ? 12 : 13, copied ? uint32_t(copied) : uint32_t(result));
         // Never published. A concurrent reset may already have quarantined it;
@@ -760,6 +770,7 @@ int ItlIwx::tx2IPrepare(struct iwx_tx_data *data, mbuf_t packet, int qid, int id
     if (__atomic_load_n(&fTx2IBlocked, __ATOMIC_ACQUIRE) ||
         !__atomic_compare_exchange_n(&backing.state, &expected, uint32_t(Tx2IInflight),
                                       false, __ATOMIC_ACQ_REL, __ATOMIC_RELAXED)) {
+        if(beAwdlOptIn)beAwdlTxReject(10,qid,idx,ENOMEM);
         tx2IRetire(data, false); return 0;
     }
     __atomic_fetch_add(&fTx2IStats[4], 1U, __ATOMIC_RELAXED);
@@ -2565,7 +2576,7 @@ int ItlIwx::
 getTxNSS()
 {
     ItlHeTxReport report = {};
-    if (getHeTxReport(report)) return report.valid ? report.nss : 0;
+    if (!bzDevice() && getHeTxReport(report)) return report.valid ? report.nss : 0;
     return iwx_mimo_enabled(&com) && 
     (com.sc_ic.ic_bss != NULL && com.sc_ic.ic_bss->ni_rx_nss > 1) ? 2 : 1;
 }
@@ -4356,7 +4367,13 @@ iwx_poll_bit(struct iwx_softc *sc, int reg, uint32_t bits, uint32_t mask,
              int timo)
 {
     for (;;) {
-        if ((IWX_READ(sc, reg) & mask) == (bits & mask)) {
+        // An inaccessible PCIe register is not a valid readiness indication,
+        // even when every requested bit is set. Preserve the caller's whole
+        // timeout so a transient resume/read window can recover normally.
+        // Adapted from laobamac/itlwm 71f2900 + bd3aadf (authors retained in
+        // the upstream audit); no shorter all-ones cutoff is introduced.
+        const uint32_t value = IWX_READ(sc, reg);
+        if (value != UINT32_MAX && (value & mask) == (bits & mask)) {
             return 1;
         }
         if (timo < 10) {
@@ -4850,6 +4867,8 @@ iwx_reset_tx_ring(struct iwx_softc *sc, struct iwx_tx_ring *ring)
         return;
     }
 
+    if(beAwdlOptIn && !bzDevice() && !fBeAwdlAxTerminal && (sc->sc_flags&IWX_FLAG_SHUTDOWN) &&
+       ring->qid>0 && ring->qid<32 && (fBeAwdlAxQueueOwned&(1U<<ring->qid)))return; // defer private backing until real master-stop proof
     if (!tx5RingReleasable(ring)) {
         __atomic_fetch_or(&fTx2JAdmission,kTx2JClosed,__ATOMIC_ACQ_REL);
         __atomic_store_n(&fTx2IBlocked,1U,__ATOMIC_RELEASE); return;
@@ -5430,7 +5449,7 @@ iwx_start_hw(struct iwx_softc *sc)
 void ItlIwx::
 iwx_stop_device(struct iwx_softc *sc, unsigned origin2J)
 {
-    if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210) {
+    if ((sc->sc_device_family>=IWX_DEVICE_FAMILY_AX210 || beAwdlOptIn) && !getMainWorkLoop()->inGate()) {
         if (!getMainWorkLoop()->inGate()) {
             const IOReturn result=getMainWorkLoop()->runAction(pc1StopAction,this,sc,reinterpret_cast<void *>(uintptr_t(origin2J)));
             if (result!=kIOReturnSuccess) {
@@ -5438,6 +5457,9 @@ iwx_stop_device(struct iwx_softc *sc, unsigned origin2J)
             }
             return;
         }
+    }
+    if(sc->sc_device_family>=IWX_DEVICE_FAMILY_AX210){
+        beAwdlCaptureBeforeStop(); // R1: bounded first-fault SRAM read before epoch/APM reset
         boot5ConventionalStop(); // lifecycle gate; original Dexter observes IFF_RUNNING
         ++fPc1ResetEpoch;fPc1TerminalEpoch=0;
         __atomic_store_n(&fPc1Suspended,1U,__ATOMIC_RELEASE);
@@ -5506,6 +5528,7 @@ iwx_stop_device(struct iwx_softc *sc, unsigned origin2J)
      * Configure the IVAR table again after reset.
      */
     if(bzDevice() && masterStoppedPC1) bzStoppedCleanup(sc);
+    else if(beAwdlOptIn && masterStoppedPC1 && getMainWorkLoop()->inGate())beAwdlAxStoppedCleanup();
     iwx_conf_msix_hw(sc, 1);
     
     /*
@@ -5740,7 +5763,7 @@ iwx_tvqm_alloc_txq(struct iwx_softc *sc, int tid, int ssn)
 }
 
 int ItlIwx::
-iwx_tvqm_enable_txq(struct iwx_softc *sc, int tid, int ssn, uint32_t size)
+iwx_tvqm_enable_txq(struct iwx_softc *sc, int tid, int ssn, uint32_t size, int station)
 {
     int err = -EIO;
     const int generation = sc->sc_generation;
@@ -5753,7 +5776,7 @@ iwx_tvqm_enable_txq(struct iwx_softc *sc, int tid, int ssn, uint32_t size)
     struct iwx_scd_queue_cfg_cmd mld_cmd={};
     struct iwx_tx_queue_cfg_cmd cmd = {
         .flags = htole16(IWX_TX_QUEUE_CFG_ENABLE_QUEUE),
-        .sta_id = IWX_STATION_ID,
+        .sta_id = uint8_t(station),
         .tid = (uint8_t)tid,
     };
     struct iwx_rx_packet *pkt;
@@ -5765,8 +5788,14 @@ iwx_tvqm_enable_txq(struct iwx_softc *sc, int tid, int ssn, uint32_t size)
     };
     struct iwx_tx_ring *ring = &sc->sc_tvqm_ring;
     
-    if (tid < 0 || tid >= IWX_MAX_TID_COUNT) return -EINVAL;
-    if (ring->desc_dma.cmd || ring->cmd_dma.cmd || ring->bc_tbl.cmd) return -EBUSY;
+    const bool awdlData=beAwdlDataAllocates(station,tid);
+    if(awdlData)beAwdlDataQueueNote(0,station,tid,-1);
+    const bool awdl = beAwdlOptIn && beAwdlSupported() && fBeAwdlPreparing &&
+        station == BeAwdlStation && tid == IWX_MGMT_TID && fBeAwdlStage == 5 &&
+        fBeAwdlGeneration == sc->sc_generation && fBeAwdlEpoch == fPc1ResetEpoch;
+    if ((!awdl && !beAwdlDataAllocates(station,tid) && (station != IWX_STATION_ID || tid < 0 || tid >= IWX_MAX_TID_COUNT))) return -EINVAL;
+    if (ring->desc_dma.cmd || ring->cmd_dma.cmd || ring->bc_tbl.cmd) {if(awdlData)beAwdlDataQueueNote(1,station,tid,-1,EBUSY);return -EBUSY;}
+    if(awdl || awdlData){const int reuse=beAwdlDataTakeRing(ring,size);if(reuse<0){beAwdlDataQueueNote(2,station,tid,-1,-reuse);return reuse;}if(reuse>0)goto prepared_awdl_ring;}
     memset(ring, 0, sizeof(*ring));
     iwx_tx_ring_init(sc, ring, size);
     /* Allocate TX descriptors (256-byte aligned). */
@@ -5816,6 +5845,7 @@ iwx_tvqm_enable_txq(struct iwx_softc *sc, int tid, int ssn, uint32_t size)
             goto fail;
         }
     }
+prepared_awdl_ring:
     cmd.cb_size = htole32(IWX_TFD_QUEUE_CB_SIZE(ring->ring_count));
     cmd.byte_cnt_addr = htole64(ring->bc_tbl.paddr);
     cmd.tfdq_addr = htole64(ring->desc_dma.paddr);
@@ -5824,7 +5854,7 @@ iwx_tvqm_enable_txq(struct iwx_softc *sc, int tid, int ssn, uint32_t size)
     hcmd.len[0] = sizeof(cmd);
     if(bzDevice()) {
         mld_cmd.operation=htole32(IWX_SCD_QUEUE_ADD);
-        mld_cmd.u.add.sta_mask=htole32(1U << IWX_STATION_ID);
+        mld_cmd.u.add.sta_mask=htole32(1U << station);
         mld_cmd.u.add.tid=uint8_t(tid);
         mld_cmd.u.add.cb_size=cmd.cb_size;
         mld_cmd.u.add.bc_dram_addr=cmd.byte_cnt_addr;
@@ -5873,6 +5903,7 @@ iwx_tvqm_enable_txq(struct iwx_softc *sc, int tid, int ssn, uint32_t size)
     resp = (struct iwx_tx_queue_cfg_rsp *)pkt->data;
     fwqid = le16toh(resp->queue_number);
     wr_idx = le16toh(resp->write_pointer);
+    if(awdlData)beAwdlDataQueueNote(3,station,tid,fwqid,0,wr_idx);
     // Validate the driver's actual queue roles, not a presumed firmware
     // minimum. ADD_STA >=12 uses default QID 1, so dynamic QID 2 is valid.
     // Older/unknown versions reserve auxiliary QID 1 and default QID 2.
@@ -5880,13 +5911,14 @@ iwx_tvqm_enable_txq(struct iwx_softc *sc, int tid, int ssn, uint32_t size)
         fwqid >= sizeof(sc->qfullmsk) * 8 ||
         fwqid == IWX_DQA_CMD_QUEUE || fwqid == sc->first_data_qid ||
         (sc->first_data_qid == IWX_QID_MGMT && fwqid == IWX_DQA_AUX_QUEUE) ||
-        wr_idx >= getTxQueueSize()) {
+        (beAwdlQueueOwned() && fwqid == fBeAwdlQueue) || beAwdlDataQueueReserved(fwqid) || wr_idx >= getTxQueueSize()) {
         XYLog("queue index %d unsupported", fwqid);
         err = -EIO;
         goto retain;
     }
     for (i = 0; i < IWX_MAX_TID_COUNT; ++i) {
         if (sc->sc_tid_data[i].qid == fwqid) {
+            if(awdlData)beAwdlDataQueueNote(4,station,tid,fwqid,EBUSY,wr_idx);
             err = -EBUSY; // A live TID still owns this queue, even if empty.
             goto retain;
         }
@@ -5898,17 +5930,21 @@ iwx_tvqm_enable_txq(struct iwx_softc *sc, int tid, int ssn, uint32_t size)
     ring->tail = wr_idx & (ring->ring_count - 1);
     ring->qid = fwqid;
     if (!tx5RingReleasable(&sc->txq[fwqid])) {
+        if(awdlData)beAwdlDataQueueNote(5,station,tid,fwqid,EBUSY,wr_idx);
         err = -EBUSY;
         goto retain; // Both rings retained; device stop is required.
     }
     iwx_reset_tx_ring(sc, &sc->txq[fwqid]);
     iwx_free_tx_ring(sc, &sc->txq[fwqid]);
     if(bzDevice()) fBzQueueOwned|=1U << fwqid;
+    else if(awdl || awdlData)fBeAwdlAxQueueOwned|=1U<<fwqid;
     memcpy(&sc->txq[fwqid], ring, sizeof(*ring));
     memset(ring,0,sizeof(*ring)); // Ownership moved; no stale temporary alias.
     iwx_free_resp(sc, &hcmd); // WANT_RESP ownership transferred to this caller.
+    if(awdlData)beAwdlDataQueueNote(6,station,tid,fwqid,0,wr_idx);
     return fwqid;
 retain:
+    if(awdlData && !fBeAwdlDataLife[51])beAwdlDataQueueNote(7,station,tid,int32_t(fBeAwdlDataLife[49]),err<0?-err:err,uint32_t(fBeAwdlDataLife[61]));
     // ZC21: command failure/malformed reply does NOT prove firmware rejection.
     // Free only the CPU response, retain prepared backing in sc_tvqm_ring,
     // close admission and use the existing positive stop/reset cleanup. No
@@ -5920,6 +5956,7 @@ retain:
     __atomic_store_n(&fTx2IBlocked, 1U, __ATOMIC_RELEASE);
     return err;
 fail:
+    if(awdlData)beAwdlDataQueueNote(8,station,tid,-1,err<0?-err:err);
     // Only local, pre-command allocation/map failures may release backing.
     iwx_reset_tx_ring(sc, ring);
     iwx_free_tx_ring(sc, ring);
@@ -6162,6 +6199,11 @@ uint32_t *channel_profile_v4, int nchan_profile)
             data->vht160_supported = true;
 
         hw_value = nvm_channels[ch_idx];
+        // Preserve role permissions otherwise lost in the generic channel map.
+        // CPU-only bookkeeping; never changes current channel/filter policy.
+        if (hw_value==44) {
+            fBeAwdlReg44=ch_flags;fBeAwdlRegGeneration=sc->sc_generation;
+        }
         channel = &ic->ic_channels[hw_value];
 
         if (!(ch_flags & IWX_NVM_CHANNEL_VALID)) {
@@ -6853,6 +6895,7 @@ iwx_chan_ctxt_task(void *arg)
     err = that->iwx_phy_ctxt_update(sc, in->in_phyctxt,
                                     in->in_phyctxt->channel, chains, chains, 0);
     if (err) {
+        if(that->beAwdlOptIn && that->fBeAwdlAPChanging)task_add(systq,&sc->init_task);
         XYLog("%s: failed to update PHY (error %d)\n",
               __FUNCTION__, err);
         //        refcnt_rele_wake(&sc->task_refs);
@@ -6861,6 +6904,7 @@ iwx_chan_ctxt_task(void *arg)
     }
     err = that->iwx_rs_init(sc, in, true);
     if (err) {
+        if(that->beAwdlOptIn && that->fBeAwdlAPChanging)task_add(systq,&sc->init_task);
         XYLog("%s: could not update rate scaling (error %d)\n",
               __FUNCTION__, err);
         //        refcnt_rele_wake(&sc->task_refs);
@@ -8367,6 +8411,8 @@ iwx_rx_mpdu_mq(struct iwx_softc *sc, mbuf_t m, void *pktdata,
     }
     
     memset(&rxi, 0, sizeof(rxi));
+    if(beAwdlOptIn && beAwdlAxRx(sc,m,desc,&rxi)){mbuf_freem(m);return;}
+
     
     /*
      * Hardware de-aggregates A-MSDUs and copies the same MAC header
@@ -8405,13 +8451,13 @@ iwx_rx_mpdu_mq(struct iwx_softc *sc, mbuf_t m, void *pktdata,
      * the TID supplied in QoS frame headers and this TID is implicitly
      * verified as part of the CCMP nonce.
      */
-    if (iwx_rx_hwdecrypt(sc, m, le16toh(desc->status), &rxi)) {
+    if (!(rxi.rxi_flags&IEEE80211_RXI_SCAN_ONLY) && iwx_rx_hwdecrypt(sc, m, le16toh(desc->status), &rxi)) {
         if (axHeDiagActive(sc)) __atomic_fetch_add(&fAxHeDiagStats[AXD_RX_DECRYPT_DROP],1ULL,__ATOMIC_RELAXED);
         mbuf_freem(m);
         return;
     }
     
-    if (iwx_detect_duplicate(sc, m, desc, &rxi)) {
+    if (!(rxi.rxi_flags&IEEE80211_RXI_SCAN_ONLY) && iwx_detect_duplicate(sc, m, desc, &rxi)) {
         if (axHeDiagActive(sc)) __atomic_fetch_add(&fAxHeDiagStats[AXD_RX_DUP_DROP],1ULL,__ATOMIC_RELAXED);
         mbuf_freem(m);
         return;
@@ -8466,13 +8512,26 @@ iwx_rx_tx_cmd_single(struct iwx_softc *sc, struct iwx_rx_packet *pkt,
     KASSERT(tx_resp->frame_count == 1, "tx_resp->frame_count == 1");
     
     txfail = (status != IWX_TX_STATUS_SUCCESS);
+    if (beAwdlQueueOwned() && le16toh(tx_resp->tx_queue) == fBeAwdlQueue) {
+        ++fBeAwdlCounters[4]; if (txfail) ++fBeAwdlCounters[5];
+        fBeAwdlCounters[6] = uint32_t(status); // firmware status, not peer ACK
+        beAwdlTxStatus(tx_resp,txd); // opt-in CPU-only native Action correlation
+    }
+    if (beAwdlOptIn) beAwdlDataDiagnosticResponse(pkt,txd); // unmodified raw response/SSN, CPU copy only
+    if (beAwdlOptIn) beAwdlDataStatus(tx_resp,txd); // CPU-only exact data descriptor status
     axHeDiagSingle(sc, tx_resp, status, txd->type);
     
+    const int responseQueue=le16toh(tx_resp->tx_queue);
+    const bool privateAwdl=(beAwdlQueueOwned() && responseQueue==fBeAwdlQueue) || beAwdlDataQueueOwned(responseQueue);
     if (txfail) {
         zc28Note(3,unsigned(status),unsigned(txd->type),0);
-        ifp->netStat->outputErrors++;
-        if (txd->type == IEEE80211_FC0_TYPE_MGT)
-            iwx_toggle_tx_ant(sc, &sc->sc_mgmt_last_antenna_idx);
+        if(privateAwdl) {
+            if(txd->type==IEEE80211_FC0_TYPE_MGT)iwx_toggle_tx_ant(sc,&fBeAwdlTxAntenna);
+        } else {
+            ifp->netStat->outputErrors++;
+            if (txd->type == IEEE80211_FC0_TYPE_MGT)
+                iwx_toggle_tx_ant(sc, &sc->sc_mgmt_last_antenna_idx);
+        }
     }
 }
 
@@ -8542,7 +8601,7 @@ void ItlIwx::
 iwx_rx_tx_ba_notif(struct iwx_softc *sc, struct iwx_rx_packet *pkt, struct iwx_rx_data *data)
 {
     // BOOTFIX1 DEXTER ROUTE iwx_rx_tx_ba_notif: original body in its own label scope.
-    if (!dma5Leased()) return dexterOriginal_iwx_rx_tx_ba_notif(sc, pkt, data);
+    if (!dma5Leased() && !beAwdlOptIn) return dexterOriginal_iwx_rx_tx_ba_notif(sc, pkt, data);
 
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 &&
         __atomic_load_n(&fPc1Suspended,__ATOMIC_ACQUIRE)) {++fPc1DroppedCompletion;return;}
@@ -8557,7 +8616,10 @@ iwx_rx_tx_ba_notif(struct iwx_softc *sc, struct iwx_rx_packet *pkt, struct iwx_r
     if(bzDevice() && (iwx_rx_packet_payload_len(pkt)<offsetof(iwx_compressed_ba_notif,tfd) ||
        offsetof(iwx_compressed_ba_notif,tfd)+size_t(le16toh(ba_res->tfd_cnt))*sizeof(iwx_compressed_ba_tfd)>
        iwx_rx_packet_payload_len(pkt))) {bzFail(24,EPROTO);return;}
-    sc->sc_tx_timer = 0;
+    // This watchdog belongs to infrastructure output. Private AWDL progress
+    // cannot prove STA0 made progress. With AWDL enabled clear it only after
+    // a validated infrastructure TFD below, not on an empty/private BA.
+    if(!beAwdlOptIn)sc->sc_tx_timer = 0;
 
     if (iwx_rx_packet_payload_len(pkt) >= offsetof(iwx_compressed_ba_notif,tfd))
         axHeDiagBa(sc, ba_res);
@@ -8594,18 +8656,29 @@ iwx_rx_tx_ba_notif(struct iwx_softc *sc, struct iwx_rx_packet *pkt, struct iwx_r
         // P8: positive BA progress belongs to this AP and this TID's
         // currently owned queue. Linux also permits the management TID;
         // it maps only to our explicit management queue, never a data TID.
-        if(bzDevice() && (ba_res->sta_id != IWX_STATION_ID ||
+        const bool awdlCompletion = beAwdlQueueOwned() && ba_res->sta_id == BeAwdlStation &&
+            qid == fBeAwdlQueue && tid == IWX_MGMT_TID;
+        const bool awdlDataCompletion=beAwdlDataQueueOwned(qid,ba_res->sta_id,tid);
+        if(bzDevice() && ((!awdlCompletion && !awdlDataCompletion && ba_res->sta_id != IWX_STATION_ID) ||
            qid<=IWX_DQA_CMD_QUEUE || qid>=nitems(sc->txq) || qid>=32 ||
            !(fBzQueueOwned & (1U << qid)) ||
            !((tid<IWX_MAX_TID_COUNT && sc->sc_tid_data[tid].qid==qid) ||
-             (tid==IWX_MGMT_TID && qid==sc->first_data_qid)) ||
+             (tid==IWX_MGMT_TID && qid==sc->first_data_qid) || awdlCompletion || awdlDataCompletion) ||
            !sc->txq[qid].ring_count || !itlTxCompletionValid(sc->txq[qid].tail,sc->txq[qid].queued,
            IWX_AGG_SSN_TO_TXQ_IDX(le16toh(ba_tfd->tfd_index),sc->txq[qid].ring_count),sc->txq[qid].ring_count))) {
             bzFail(24,EPROTO);return;
         }
+        // Only a validated infrastructure STA0 queue may update its PHY
+        // telemetry. Private AWDL completions never become AP rate feedback.
+        if(bzDevice() && !awdlCompletion && !awdlDataCompletion &&
+           ba_res->sta_id==IWX_STATION_ID && le16toh(ba_res->done) &&
+           (le32toh(ba_res->flags)==IWX_BA_RESP_TX_AGG || le32toh(ba_res->flags)==IWX_BA_RESP_TX_BAR))
+            bzTxRateNote(le32toh(ba_res->tx_rate),2);
+        if (awdlCompletion) ++fBeAwdlCounters[7]; // positive scheduler notifications, not packet count
         ring = &sc->txq[qid];
 
-        sc->sc_tx_timer = 0;
+        if(!awdlCompletion && !awdlDataCompletion)sc->sc_tx_timer = 0;
+        else ++fBeAwdlInfraCoex[56];
 
         iwx_ampdu_txq_advance(sc, ring, IWX_AGG_SSN_TO_TXQ_IDX(le16toh(ba_tfd->tfd_index), ring->ring_count), true);
         if(bzDevice())++fBzStats[18];
@@ -8617,7 +8690,7 @@ void ItlIwx::
 iwx_ampdu_txq_advance(struct iwx_softc *sc, struct iwx_tx_ring *ring, int idx, bool normalCompletion2I)
 {
     // BOOTFIX1 DEXTER ROUTE iwx_ampdu_txq_advance: original body in its own label scope.
-    if (!dma5Leased()) return dexterOriginal_iwx_ampdu_txq_advance(sc, ring, idx);
+    if (!dma5Leased() && !((beAwdlQueueOwned() && ring->qid==fBeAwdlQueue) || beAwdlDataQueueOwned(ring->qid))) return dexterOriginal_iwx_ampdu_txq_advance(sc, ring, idx);
 
     struct iwx_tx_data *txd;
 
@@ -8629,6 +8702,10 @@ iwx_ampdu_txq_advance(struct iwx_softc *sc, struct iwx_tx_ring *ring, int idx, b
                 // flush without positive TX completion cannot release it.
                 __atomic_fetch_or(&fTx2JAdmission,kTx2JClosed,__ATOMIC_ACQ_REL);
                 __atomic_store_n(&fTx2IBlocked,1U,__ATOMIC_RELEASE); return;
+            }
+            if (beAwdlOptIn) {
+                beAwdlActionRetire(ring->qid,ring->tail);
+                beAwdlDataRetire(ring->qid,ring->tail,normalCompletion2I);
             }
             tx2IRetire(txd, normalCompletion2I);
             iwx_txd_done(sc, txd);
@@ -8645,7 +8722,7 @@ iwx_rx_tx_cmd(struct iwx_softc *sc, struct iwx_rx_packet *pkt,
               struct iwx_rx_data *data)
 {
     // BOOTFIX1 DEXTER ROUTE iwx_rx_tx_cmd: original body in its own label scope.
-    if (!dma5Leased()) return dexterOriginal_iwx_rx_tx_cmd(sc, pkt, data);
+    if (!dma5Leased() && !beAwdlOptIn) return dexterOriginal_iwx_rx_tx_cmd(sc, pkt, data);
 
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210 &&
         __atomic_load_n(&fPc1Suspended,__ATOMIC_ACQUIRE)) {++fPc1DroppedCompletion;return;}
@@ -8668,8 +8745,10 @@ iwx_rx_tx_cmd(struct iwx_softc *sc, struct iwx_rx_packet *pkt,
 
     bus_dmamap_sync(sc->sc_dmat, data->map, 0, IWX_RBUF_SIZE,
                     BUS_DMASYNC_POSTREAD);
-    
-    sc->sc_tx_timer = 0;
+
+    if(!((beAwdlQueueOwned() && qid==fBeAwdlQueue) || beAwdlDataQueueOwned(qid)))
+        sc->sc_tx_timer = 0;
+    else ++fBeAwdlInfraCoex[56]; // private completion must not cancel STA0 recovery
 
     if(bzDevice() && (!tx_resp->frame_count ||
         offsetof(iwx_tx_resp,status)+size_t(tx_resp->frame_count)*sizeof(tx_resp->status)+sizeof(ssn)>
@@ -8698,7 +8777,14 @@ iwx_rx_tx_cmd(struct iwx_softc *sc, struct iwx_rx_packet *pkt,
             // read idx-1, retire/free backing, wake output or freeze transport.
             if (idx==ring->tail) {++fBzStats[13];return;}
         }
-        txd = &ring->data[bzDevice()?((idx-1)&(ring->ring_count-1)):idx];
+        // Linux v6.12 mvm/tx.c: the single status belongs to the FIRST
+        // reclaimed entry; SSN may also release later already-treated entries.
+        // Private AWDL must not give the last entry another packet's ACK.
+        // Preserve the established infrastructure/AX path verbatim.
+        const bool awdlStatus=(beAwdlQueueOwned() && qid==fBeAwdlQueue) || beAwdlDataQueueOwned(qid);
+        txd = &ring->data[awdlStatus?ring->tail:(bzDevice()?((idx-1)&(ring->ring_count-1)):idx)];
+        if(awdlStatus && ((idx+ring->ring_count-ring->tail)%ring->ring_count)>1)
+            ++fBeAwdlTxResources[60];
         if(bzDevice() && sc->sc_ic.ic_state!=IEEE80211_S_RUN)
             bzConnectionEvent(5,uint32_t(le16toh(tx_resp->status.status))|(uint32_t(qid)<<16),ssn,
                 uint32_t(tx_resp->failure_frame)|(uint32_t(pkt->hdr.qid)<<8));
@@ -8717,6 +8803,16 @@ iwx_rx_bmiss(struct iwx_softc *sc, struct iwx_rx_packet *pkt,
     struct ieee80211com *ic = &sc->sc_ic;
     struct iwx_missed_beacons_notif *mbn = (struct iwx_missed_beacons_notif *)pkt->data;
     uint32_t missed;
+    if(beAwdlOptIn){
+        unsigned version=iwx_lookup_notif_ver(sc,IWX_LONG_GROUP,IWX_MISSED_BEACONS_NOTIFICATION);
+        // Embedded AX68 omits this old version from TLV: P10R9/upstream uses v3.
+        if(version==IWX_FW_CMD_VER_UNKNOWN)version=3;
+        auto *ap=reinterpret_cast<iwx_node *>(ic->ic_bss);
+        if(!ap || iwx_rx_packet_payload_len(pkt)<sizeof(*mbn) ||
+           be_awdl::InfraIsolation::beaconDomain(version,iwx_rx_packet_payload_len(pkt),
+               le32toh(mbn->mac_id),ap->in_id,0)!=0)return;
+    }
+
     
     if ((ic->ic_opmode != IEEE80211_M_STA) ||
         (ic->ic_state != IEEE80211_S_RUN))
@@ -9022,6 +9118,22 @@ iwx_phy_ctxt_cmd(struct iwx_softc *sc, struct iwx_phy_ctxt *ctxt,
 int ItlIwx::
 iwx_send_cmd(struct iwx_softc *sc, struct iwx_host_cmd *hcmd)
 {
+    if(beAwdlOptIn && !getMainWorkLoop()->inGate())return getMainCommandGate()->runAction(
+        [](OSObject *,void *o,void *c,void *h,void *)->IOReturn{return static_cast<ItlIwx *>(o)->iwx_send_cmd(static_cast<iwx_softc *>(c),static_cast<iwx_host_cmd *>(h));},this,sc,hcmd);
+
+    const bool ap=beAwdlAPMutation(hcmd);
+    if(ap){const int e=beAwdlInfrastructureWillChange();if(e)return e;++fBeAwdlAPCommands;}
+    else if(fBeAwdlPreparing || fBeAwdlDataPreparing)fBeAwdlControlThread=reinterpret_cast<uintptr_t>(IOThreadSelf());
+    const uint64_t record=beAwdlCommandBegin(hcmd);
+    const int error=iwx_send_cmd_r42_inner(sc,hcmd);
+    beAwdlCommandEnd(record,hcmd,error);
+    if(ap && fBeAwdlAPCommands){--fBeAwdlAPCommands;if(!fBeAwdlAPCommands && !error)fBeAwdlAPChanging=false;}
+    return error;
+}
+
+int ItlIwx::
+iwx_send_cmd_r42_inner(struct iwx_softc *sc, struct iwx_host_cmd *hcmd)
+{
     if(bzDevice() && !getMainWorkLoop()->inGate()) {
         return getMainCommandGate()->runAction(
             [](OSObject *,void *owner,void *context,void *command,void *)->IOReturn {
@@ -9250,6 +9362,18 @@ iwx_send_cmd(struct iwx_softc *sc, struct iwx_host_cmd *hcmd)
             }
             if(fBzFault || generation!=sc->sc_generation || bzEpoch!=fPc1ResetEpoch) err=ENXIO;
             if(err && generation==sc->sc_generation && bzEpoch==fPc1ResetEpoch) bzFail(30,err); // Pending slot/backing survives until positive reset.
+        } else if (getMainWorkLoop()->inGate()) {
+            // AWDL serializes AX commands through this gate too. msleep only
+            // releases inner_lock, so it would block the gated RX completion.
+            // commandSleep releases/reacquires the workloop gate atomically;
+            // the existing wakeupOn(desc) uses the same kernel wait event.
+            AbsoluteTime deadline;
+            clock_interval_to_deadline(1, kSecondScale,
+                reinterpret_cast<uint64_t *>(&deadline));
+            const IOReturn result = getMainCommandGate()->commandSleep(
+                desc, deadline, THREAD_ABORTSAFE);
+            err = result == THREAD_AWAKENED ? 0 :
+                result == THREAD_TIMED_OUT ? EWOULDBLOCK : EINTR;
         } else err = tsleep_nsec(desc, PCATCH, "iwxcmd", SEC_TO_NSEC(1));
         flow2J(13, code, idx, generation, sc->sc_generation, err, time2GNow() - waitStart2J);
         if (err == 0) {
@@ -9521,10 +9645,10 @@ iwx_tx_update_byte_tbl(struct iwx_softc *sc, struct iwx_tx_ring *txq, int idx, u
 }
 
 int ItlIwx::
-iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
+iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac, int awdlQueue)
 {
     // BOOTFIX1 DEXTER ROUTE iwx_tx: original body in its own label scope.
-    if (!dma5Leased()) return dexterOriginal_iwx_tx(sc, m, ni, ac);
+    if (!dma5Leased() && awdlQueue<0) return dexterOriginal_iwx_tx(sc, m, ni, ac);
 
     struct ieee80211com *ic = &sc->sc_ic;
     struct iwx_node *in = (struct iwx_node *)ni;
@@ -9597,6 +9721,18 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
         }
         if(qid<0 || qid>=nitems(sc->txq)) {mbuf_freem(m);bzFail(21,EINVAL);return EINVAL;}
     }
+    if (awdlQueue >= 0) {
+        // Only our separately admitted management context may override routing.
+        const bool awdlManagement=beAwdlCurrent() && awdlQueue==fBeAwdlQueue &&
+            type==IEEE80211_FC0_TYPE_MGT && subtype==IEEE80211_FC0_SUBTYPE_ACTION;
+        const bool awdlData=beAwdlDataReady() && beAwdlDataQueueOwned(awdlQueue) &&
+            type==IEEE80211_FC0_TYPE_DATA && !ieee80211_has_qos(wh) && !(wh->i_fc[1]&0xc3);
+        if ((!awdlManagement && !awdlData) ||
+            mbuf_len(m) < 40 || memcmp(wh->i_addr2, fBeAwdlAddress, 6)) {
+            mbuf_freem(m); return EINVAL;
+        }
+        qid = awdlQueue;
+    }
     ring = &sc->txq[qid];
     if (ring->ring_count == 0) {
         mbuf_freem(m);
@@ -9607,6 +9743,7 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
         (__atomic_load_n(&fTx2IBlocked, __ATOMIC_ACQUIRE) || ring->data[idx].m ||
          __atomic_load_n(&ring->data[idx].tx2I_token, __ATOMIC_ACQUIRE))) {
         __atomic_fetch_add(&fTx2IStats[8], 1U, __ATOMIC_RELAXED);
+        if(awdlQueue>=0)beAwdlTxReject(1,qid,idx,ENOMEM);
         mbuf_freem(m); return ENOMEM;
     }
     Tx2JScope admission2J = {nullptr};
@@ -9614,6 +9751,7 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
         if (!tx2JEnter()) {
             const uint32_t n = __atomic_add_fetch(&fTx2IStats[8], 1U, __ATOMIC_RELAXED);
             if (n == 1) tx2IReport(9);
+            if(awdlQueue>=0)beAwdlTxReject(2,qid,idx,ENOMEM);
             mbuf_freem(m); return ENOMEM;
         }
         admission2J.owner = this;
@@ -9621,6 +9759,7 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
         // must not enter the old descriptor generation after that stop returns.
         if (!(ic->ic_if.if_flags & IFF_RUNNING) || (sc->sc_flags & IWX_FLAG_SHUTDOWN)) {
             __atomic_fetch_add(&fTx2IStats[8], 1U, __ATOMIC_RELAXED);
+            if(awdlQueue>=0)beAwdlTxReject(3,qid,idx,ENOMEM);
             mbuf_freem(m); return ENOMEM;
         }
     }
@@ -9634,7 +9773,15 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
     cmd->hdr.qid = ring->qid;
     cmd->hdr.idx = idx;
     
-    rinfo = iwx_tx_fill_cmd(sc, in, wh, &flags, &rate_n_flags);
+    if (awdlQueue>=0 && (beAwdlDataQueueOwned(awdlQueue) || (awdlQueue==fBeAwdlQueue && beAwdlQueueOwned()))) {
+        // AWDL peers have no negotiated infrastructure TLC/HE context. Use a
+        // real command-specified basic OFDM rate; never borrow the AP's MCS.
+        flags=IWX_TX_FLAGS_CMD_RATE;
+        rate_n_flags=htole32(IWX_RATE_MCS_LEGACY_OFDM_MSK |
+            (((iwx_fw_valid_tx_ant(sc)&(1U<<fBeAwdlTxAntenna))?1U<<fBeAwdlTxAntenna:iwx_fw_valid_tx_ant(sc)&-iwx_fw_valid_tx_ant(sc)) << IWX_RATE_MCS_ANT_POS));
+        rinfo=&iwx_rates[IWX_RATE_6M_INDEX]; // same basic OFDM command, no STA filler/logging
+    } else rinfo = iwx_tx_fill_cmd(sc, in, wh, &flags, &rate_n_flags);
+
     
 #if NBPFILTER > 0
     if (sc->sc_drvbpf != NULL) {
@@ -9681,7 +9828,11 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
     totlen = mbuf_pkthdr_len(m);
     
     if (hdrlen % 4) offload_assist |= IWX_TX_CMD_OFFLD_PAD;
-    if(bzDevice()) offload_assist=itlTxOffloadHeader(hdrlen);
+    // Private AX frames bypass net80211's ordinary TX preparation. Match
+    // PR53 iwx_awdl_tx_frame / Intel iwl_mvm_tx_csum: MAC length is required
+    // even without checksum offload. Keep ordinary AX infrastructure as-is.
+    // BZ already uses this exact encoding; its GO path is unchanged.
+    if(bzDevice() || awdlQueue>=0) offload_assist=itlTxOffloadHeader(hdrlen);
     
     if (sc->sc_device_family >= IWX_DEVICE_FAMILY_AX210) {
         tx_gen3 = (struct iwx_tx_cmd_gen3 *)cmd->data;
@@ -9767,6 +9918,7 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
     // Validate/copy before transferring the caller's mbuf/node reference.
     // On failure no WRPTR is issued; a mapped prepared copy is conservatively
     // quarantined by the existing abort path, never treated as completed.
+    if (beAwdlOptIn) beAwdlDataDiagnosticCommand(qid,unsigned(idx),cmd,56);
     if (!iwx_tx_publish_control(ring, unsigned(idx), desc, cmd)) {
         if (dma5Leased()) tx2IRetire(data, false);
         __atomic_fetch_or(&fTx2JAdmission, kTx2JClosed, __ATOMIC_ACQ_REL);
@@ -9801,6 +9953,7 @@ iwx_tx(struct iwx_softc *sc, mbuf_t m, struct ieee80211_node *ni, int ac)
     /* Kick TX ring. */
     ring->cur = (ring->cur + 1) % getTxQueueSize();
     IWX_WRITE(sc, IWX_HBUS_TARG_WRPTR, ring->qid << 16 | ring->cur);
+    if (beAwdlOptIn) beAwdlDataDiagnosticDoorbell(qid,unsigned(idx)); // CPU after MMIO, NOT on-air time
     
     /* Mark TX ring as full if we reach a certain threshold. */
     if (++ring->queued > ring->hi_mark) {
@@ -12200,9 +12353,59 @@ void ItlIwx::axTxRateNote(uint32_t raw, unsigned source)
     __atomic_add_fetch(&r.seq,1ULL,__ATOMIC_RELEASE);
 }
 
+void ItlIwx::bzTxRateNote(uint32_t raw,unsigned source)
+{
+    if(!bzDevice() || source<1 || source>2 || fBzFault ||
+       com.sc_ic.ic_state!=IEEE80211_S_RUN || com.ns_nstate!=IEEE80211_S_RUN ||
+       (com.sc_flags&IWX_FLAG_SHUTDOWN))return;
+    auto &r=fBzRate[source-1];const uint64_t now=time2GNow();
+    const uint64_t identity=(uint64_t(uint32_t(com.sc_generation))<<32)|fPc1ResetEpoch;
+    const uint32_t epoch=__atomic_load_n(&fBzRateEpoch,__ATOMIC_ACQUIRE);
+    // Coalesce identical BA feedback, without erasing the last observed age.
+    if(source==2 && __atomic_load_n(&r.raw,__ATOMIC_RELAXED)==raw &&
+       __atomic_load_n(&r.identity,__ATOMIC_RELAXED)==identity &&
+       __atomic_load_n(&r.epoch,__ATOMIC_RELAXED)==epoch &&
+       now-__atomic_load_n(&r.stamp,__ATOMIC_RELAXED)<500000000ULL)return;
+    __atomic_add_fetch(&r.seq,1ULL,__ATOMIC_ACQ_REL);
+    __atomic_store_n(&r.raw,raw,__ATOMIC_RELAXED);
+    __atomic_store_n(&r.identity,identity,__ATOMIC_RELAXED);
+    __atomic_store_n(&r.epoch,epoch,__ATOMIC_RELAXED);
+    __atomic_store_n(&r.stamp,now,__ATOMIC_RELAXED);
+    __atomic_add_fetch(&r.seq,1ULL,__ATOMIC_RELEASE);
+}
+bool ItlIwx::bzHeTxReport(ItlHeTxReport &out)
+{
+    if(!com.sc_ic.ic_bss || !(com.sc_ic.ic_bss->ni_flags&IEEE80211_NODE_HE))return false;
+    out={};
+    if(fBzFault || com.sc_ic.ic_state!=IEEE80211_S_RUN || com.ns_nstate!=IEEE80211_S_RUN ||
+       (com.sc_flags&IWX_FLAG_SHUTDOWN))return true;
+    const uint64_t now=time2GNow();
+    const uint64_t identity=(uint64_t(uint32_t(com.sc_generation))<<32)|fPc1ResetEpoch;
+    const uint32_t epoch=__atomic_load_n(&fBzRateEpoch,__ATOMIC_ACQUIRE);
+    uint64_t selected=0;
+    for(int i=1;i>=0;--i){auto &r=fBzRate[i];
+        const uint64_t seq=__atomic_load_n(&r.seq,__ATOMIC_ACQUIRE);if(seq&1)continue;
+        const uint32_t raw=__atomic_load_n(&r.raw,__ATOMIC_RELAXED);
+        const uint64_t stamp=__atomic_load_n(&r.stamp,__ATOMIC_RELAXED);
+        const uint64_t id=__atomic_load_n(&r.identity,__ATOMIC_RELAXED);
+        const uint32_t e=__atomic_load_n(&r.epoch,__ATOMIC_RELAXED);
+        __atomic_thread_fence(__ATOMIC_ACQUIRE);
+        if(seq!=__atomic_load_n(&r.seq,__ATOMIC_ACQUIRE)||!stamp||stamp>now||stamp<=selected||id!=identity||e!=epoch)continue;
+        selected=stamp;out.raw=raw;out.source=i+1;out.age_ms=uint32_t(MIN((now-stamp)/1000000ULL,0xffffffffULL));
+        out.kbps=iwx_ax_he_tlc_rate_kbps(raw);out.mcs=raw&IWX_RATE_MCS_CODE_MSK;
+        out.nss=((raw&IWX_RATE_MCS_NSS_MSK)>>IWX_RATE_MCS_NSS_POS)+1;
+        out.bw=(raw&IWX_RATE_MCS_CHAN_WIDTH_MSK)>>IWX_RATE_MCS_CHAN_WIDTH_POS;
+        out.gi=(raw&IWX_RATE_MCS_HE_GI_LTF_MSK)>>IWX_RATE_MCS_HE_GI_LTF_POS;
+        out.valid=out.kbps!=0;out.fresh=out.valid && now-stamp<=5000000000ULL;
+    }
+    if(identity!=((uint64_t(uint32_t(com.sc_generation))<<32)|fPc1ResetEpoch)||epoch!=__atomic_load_n(&fBzRateEpoch,__ATOMIC_ACQUIRE))out={};
+    return true;
+}
+
 bool ItlIwx::getHeTxReport(ItlHeTxReport &out)
 {
-    if (bzDevice() || !com.sc_ic.ic_bss ||
+    if(bzDevice())return bzHeTxReport(out);
+    if (!com.sc_ic.ic_bss ||
         !(com.sc_ic.ic_bss->ni_flags & IEEE80211_NODE_HE)) return false;
     out={};
     if (com.sc_ic.ic_state!=IEEE80211_S_RUN || com.ns_nstate!=IEEE80211_S_RUN ||
@@ -12771,6 +12974,7 @@ iwx_run_stop(struct iwx_softc *sc)
     struct iwx_node *in = (struct iwx_node *)ic->ic_bss;
     int err, i;
     
+    if(beAwdlOptIn){const int e=beAwdlInfrastructureWillChange();if(e)return e;}
     splassert(IPL_NET);
     
     err = iwx_flush_sta(sc, in);
@@ -12949,7 +13153,7 @@ void ItlIwx::
 iwx_newstate_task(void *psc)
 {
     auto *bzt=container_of(static_cast<iwx_softc *>(psc),ItlIwx,com);
-    if(bzt->bzDevice() && !bzt->getMainWorkLoop()->inGate()) {
+    if((bzt->bzDevice() || bzt->beAwdlOptIn) && !bzt->getMainWorkLoop()->inGate()) {
         bzt->getMainCommandGate()->runAction([](OSObject *,void *context,void *,void *,void *)->IOReturn {
             iwx_newstate_task(context);return kIOReturnSuccess;
         },psc);return;
@@ -13086,6 +13290,8 @@ iwx_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
     struct iwx_softc *sc = (struct iwx_softc *)ifp->if_softc;
     ItlIwx *that = container_of(sc, ItlIwx, com);
     struct ieee80211_node *ni = ic->ic_bss;
+    if(that->bzDevice() && nstate!=IEEE80211_S_RUN)
+        __atomic_add_fetch(&that->fBzRateEpoch,1U,__ATOMIC_RELEASE);
     if (!that->bzDevice() && nstate != IEEE80211_S_RUN) {
         __atomic_add_fetch(&that->fAxRateEpoch, 1U, __ATOMIC_RELEASE);
         __atomic_add_fetch(&that->fAxBaEpoch, 1U, __ATOMIC_RELEASE);
@@ -13248,6 +13454,10 @@ int ItlIwx::
 iwx_sf_config(struct iwx_softc *sc, int new_state)
 {
     struct ieee80211com *ic = &sc->sc_ic;
+    // Linux sf.c: a real concurrent data MAC excludes FULL_ON. A partial
+    // own setup remains held until confirmed teardown or positive reset.
+    if (beAwdlOptIn && beAwdlSupported() && fBeAwdlSfHeld &&
+        fBeAwdlDataEpoch==fPc1ResetEpoch) new_state=IWX_SF_UNINIT;
     struct iwx_sf_cfg_cmd sf_cmd = {
         .state = htole32(new_state),
     };
@@ -13850,7 +14060,7 @@ iwx_start(struct _ifnet *ifp)
 void ItlIwx::
 iwx_stop(struct _ifnet *ifp, unsigned origin2J)
 {
-    if (bzDevice() && !getMainWorkLoop()->inGate()) {
+    if ((bzDevice() || beAwdlOptIn) && !getMainWorkLoop()->inGate()) {
         const IOReturn result=getMainCommandGate()->runAction(
             [](OSObject *,void *owner,void *ifnet,void *origin,void *)->IOReturn {
                 static_cast<ItlIwx *>(owner)->iwx_stop(static_cast<_ifnet *>(ifnet),unsigned(uintptr_t(origin)));
@@ -14567,6 +14777,16 @@ iwx_rx_pkt(struct iwx_softc *sc, struct iwx_rx_data *data, struct mbuf_list *ml)
                 break;
             }
                 
+            case IWX_BEACON_NOTIFICATION:
+                if (beAwdlOptIn && (bzDevice() || (fBeAwdlAxMacMask&4)) && (qid&0x80)) {
+                    ++fBeAwdlDataStats[30];fBeAwdlDataStats[31]=iwx_rx_packet_payload_len(pkt);
+                    break; // bounded raw notification count, not inferred RF success
+                }
+                goto unhandledResponse;
+            case IWX_BEACON_TEMPLATE_CMD:
+                if (!(bzDevice()?beAwdlOptIn && bzRoute==kgp_bz::ReplyRoute::Command:
+                      beAwdlAxGoBeaconReply(sc,qid,idx)))goto unhandledResponse;
+                // Fall through to the unchanged matched-command ownership path.
             case IWX_WIDE_ID(IWX_REGULATORY_AND_NVM_GROUP,
                 IWX_NVM_GET_INFO):
             case IWX_ADD_STA_KEY:
@@ -14732,6 +14952,7 @@ iwx_rx_pkt(struct iwx_softc *sc, struct iwx_rx_data *data, struct mbuf_list *ml)
             }
                 
             case IWX_WIDE_ID(IWX_MAC_CONF_GROUP, IWX_SESSION_PROTECTION_NOTIF): {
+                if (beAwdlWindowNotify(pkt->data, iwx_rx_packet_payload_len(pkt))) break;
                 struct iwx_session_prot_notif *notif;
                 SYNC_RESP_STRUCT(notif, pkt, struct iwx_session_prot_notif *);
                 if (!notif->status) {
@@ -14821,6 +15042,7 @@ iwx_rx_pkt(struct iwx_softc *sc, struct iwx_rx_data *data, struct mbuf_list *ml)
             }
                 
             default:
+            unhandledResponse:
                 handled = 0;
                 XYLog("%s: unhandled firmware response 0x%x/0x%x "
                       "rx ring %d[%d]\n",
@@ -17350,6 +17572,16 @@ dexterOriginal_iwx_rx_pkt(struct iwx_softc *sc, struct iwx_rx_data *data, struct
                 break;
             }
                 
+            // R49: the conventional DMA route must complete the same real
+            // private GO beacon command as the mapped route above.
+            case IWX_BEACON_NOTIFICATION:
+                if(beAwdlOptIn && (fBeAwdlAxMacMask&4) && (qid&0x80)){
+                    ++fBeAwdlDataStats[30];fBeAwdlDataStats[31]=iwx_rx_packet_payload_len(pkt);break;
+                }
+                goto r49UnhandledResponse;
+            case IWX_BEACON_TEMPLATE_CMD:
+                if(!beAwdlAxGoBeaconReply(sc,qid,idx))goto r49UnhandledResponse;
+                // Real command ownership continues into the original response path.
             case IWX_WIDE_ID(IWX_REGULATORY_AND_NVM_GROUP,
                 IWX_NVM_GET_INFO):
             case IWX_ADD_STA_KEY:
@@ -17560,6 +17792,7 @@ dexterOriginal_iwx_rx_pkt(struct iwx_softc *sc, struct iwx_rx_data *data, struct
             }
                 
             default:
+            r49UnhandledResponse:
                 handled = 0;
                 XYLog("%s: unhandled firmware response 0x%x/0x%x "
                       "rx ring %d[%d]\n",
@@ -18391,3 +18624,7 @@ void ItlIwx::zc19Publish()
 #include "ItlIwxBz.inc"
 
 #include "ItlIwxBzTransport.inc"
+
+#include "ItlIwxAwdlR42.inc"
+#include "ItlIwxBeAwdl.inc"
+#include "ItlIwxBeAwdlData.inc"

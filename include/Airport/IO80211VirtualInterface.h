@@ -63,10 +63,16 @@ public:
     virtual IOReturn controllerWillChangePowerState(IO80211Controller *,unsigned long,UInt,IOService *);
     virtual IOReturn controllerDidChangePowerState(IO80211Controller *,unsigned long,UInt,IOService *);
     virtual bool handleDebugCmd(apple80211_debug_command *);
+    // Ventura Legacy UUID4C07538B... has NO postPeerPresence/Absence virtual
+    // slots here. Keeping the older declarations shifted all following calls
+    // by3 slots (outputStart -> initIfnetEparams). Preserve older target ABI;
+    // do not emulate a private method or use a hard-coded vtable offset.
+#if __IO80211_TARGET != __MAC_13_0
     virtual IOReturn postPeerPresence(ether_addr *,int,int,int,char *);
     virtual IOReturn postPeerAbsence(ether_addr *);
 #if __IO80211_TARGET >= __MAC_10_15
     virtual IOReturn postPeerPresenceIPv6(ether_addr *,int,int,int,char *,unsigned char *);
+#endif
 #endif
     virtual void signalOutputThread();
     virtual bool isOutputFlowControlled();
@@ -115,7 +121,12 @@ public:
     bool controllerLostPower(void);
     UInt64 createIOReporters(IOService *);
     UInt64 debugFlags(void);
+#if __IO80211_TARGET == __MAC_13_0
+    // Legacy 4C07538B: count in EAX; packet heads are request->bufs[].
+    UInt32 dequeueTxPackets(TxPacketRequest *);
+#else
     mbuf_t dequeueTxPackets(TxPacketRequest *);
+#endif
     errno_t detachIfnet(void);
     void dropTxPacket(mbuf_t);
     bool dualBandCapable(void);

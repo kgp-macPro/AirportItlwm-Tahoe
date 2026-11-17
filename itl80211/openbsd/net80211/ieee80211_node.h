@@ -241,6 +241,9 @@ struct ieee80211_rxinfo {
 #define IEEE80211_RXI_AMPDU_DONE	0x00000002
 #define IEEE80211_RXI_HWDEC_SAME_PN    0x00000004
 #define IEEE80211_RXI_SAME_SEQ         0x00000008
+/* Driver-qualified foreign beacon/probe response: scan cache only. Internal
+ * receive metadata, not a native IO80211 ABI or a firmware capability. */
+#define IEEE80211_RXI_SCAN_ONLY        0x00000010
 
 /* Block Acknowledgement Record */
 struct ieee80211_tx_ba {

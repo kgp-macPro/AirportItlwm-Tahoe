@@ -12,6 +12,7 @@
  * GNU General Public License for more details.
  */
 /*    $OpenBSD: if_iwx.c,v 1.45 2020/10/11 07:05:28 mpi Exp $    */
+#include <Airport/BeAwdlInfraIsolation.hpp>
 
 /*
  * Copyright (c) 2014, 2016 genua gmbh <info@genua.de>
@@ -2252,6 +2253,7 @@ iwx_bz_port_chan_ctxt_task(void *arg)
     err = that->iwx_phy_ctxt_update(sc, in->in_phyctxt,
                                     in->in_phyctxt->channel, chains, chains, 0);
     if (err) {
+        if(that->beAwdlOptIn && that->fBeAwdlAPChanging)task_add(systq,&sc->init_task);
         XYLog("%s: failed to update PHY (error %d)\n",
               __FUNCTION__, err);
         //        refcnt_rele_wake(&sc->task_refs);
@@ -2260,6 +2262,7 @@ iwx_bz_port_chan_ctxt_task(void *arg)
     }
     err = that->iwx_rs_init(sc, in, true);
     if (err) {
+        if(that->beAwdlOptIn && that->fBeAwdlAPChanging)task_add(systq,&sc->init_task);
         XYLog("%s: could not update rate scaling (error %d)\n",
               __FUNCTION__, err);
         //        refcnt_rele_wake(&sc->task_refs);
@@ -3176,6 +3179,68 @@ iwx_bz_port_rx_mpdu_mq(struct iwx_softc *sc, mbuf_t m, void *pktdata,
      * And we must allow the same CCMP PN for subframes following the
      * first subframe. Otherwise they would be discarded as replays.
      */
+    // Copy validated CPU bytes before normal BSS decrypt/duplicate/reorder.
+    // No native calls, allocations, DMA-credit retention or registry writes.
+    if (beAwdlOptIn && beAwdlObserve(mbuf_data(m), mbuf_len(m), desc->v3.channel,
+        iwx_rxmq_get_signal_strength(sc, desc), le32toh(desc->v3.gp2_on_air_rise),
+        (desc->mac_flags2 & IWX_RX_MPDU_MFLG2_AMSDU)!=0)) {
+        // Recognized AWDL belongs to the separately copied native path, even
+        // when its bounded mailbox is full. Feeding its original to the BSS
+        // duplicate/reorder path would update ic_bss->dup_data with another
+        // transmitter's sequence. No DMA credit or RX ring backing is retained.
+        mbuf_freem(m);
+        return;
+    }
+
+    bool foreignManagement=false;
+    // AWDL was observed/copied above, before AP-domain admission. The P2P
+    // receiver can pass non-AWDL management/control frames as well. In STA
+    // mode net80211 maps them to ic_bss; it does not requalify RA/TA/BSSID
+    // before RSSI, sequence, deauth or Block Ack state mutation.
+    // Qualify even during partial setup/teardown, not just data-role stage7.
+    if(beAwdlOptIn && ic->ic_opmode==IEEE80211_M_STA && ic->ic_bss) {
+        const auto *frame=static_cast<const uint8_t *>(mbuf_data(m));
+        if((frame[0]&0x0c)==0 || (frame[0]&0x0c)==4) {
+            auto scope=be_awdl::InfraIsolation::managementScope(frame,mbuf_len(m),ic->ic_myaddr,ic->ic_bss->ni_bssid);
+            unsigned reason=scope==be_awdl::InfraIsolation::Foreign?1:0;
+            // Exact RXv3 source-STA-found/id contract is separate from the
+            // MAC/PHY byte. In API59 firmware its upper bits also carry band;
+            // never reinterpret that byte as a Skywalk/AX211 MAC-mask/link ID.
+            const uint32_t status=le32toh(desc->status);
+            if(scope==be_awdl::InfraIsolation::Infrastructure) {
+                const auto *ap=ic->ic_bss->ni_chan;
+                const unsigned apChannel=ap && ap!=IEEE80211_CHAN_ANYC?ieee80211_chan2ieee(ic,ap):0;
+                if(apChannel && desc->v3.channel && apChannel!=desc->v3.channel){scope=be_awdl::InfraIsolation::Foreign;reason|=2;}
+                if((status&IWX_RX_MPDU_RES_STATUS_SRC_STA_FOUND) &&
+                   ((status&IWX_RX_MPDU_RES_STATUS_STA_ID_MSK)>>24)!=IWX_STATION_ID){scope=be_awdl::InfraIsolation::Foreign;reason|=4;}
+            }
+            if(scope!=be_awdl::InfraIsolation::Infrastructure)
+                beAwdlInfraRxOwnerNote(scope,frame,mbuf_len(m),status,desc->mac_phy_idx,desc->v3.channel,reason);
+            if(scope==be_awdl::InfraIsolation::Foreign){mbuf_freem(m);return;}
+            if(scope==be_awdl::InfraIsolation::ScanOnly){foreignManagement=true;rxi.rxi_flags|=IEEE80211_RXI_SCAN_ONLY;}
+        }
+    }
+    // A private promiscuous MAC admits other BSSs too. The existing net80211
+    // station filter runs AFTER this driver's per-ic_bss replay/duplicate/BA
+    // state. Enforce its data-domain contract before touching that state.
+    // Do not change monitor mode, scanning or the AWDL copy above.
+    // Domain qualification is not TX readiness: an AUTH/ASSOC transition,
+    // scan, partial private setup or teardown must not reopen the AP's
+    // replay/sequence state to foreign traffic. Selected-AP EAPOL is FromDS
+    // with our RA and the selected BSSID and remains admitted before RUN.
+    if(beAwdlOptIn && ic->ic_opmode==IEEE80211_M_STA && ic->ic_bss) {
+        const auto *frame=static_cast<const uint8_t *>(mbuf_data(m));
+        auto *d=fBeAwdlInfraCoex;
+        if(be_awdl::InfraIsolation::foreignData(frame,mbuf_len(m),ic->ic_myaddr,ic->ic_bss->ni_bssid)) {
+            if(!d[16]) {d[19]=time2GNow();memcpy(d+21,frame,24);
+                d[24]=le32toh(desc->status);d[25]=desc->mac_phy_idx;d[26]=desc->v3.channel;}
+            ++d[16];mbuf_freem(m);return;
+        }
+        foreignManagement=foreignManagement || be_awdl::InfraIsolation::foreignManagement(frame,mbuf_len(m),ic->ic_bss->ni_bssid);
+        if(foreignManagement)++d[17];
+        else if((frame[0]&0x0c)==8)++d[18];
+    }
+
     if (desc->mac_flags2 & IWX_RX_MPDU_MFLG2_AMSDU) {
         struct ieee80211_frame *wh = mtod(m, struct ieee80211_frame *);
         uint8_t subframe_idx = (desc->amsdu_info &
@@ -3206,7 +3271,7 @@ iwx_bz_port_rx_mpdu_mq(struct iwx_softc *sc, mbuf_t m, void *pktdata,
         return;
     }
 
-    if (iwx_detect_duplicate(sc, m, desc, &rxi)) {
+    if (!foreignManagement && iwx_detect_duplicate(sc, m, desc, &rxi)) {
         ++fBzStats[25];
         mbuf_freem(m);
         return;
@@ -4712,6 +4777,12 @@ iwx_bz_port_rs_update(struct iwx_softc *sc, struct iwx_tlc_update_notif *notif)
             }
         }
     }
+    bzTxRateNote(rate_n_flags,1); // caller already filtered real STA0 TLC feedback
+    if(beAwdlOptIn){auto *v=fBeAwdlInfraRate;++v[3];absolutetime_to_nanoseconds(mach_absolute_time(),&v[4]);
+        v[5]=uint32_t(sc->sc_generation);v[6]=fPc1ResetEpoch;v[7]=notif->sta_id;
+        v[8]=le32toh(notif->flags);v[9]=notifver;v[10]=le32toh(notif->rate);
+        v[11]=rate_n_flags;v[12]=format;v[13]=ni->ni_txmcs;v[14]=ni->ni_txrate;}
+
 }
 
 int ItlIwx::
@@ -5452,6 +5523,10 @@ iwx_mld_deauth(struct iwx_softc *sc, struct iwx_node *in)
 {
     int err, generation = sc->sc_generation;
 
+    if (beAwdlOptIn) {
+        err = beAwdlInfrastructureWillChange();
+        if (err) return err; // preserve unknown ownership; existing reset handles failure
+    }
     iwx_mld_probe(sc, IWX_MLD_STEP_DEAUTH, 0);
 
     if (sc->sc_flags & IWX_FLAG_MAC_ACTIVE) {

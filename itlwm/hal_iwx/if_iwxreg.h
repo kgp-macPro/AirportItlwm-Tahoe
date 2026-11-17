@@ -1593,6 +1593,7 @@ struct iwx_ucode_header {
 #define IWX_UCODE_TLV_FW_DBG_DEST    38
 #define IWX_UCODE_TLV_FW_DBG_CONF    39
 #define IWX_UCODE_TLV_FW_DBG_TRIGGER    40
+#define IWX_UCODE_TLV_API_SMART_FIFO_OFFLOAD 68
 #define IWX_UCODE_TLV_CMD_VERSIONS    48
 #define IWX_UCODE_TLV_FW_GSCAN_CAPA    50
 #define IWX_UCODE_TLV_FW_MEM_SEG    51
@@ -4884,7 +4885,8 @@ struct iwx_mac_client_data {
  * @he_support: HE is used on this MAC
  * @he_ap_support: HE AP support (AP mode only)
  * @eht_support: EHT is used on this MAC
- * @nic_not_ack_enabled: no ACK required for this MAC
+ * @nic_not_ack_enabled: NIC cannot receive ACK-enabled aggregation (mixed
+ * BACK/non-BACK MPDUs); this is not a switch to suppress ordinary MAC ACKs.
  * @client: station-mode data
  */
 struct iwx_mac_config_cmd {

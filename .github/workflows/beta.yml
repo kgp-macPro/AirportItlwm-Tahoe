@@ -1,0 +1,26 @@
+name: AirDrop beta source and compatibility build
+on:
+  push:
+    branches: [airdrop-beta]
+    tags: ['v2.1.0-*']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  beta-build:
+    runs-on: macos-15-intel
+    timeout-minutes: 45
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify original source inputs
+        run: python3 tools/verify_beta_source.py
+      - name: Compile separate comparison outputs (not release binaries or RF tests)
+        run: |
+          R49_BUILD_ROOT="$GITHUB_WORKSPACE/build/wlan-check" sh tools/awdl-r49/BUILD_RELEASE.sh
+          python3 tools/bluetooth-intel/BUILD_BLE_PROFILES.py --lilu-sdk "$PWD/third_party/Lilu-1.7.2-SDK/Lilu.kext" --out "$PWD/build/bluetool-check"
+          python3 tools/verify_beta_source.py

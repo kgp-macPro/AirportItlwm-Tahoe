@@ -58,16 +58,26 @@ struct TxPacketRequest {
     uint16_t    t;       // 2
     uint16_t    mU;       // 4
     uint16_t    mM;       // 6
+#if __IO80211_TARGET == __MAC_13_0
+    // All eight list counts are written at offsets8..22 by Legacy0x69416.
+    uint16_t    packetCounts[8];
+#else
     uint16_t    pkt_cnt;
     uint16_t    unk2;
     uint16_t    unk3;
     uint16_t    unk4;
     uint32_t    pad;
+#endif
     mbuf_t      bufs[8];    // 18
-    uint32_t    reqTx;
+    uint32_t    reqTx; // Ventura: low16 written as output; NOT a guessed input mask.
 };
 
 static_assert(sizeof(struct TxPacketRequest) == 0x60, "TxPacketRequest size error");
+#if __IO80211_TARGET == __MAC_13_0
+static_assert(__builtin_offsetof(TxPacketRequest,packetCounts)==8,"packet count offset");
+static_assert(__builtin_offsetof(TxPacketRequest,bufs)==0x18,"packet list offset");
+static_assert(__builtin_offsetof(TxPacketRequest,reqTx)==0x58,"native output offset");
+#endif
 
 struct AWSRequest;
 struct packet_info_tx;
@@ -147,7 +157,12 @@ public:
     IOReturn createAssocHistory(void);
     UInt64 createIOReporters(IOService *);
     UInt64 debugFlags(void);
+#if __IO80211_TARGET == __MAC_13_0
+    // Legacy 4C07538B: count in EAX; packet heads are request->bufs[].
+    UInt32 dequeueTxPackets(TxPacketRequest *);
+#else
     mbuf_t dequeueTxPackets(TxPacketRequest *);
+#endif
     mbuf_t dequeueTxPackets(UInt,UInt);
     void dropTxPacket(mbuf_t);
     bool efiNVRAMPublished(void *,void *,IOService *,IONotifier *);

@@ -108,6 +108,10 @@
 #ifndef _ITLWMX_H
 #define _ITLWMX_H
 #include <compat.h>
+#include <Airport/BeAwdlEvidence.hpp>
+#include <Airport/BeAwdlTxDetail.hpp>
+#include <Airport/BeAwdlTxAdmission.hpp>
+#include <Airport/BeAwdlNativeTx.hpp>
 #include <linux/kernel.h>
 
 #include <sys/param.h>
@@ -189,6 +193,188 @@ public:
     
     virtual IOReturn setMulticastList(IOEthernetAddress *addr, int count) override;
     
+    // Experimental co-channel discovery only; never a normal STA/TLC policy.
+    bool beAwdlOptIn = false;
+    bool beAwdlDataOptIn = false; // separate experimental data-role admission
+    bool beAwdlTarget() const { return fBzDevice || com.sc_device_family>=IWX_DEVICE_FAMILY_22000; }
+    bool beAwdlSupported() const;
+    bool beAwdlAxContract() const;
+    bool fBeAwdlAPChanging=false,fBeAwdlRemoving=false,fBeAwdlCleanRemoved=false;
+    bool fBeAwdlAxTerminal=false;
+    unsigned fBeAwdlAPCommands=0,fBeAwdlHomeWidth=0;
+    uintptr_t fBeAwdlControlThread=0;
+    bool beAwdlHasPrivateOwners() const;
+    bool beAwdlAPMutation(const struct iwx_host_cmd *) const;
+    int beAwdlInfrastructureWillChange();
+    int beAwdlRetireDiscoveryQueue();
+    void beAwdlControlDone();
+    void beAwdlAxStoppedCleanup();
+    unsigned beAwdlQueueSize() const {return com.sc_device_family<IWX_DEVICE_FAMILY_AX210?IWX_DEFAULT_QUEUE_SIZE:IWX_MIN_256_BA_QUEUE_SIZE_GEN3;}
+    uint64_t fAwdlR42Commands[16+32*56]={246,1,(16+32*56)*8};
+    // Last complete/failed GO setup: preserve original command bytes beyond ring wrap/reset.
+    uint64_t fAwdlR42Activation[16+32*56]={246,1,(16+32*56)*8};
+    uint64_t beAwdlCommandBegin(const struct iwx_host_cmd *);
+    void beAwdlCommandEnd(uint64_t,const struct iwx_host_cmd *,int);
+    int iwx_send_cmd_r42_inner(struct iwx_softc *,struct iwx_host_cmd *);
+    bool beAwdlLifetimeCurrent(struct iwx_softc *,int,uint32_t) const;
+    bool beAwdlRadioTxAllowed() const;
+    bool beAwdlDataControlCurrent() const;
+    void beAwdlQueueSnapshot(uint64_t out[272]);
+    uint32_t fBeAwdlAxQueueOwned=0, fBeAwdlAxMacMask=0, fBeAwdlAxStationMask=0;
+    uint32_t fBeAwdlAxBindingMask=0;
+    // AX GO timing: genuine associated-AP RX GP2/TSF pair, never ni_rstamp as GP2.
+    uint64_t fBeAwdlAxGoClockHost=0,fBeAwdlAxGoClockTsf=0;
+    uint32_t fBeAwdlAxGoClockGp2=0,fBeAwdlAxGoClockEpoch=0,fBeAwdlAxGoBeaconTime=0;
+    int fBeAwdlAxGoClockGeneration=-1;
+    uint8_t fBeAwdlAxGoClockAp[6]={};
+    uint8_t fBeAwdlApBssid[6]={};
+    int beAwdlAxMac(unsigned,uint32_t);
+    int beAwdlAxBinding(unsigned);
+    int beAwdlAxPhyPrepare();
+    int beAwdlAxGoTiming();
+    int beAwdlAxGoBeacon();
+    void beAwdlAxGoObserve(const uint8_t *,size_t,unsigned,uint32_t,uint64_t,uint16_t);
+    bool beAwdlAxGoBeaconReply(const struct iwx_softc *,unsigned,unsigned) const;
+    int beAwdlAxStation(unsigned,unsigned,const uint8_t *,bool);
+    int beAwdlAxQueueDisable(unsigned,unsigned);
+    int beAwdlAxPrepare(const uint8_t[6]);
+    int beAwdlAxDataPrepare();
+    int beAwdlAxStop(bool);
+    bool beAwdlAxRx(struct iwx_softc *,mbuf_t,struct iwx_rx_mpdu_desc *,struct ieee80211_rxinfo *);
+    IOCommandGate *beAwdlCommandGate() { return beAwdlOptIn && beAwdlSupported() ? getMainCommandGate():nullptr; }
+    struct BeAwdlFrame {
+        uint16_t length = 0, channel = 0;
+        int32_t rssi = 0;
+        uint32_t gp2 = 0;
+        uint64_t hostNs = 0;
+        uint8_t bytes[2304] = {};
+    };
+    int beAwdlPrepare(const uint8_t address[6]);
+    int beAwdlTransmit(mbuf_t, uint64_t nativeTicket=0);
+    void beAwdlTxStatus(struct iwx_tx_resp *,struct iwx_tx_data *);
+    be_awdl::ActionResults fBeAwdlActionResults;
+    // R5: separate real GO data role; discovery MAC/link/window stays intact.
+    enum {BeAwdlDataMac=2,BeAwdlDataLink=2,BeAwdlMcastStation=4,BeAwdlGoMgmtStation=9,BeAwdlPeerFirst=5,BeAwdlPeerCount=4,BeAwdlPeerTid=IWX_TID_NON_QOS};
+    struct BeAwdlDataPeer {uint8_t address[6]={};int queue=-1;uint32_t state=0;};
+    BeAwdlDataPeer fBeAwdlDataPeers[BeAwdlPeerCount];
+    int fBeAwdlDataGeneration=-1,fBeAwdlDataQueue=-1,fBeAwdlGoMgmtQueue=-1;
+    uint32_t fBeAwdlDataEpoch=0,fBeAwdlDataStage=0,fBeAwdlDataError=0;
+    bool fBeAwdlDataPreparing=false,fBeAwdlSfHeld=false,fBeAwdlDataQuiesceTried=false;
+    int fBeAwdlDataAllocStation=-1,fBeAwdlDataAllocTid=-1;
+    uint64_t fBeAwdlDataStats[64]={207,3,512};
+    struct BeAwdlDataSlot {uint64_t ticket=0;int status=-1;uint32_t firmwareDetail=0;};
+    BeAwdlDataSlot fBeAwdlDataSlots[32][IWX_MIN_256_BA_QUEUE_SIZE_GEN3];
+    struct BeAwdlDataResult {uint64_t ticket=0;int status=-1;uint32_t firmwareDetail=0;};
+    BeAwdlDataResult fBeAwdlDataResults[16];
+    uint32_t fBeAwdlResultHead=0,fBeAwdlResultTail=0,fBeAwdlResultCount=0;
+    uint32_t fBeAwdlDataPhyStage=0,fBeAwdlDataPhyGeneration=0,fBeAwdlDataPhyEpoch=0;
+    bool fBeAwdlDataLinkRemoved=false,fBeAwdlDataProofFrozen=false;
+    uint64_t fBeAwdlDataProof[64]={209,1,512};
+    uint64_t fBeAwdlDataLife[64]={210,2,512}; // native-policy + exact owned-resource stop evidence
+    uint32_t fBeAwdlDataQueueRemoved=0,fBeAwdlDataStationRemoved=0;
+    int beAwdlDataCommand(uint32_t,uint32_t,size_t,const void *,bool=true,struct iwx_host_cmd * = nullptr);
+    void beAwdlDataLinkParameters(struct iwx_link_config_cmd *) const;
+    int beAwdlDataPhyPrepare();
+    int beAwdlDataPhyRemove();
+    void beAwdlDataConfigSnapshot(uint64_t out[64]) const;
+    uint32_t beAwdlDataFilterFlags(uint16_t) const;
+    int beAwdlDataFilterUpdate(uint16_t);
+    bool fBeAwdlDataFilterKnown=false;
+    uint32_t fBeAwdlDataFilter=0;
+    uint64_t fBeAwdlInfraCoex[64]={244,1,512};
+    void beAwdlInfraCoexSnapshot(uint64_t out[64]) const;
+    uint64_t fBeAwdlInfraRxOwner[64]={245,1,512};
+    void beAwdlInfraRxOwnerNote(unsigned,const uint8_t *,size_t,uint32_t,uint8_t,uint8_t,unsigned);
+    int beAwdlDataPrepare();
+    bool beAwdlDataReady() const;
+    bool beAwdlDataSetupPending() const;
+    bool beAwdlDataQueueOwned(int,int=-1,int=-1) const;
+    bool beAwdlDataAllocates(int,int) const;
+    bool beAwdlDataQueueReserved(int) const;
+    int beAwdlDataPeer(const uint8_t[6],bool);
+    bool beAwdlDataPeerMatches(const uint8_t[6],bool) const;
+    bool beAwdlDataRemovalComplete() const;
+    bool beAwdlDataCanQueueRemoval() const;
+    int beAwdlDataTransmit(mbuf_t,uint64_t);
+    void beAwdlDataStatus(struct iwx_tx_resp *,struct iwx_tx_data *);
+    // R28-DIAG-01: CPU evidence only. No return/admission/reclaim decisions.
+    be_awdl::TxDetail fBeAwdlTxDetail;
+    void beAwdlDataDiagnosticCommand(unsigned,unsigned,const void *,size_t);
+    void beAwdlDataDiagnosticDoorbell(unsigned,unsigned);
+    void beAwdlDataDiagnosticResponse(struct iwx_rx_packet *,struct iwx_tx_data *);
+    void beAwdlDataRetire(int,unsigned,bool);
+    bool beAwdlDataPopResult(BeAwdlDataResult &);
+    // CPU-owned ring storage, detached only after qualified per-queue stop.
+    // No live firmware QID or DMA alias remains in com.txq after a move.
+    struct BeAwdlRetiredRing {struct iwx_tx_ring ring;uint32_t generation=0,epoch=0;bool held=false;};
+    BeAwdlRetiredRing fBeAwdlRetired[BeAwdlPeerCount+3]={};
+    int beAwdlDataRetireQueue(unsigned,int,unsigned);
+    int beAwdlDataTakeRing(struct iwx_tx_ring *,uint32_t);
+    void beAwdlDataRetiredCleanup();
+    void beAwdlDataQueueNote(unsigned,int,int,int,int=0,uint32_t=0);
+    int beAwdlDataFlush(unsigned,int,unsigned);
+    int beAwdlDataRemoveStation(unsigned,int,unsigned,uint32_t);
+    int beAwdlDataTeardown();
+    void beAwdlDataSnapshot(uint64_t out[64]) const;
+
+    be_awdl::TxAdmissionEvidence fBeAwdlTxAdmission;
+    void beAwdlTxAdmissionEvent(unsigned,uint64_t,int,const void * = nullptr,size_t = 0);
+    uint64_t fBeAwdlInfraRate[32]={234,1,256};
+    void beAwdlInfraRateSnapshot(uint64_t out[32]) const;
+    uint64_t fBeAwdlNativeTickets[IWX_MIN_256_BA_QUEUE_SIZE_GEN3]={};
+    uint64_t fBeAwdlNativeStatus[16]={206,1,128}; // consumes on every result
+    uint64_t fBeAwdlTxResources[64]={220,1,512}; // bounded first/last rejection, no pointer/payload
+    void beAwdlTxReject(unsigned,int,int,int);
+    void beAwdlActionRetire(int,unsigned);
+    bool beAwdlPop(BeAwdlFrame &);
+    bool beAwdlPopData(BeAwdlFrame &);
+    BeAwdlFrame fBeAwdlDataFrames[8];
+    uint32_t fBeAwdlDataHead=0,fBeAwdlDataTail=0,fBeAwdlDataCount=0;
+    uint64_t fBeAwdlDataCopied=0,fBeAwdlDataOverflow=0;
+    be_awdl::WireEvidence fBeAwdlWire;
+    bool beAwdlClock(uint32_t &);
+    void beAwdlClockSnapshot(uint64_t out[8]) const;
+    void beAwdlDataPrerequisites(uint64_t out[16]) const;
+    uint32_t fBeAwdlReg44=0;
+    int fBeAwdlRegGeneration=-1;
+    int beAwdlWindowRequest(uint32_t durationTu);
+    int beAwdlWindowCancel();
+    bool beAwdlWindowNotify(const void *, size_t);
+    void beAwdlWindowPoll();
+    void beAwdlWindowSnapshot(uint64_t out[32]) const;
+    void beAwdlWindowEvent(uint32_t kind, uint64_t a=0, uint64_t b=0, uint64_t c=0);
+    void beAwdlWindowTraceSnapshot(uint64_t out[272]) const;
+    bool beAwdlObserve(const void *, size_t, uint16_t, int32_t, uint32_t, bool);
+    uint32_t beAwdlObservedInfraBeacons() const { return fBeAwdlObservedInfraBeacons; }
+    uint32_t fBeAwdlObservedInfraBeacons = 0;
+    bool beAwdlCurrent() const;
+    bool beAwdlQueueOwned() const;
+    int beAwdlTeardown();
+    void beAwdlSnapshot(uint64_t out[16]) const;
+    // R1 bounded diagnostics, on the existing controller workloop only.
+    void beAwdlDetailSnapshot(uint64_t out[336]) const;
+    void beAwdlEvent(uint32_t kind, uint32_t phase, uint32_t code, int error = 0);
+    void beAwdlHostGate(uint64_t bits);
+    void beAwdlFatal(uint32_t fh, uint32_t hw);
+    void beAwdlCaptureBeforeStop();
+    uint64_t fBeAwdlDetail[336] = {}; // header32 + events32*8 + two48-dword tables
+
+    enum { BeAwdlMac = 1, BeAwdlLink = 1, BeAwdlStation = 3 };
+    bool fBeAwdlPreparing = false, fBeAwdlActive = false;
+    int fBeAwdlGeneration = -1, fBeAwdlQueue = -1;
+    uint32_t fBeAwdlPhy = IWX_FW_CTXT_INVALID;
+    uint32_t fBeAwdlEpoch = 0, fBeAwdlStage = 0, fBeAwdlError = 0;
+    uint8_t fBeAwdlAddress[6] = {};
+    BeAwdlFrame fBeAwdlFrames[4];
+    uint32_t fBeAwdlHead = 0, fBeAwdlTail = 0, fBeAwdlCount = 0;
+    uint32_t fBeAwdlGp2 = 0;
+    uint64_t fBeAwdlGp2Host = 0, fBeAwdlCounters[8] = {};
+    uint64_t fBeAwdlClockStats[8] = {1};
+    // Own link1/conf2 only. No infrastructure TE flags or queue ownership here.
+    uint64_t fBeAwdlWindowStats[32] = {2}; // phase0 idle,1 pending,2 granted,3 cancelling,4 quarantine,5 removed,6 rejected/draining
+    uint64_t fBeAwdlWindowTrace[272] = {203,1,2176}; //16header+32x8, no pointers
+    uint64_t fBeAwdlWindowLife[416]={232,1,3328}; // live32 + first current-lifetime adverse event; diagnostic only
+    bool fBeAwdlWindowCommand = false;
     void releaseAll();
     void joinSSID(const char *ssid, const char *pwd);
     
@@ -279,7 +465,7 @@ public:
     // ZC21 TVQM contract: nonnegative firmware QID or negative errno;
     // command errors never escape as successful queue IDs.
     int     iwx_tvqm_alloc_txq(struct iwx_softc *, int, int);
-    int     iwx_tvqm_enable_txq(struct iwx_softc *, int, int, uint32_t);
+    int     iwx_tvqm_enable_txq(struct iwx_softc *, int, int, uint32_t, int station = IWX_STATION_ID);
     void    iwx_post_alive(struct iwx_softc *);
     int iwx_send_time_event_cmd(struct iwx_softc *sc,
                             const struct iwx_time_event_cmd *cmd);
@@ -379,7 +565,7 @@ public:
                             const struct iwx_rate *rinfo, int type, struct ieee80211_frame *wh);
     void    iwx_toggle_tx_ant(struct iwx_softc *sc, uint8_t *ant);
     void    iwx_tx_update_byte_tbl(struct iwx_softc *, struct iwx_tx_ring *, int, uint16_t, uint16_t);
-    int    iwx_tx(struct iwx_softc *, mbuf_t, struct ieee80211_node *, int);
+    int    iwx_tx(struct iwx_softc *, mbuf_t, struct ieee80211_node *, int, int awdlQueue = -1);
     int    iwx_flush_sta_tids(struct iwx_softc *, int, uint16_t);
     int    iwx_flush_sta(struct iwx_softc *, struct iwx_node *);
     int    iwx_drain_sta(struct iwx_softc *sc, struct iwx_node *, int);
@@ -641,6 +827,11 @@ public:
     struct AxRateSample { uint64_t seq=0, stamp=0, identity=0; uint32_t raw=0, epoch=0; };
     AxRateSample fAxRate[2]; // TLC / successful BA; one RX workloop writer
     uint32_t fAxRateEpoch=0, fAxBaEpoch=0;
+    AxRateSample fBzRate[2]; // independent STA0 TLC / qualified STA0 BA samples
+    uint32_t fBzRateEpoch=0;
+    void bzTxRateNote(uint32_t,unsigned);
+    bool bzHeTxReport(ItlHeTxReport &);
+    uint8_t fBeAwdlTxAntenna=0;
     uint64_t fAxBaTicket=0, fAxBaEvents[16][8]={}, fAxBaWire[152]={}, fAxRateWire[17]={};
     void axTxRateNote(uint32_t raw, unsigned source);
     void axBaEvent(unsigned event,unsigned tid,unsigned start,int error,uint32_t status);

@@ -10,6 +10,7 @@
 
 #include "AirportItlwm.hpp"
 #include "../include/Airport/ScanResultBounds.hpp"
+#include "../include/Airport/WPA2Transition.hpp"
 #include <sys/_netstat.h>
 
 extern IOCommandGate *_fCommandGate;
@@ -1482,6 +1483,13 @@ getSCAN_RESULT(OSObject *object, struct apple80211_scan_result **sr)
         result->asr_ie_len = airportScanIEPrefix(fNextNodeToSend->ni_rsnie_tlv,
             fNextNodeToSend->ni_rsnie_tlv_len,sizeof(result->asr_ie_data));
         memcpy(result->asr_ie_data,fNextNodeToSend->ni_rsnie_tlv,result->asr_ie_len);
+#if __IO80211_TARGET == __MAC_13_0
+        // R27: expose only an actually offered ordinary PSK option of optional-
+        // PMF PSK/SAE transition mode. Preserve the original node/AP IE for
+        // net80211 and the native four-way-handshake validation contract.
+        result->asr_ie_len = AirportWPA2Transition::selectWPA2TransitionMode(
+            result->asr_ie_data, result->asr_ie_len);
+#endif
 #endif
     } else {
         result->asr_ie_len = 0;
@@ -1523,6 +1531,12 @@ getSCAN_RESULT(OSObject *object, struct apple80211_scan_result **sr)
 IOReturn AirportItlwm::
 setVIRTUAL_IF_CREATE(OSObject *object, struct apple80211_virt_if_create_data* data)
 {
+#if __IO80211_TARGET == __MAC_13_0
+    if (auto *iwx = OSDynamicCast(ItlIwx, fHalService)) {
+        if (iwx->beAwdlTarget() && (!data || data->role == APPLE80211_VIF_AWDL))
+            return beAwdlEnabled ? beAwdlCreate(data) : kIOReturnUnsupported;
+    }
+#endif
     struct ether_addr addr;
     struct apple80211_channel chann;
     XYLog("%s role=%d, bsd_name=%s, mac=%s, unk1=%d\n", __FUNCTION__, data->role, data->bsd_name,
@@ -1573,6 +1587,12 @@ setVIRTUAL_IF_CREATE(OSObject *object, struct apple80211_virt_if_create_data* da
 IOReturn AirportItlwm::
 setVIRTUAL_IF_DELETE(OSObject *object, struct apple80211_virt_if_delete_data *data)
 {
+#if __IO80211_TARGET == __MAC_13_0
+    if (auto *iwx = OSDynamicCast(ItlIwx, fHalService)) {
+        if (iwx->beAwdlTarget() && (!data || !memcmp(data->bsd_name, "awdl", 4)))
+            return beAwdlEnabled ? beAwdlDelete(data) : kIOReturnUnsupported;
+    }
+#endif
     XYLog("%s bsd_name=%s\n", __FUNCTION__, data->bsd_name);
     //TODO find vif according to the bsd_name
     IO80211VirtualInterface *vif = OSDynamicCast(IO80211VirtualInterface, object);
