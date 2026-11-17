@@ -38,7 +38,9 @@ R49_BUILD_ROOT="$PWD/build/wlan-check" sh tools/awdl-r49/BUILD_RELEASE.sh
 ```
 
 Output: `build/wlan-check/products/Release/Tahoe/AirportItlwm.kext`.
-The fw_gen dependency generates FwBinary.cpp from the included firmware files.
+The frozen generated FwBinary.cpp is included as an original R49 input. The
+fw_gen dependency can regenerate it from the included firmware when absent;
+the original helper preserves an existing generated file.
 The explicit MODULE_VERSION=2.0.0 matches the frozen binary's internal version.
 Do not run the separate stable-2.0.0 source verifier as a beta verifier.
 
