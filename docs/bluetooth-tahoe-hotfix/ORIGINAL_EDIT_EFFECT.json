@@ -1,0 +1,8 @@
+{
+  "reference_tag": "v2.1.0-beta.1",
+  "image": "25G416",
+  "old_cpu_patched_sha256": "83eddd307a496495631ccc59a63964cb08817d8264608f5d9ee655062f8ea79e",
+  "new_cpu_patched_sha256": "83eddd307a496495631ccc59a63964cb08817d8264608f5d9ee655062f8ea79e",
+  "equal": true,
+  "scope": "Frozen production classifier/page edits compared with current production code on an in-memory copy only; no daemon modification or execution"
+}

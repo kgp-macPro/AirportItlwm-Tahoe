@@ -112,7 +112,9 @@ static void prepare(OSObject *,IOTimerEventSource *source){
   vnode_put(vnode);vfs_context_rele(ctxt);return;}
  size_t bytes=FileIO::readFileSize(vnode,ctxt);uint8_t *file=nullptr;Reason result=MalformedImage;uint32_t detail=0xffffffff;
  if(bytes>=32 && bytes<=48*1024*1024){file=Buffer::create<uint8_t>(bytes);
-  if(file && !FileIO::readFileData(file,0,bytes,vnode,ctxt))result=qualify(file,bytes,hash,plan,&detail);}
+  auto *scratch=Buffer::create<uint8_t>(contractWorkspaceBytes);
+  if(file && scratch && !FileIO::readFileData(file,0,bytes,vnode,ctxt))result=qualify(file,bytes,hash,plan,&detail,scratch,contractWorkspaceBytes);
+  if(scratch)Buffer::deleter(scratch);}
  if(file)Buffer::deleter(file);
  if(result==Good && !vnode_ref(vnode)){
   qualifiedVnode=vnode; // never unloaded: held to prevent vnode reuse/ABA

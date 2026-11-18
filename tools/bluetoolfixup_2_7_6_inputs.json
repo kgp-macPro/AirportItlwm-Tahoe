@@ -1,0 +1,29 @@
+{
+  "component": "BlueToolFixup 2.7.6",
+  "runtime_source_commit": "78733f46d8fceb04e032b7dc58ec059a8873e0a5",
+  "base_public_commit": "4f9bcf863fee87c34de1c4c0f00cbde317e9cbdc",
+  "scope": "BTF-only compatibility update; every original R49 WLAN/SDK/firmware input remains pinned",
+  "files": {
+    "bluetooth/BlueToolFixup-Intel/BlueToolFixup.cpp": {
+      "sha256": "6093bc13555ca1d19da688d7cd89cd3c037a578dc5537cad33cdb81a589f7752"
+    },
+    "bluetooth/BlueToolFixup-Intel/KGPBLE.hpp": {
+      "sha256": "0e6330c60e8f4fc7fe0ed3ad2825b7a313b4c2864f86e48cf219cc62193073de"
+    },
+    "bluetooth/BlueToolFixup-Intel/KGPBLEContracts.hpp": {
+      "sha256": "9ac4c934f0898f9082a900c67afc2822ac8bb4019f6f523de543e2bb77831942"
+    },
+    "bluetooth/BlueToolFixup-Intel/KGPBLEQualify.hpp": {
+      "sha256": "92f08da70091243f8246ea6a76de33adfb9b7156850793c0fac6c7e4a06f7ea5"
+    },
+    "tools/bluetooth-intel/BUILD_BLE_PROFILES.py": {
+      "sha256": "6269f4bf0527729f8796ae6282212906636c3bd51206c1d9b98328d7b7d1f236"
+    },
+    "tools/bluetooth-intel/BLE_QUALIFY.cpp": {
+      "sha256": "395f64756fa45a29ea936b5f6e5b38a26e6b93c01eb400f9f58c8252b9a70c07"
+    },
+    "tools/bluetooth-intel/TEST_TAHOE_LAYOUT.cpp": {
+      "sha256": "4ae2a4ac66065adba7640c45bea48b2542e73d0f16f00b45de8d6f06b5101c87"
+    }
+  }
+}

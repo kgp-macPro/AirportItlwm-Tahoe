@@ -1,0 +1,20 @@
+[
+  {
+    "image": "bluetoothd-25F71",
+    "exit_code": 0,
+    "stdout": "{\"status\":\"PASS\",\"pages\":6,\"cpu_patched_sha256\":\"946c5f220298cd6a41950c1fc5bb58a89db9d58489c2be6ba160c04a7bd15e84\",\"scope\":\"Production layout selection, setter alias negatives, integrity and page atomicity; no kernel/HCI/RF execution\"}\n",
+    "stderr": ""
+  },
+  {
+    "image": "bluetoothd-25G342",
+    "exit_code": 0,
+    "stdout": "{\"status\":\"PASS\",\"pages\":6,\"cpu_patched_sha256\":\"5ae3014c3825beed6b8256ac8e27c02ac3bb8ec224db65de285999b55489bb93\",\"scope\":\"Production layout selection, setter alias negatives, integrity and page atomicity; no kernel/HCI/RF execution\"}\n",
+    "stderr": ""
+  },
+  {
+    "image": "bluetoothd-25G416",
+    "exit_code": 0,
+    "stdout": "{\"status\":\"PASS\",\"pages\":6,\"cpu_patched_sha256\":\"83eddd307a496495631ccc59a63964cb08817d8264608f5d9ee655062f8ea79e\",\"scope\":\"Production layout selection, setter alias negatives, integrity and page atomicity; no kernel/HCI/RF execution\"}\n",
+    "stderr": ""
+  }
+]

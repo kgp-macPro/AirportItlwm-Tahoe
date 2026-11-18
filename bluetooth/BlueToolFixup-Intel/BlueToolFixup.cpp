@@ -227,7 +227,8 @@ static void patched_cs_validate_page(vnode_t vp, memory_object_t pager, memory_o
                 searchAndPatch(data, PAGE_SIZE, path, boardIdsWithUSBBluetooth[0], kBoardIdSize, BaseDeviceInfo::get().boardIdentifier, kBoardIdSize);
         }
         else if (strcmp(path + dirLength, "bluetoothd") == 0) {
-            // Experimental BLE selection is opt-in and complete-function/field/USB qualified.
+            // Experimental BLE is opt-in; normalized instruction layouts,
+            // resolved native fields and the physical Intel USB owner select it.
             // Inspect original bytes BEFORE the existing base fixes below.
             const bool kgpBLEPage=KGPBLE::approvePage(vp,page_offset,data,validated_p,tainted_p,nx_p);
             searchAndPatch(data, PAGE_SIZE, path, kVendorCheckOriginal, kVendorCheckPatched);

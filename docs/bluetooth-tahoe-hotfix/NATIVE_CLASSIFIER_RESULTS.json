@@ -1,0 +1,41 @@
+[
+  {
+    "image": "bluetoothd-25F71",
+    "exit_code": 0,
+    "result": {
+      "compatible": true,
+      "reason_code": 0,
+      "reason": "matching native instruction layout",
+      "missing_function": "",
+      "pages": 6,
+      "integrity_cdhash": "4d0257480f76106c357951f61d086b5fefa24f34",
+      "limit": "Function compatibility, not native Ready, HCI success, advertising or AirDrop proof"
+    }
+  },
+  {
+    "image": "bluetoothd-25G342",
+    "exit_code": 0,
+    "result": {
+      "compatible": true,
+      "reason_code": 0,
+      "reason": "matching native instruction layout",
+      "missing_function": "",
+      "pages": 6,
+      "integrity_cdhash": "5600fec67dda29cce585352c536804e64cbdfd21",
+      "limit": "Function compatibility, not native Ready, HCI success, advertising or AirDrop proof"
+    }
+  },
+  {
+    "image": "bluetoothd-25G416",
+    "exit_code": 0,
+    "result": {
+      "compatible": true,
+      "reason_code": 0,
+      "reason": "matching native instruction layout",
+      "missing_function": "",
+      "pages": 6,
+      "integrity_cdhash": "e5b9bb8c1a9827cc3efe8ea57a3460c966ddf8ce",
+      "limit": "Function compatibility, not native Ready, HCI success, advertising or AirDrop proof"
+    }
+  }
+]

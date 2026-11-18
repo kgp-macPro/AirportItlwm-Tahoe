@@ -1,6 +1,6 @@
 // KGP/BlueToolFixup experimental native-contract qualification, GPL-2.0.
-// No OS build, UUID or full-binary digest allowlist. SHA256 is used for
-// complete REA-reviewed function signatures and binding the discovered plan.
+// No OS build/UUID allowlist. Function-layout hashes exclude only annotated
+// PC-relative address operands; edit pages still require their ORIGINAL hash.
 #pragma once
 #include <stdint.h>
 #include <stddef.h>
@@ -20,7 +20,7 @@ struct Image {const uint8_t *b;size_t size;uint64_t base,slice,vm,text,ts,consta
 enum Reason:uint32_t {Good=0,MalformedImage,UnsupportedCodeDirectory,MissingFunctionContract,AmbiguousFunctionContract,
  MissingEdit,AmbiguousEdit,WrongOperandRelationship,PageBoundary,HashFailure,UnexpectedFunctionLayout};
 inline const char *reasonName(Reason r){switch(r){
- case Good:return "complete native contract";case MalformedImage:return "malformed/unsupported Mach-O layout";
+ case Good:return "matching native instruction layout";case MalformedImage:return "malformed/unsupported Mach-O layout";
  case UnsupportedCodeDirectory:return "unsupported/incomplete CodeDirectory";case MissingFunctionContract:return "unrecognised function contract (not a build exclusion)";
  case AmbiguousFunctionContract:return "ambiguous function contract";case MissingEdit:return "missing required edit";
  case AmbiguousEdit:return "ambiguous required edit";case WrongOperandRelationship:return "inconsistent native field/call relationship";
@@ -85,35 +85,71 @@ inline bool nextFunction(const Image &v,uint64_t &pos,uint64_t &start,uint64_t &
  return false;
 }
 inline int64_t rel(const uint8_t *b,uint64_t off,unsigned disp,unsigned length){return int64_t(off+length)+int32_t(u32(b+off+disp));}
-inline Reason qualify(const uint8_t *b,size_t n,Hasher hash,Plan &out,uint32_t *detail=nullptr){
+inline bool relativeByte(const FunctionContract &c,size_t off){
+ for(unsigned i=0;i<c.relativeCount;++i)if(off>=c.relative[i] && off-c.relative[i]<4)return true;
+ return false;
+}
+inline bool prefixMatches(const uint8_t *b,const FunctionContract &c){
+ for(unsigned i=0;i<16 && i<c.size;++i)if(!relativeByte(c,i) && b[i]!=c.prefix[i])return false;
+ return true;
+}
+// Caller-owned temporary workloop/host storage: no 8-KiB kernel stack frame,
+// allocation or disassembly in the native page-validation hook.
+inline bool layoutHash(const uint8_t *b,const FunctionContract &c,uint8_t *scratch,size_t bytes,Hasher hash,uint8_t *digest){
+ if(!scratch || c.size>bytes)return false;
+ for(unsigned i=0;i<c.size;++i)scratch[i]=b[i];
+ for(unsigned i=0;i<c.relativeCount;++i){size_t off=c.relative[i];
+  if(!fits(off,4,c.size) || (i && off<size_t(c.relative[i-1])+4))return false;
+  for(unsigned j=0;j<4;++j)scratch[off+j]=0;
+ }
+ return hash(scratch,c.size,digest);
+}
+inline bool functionAt(const Image &v,uint64_t address,uint32_t bytes){
+ uint64_t pos=0,start=0,next=0;if(!nextFunction(v,pos,start,next))return false;start=next;
+ while(nextFunction(v,pos,start,next)){
+  if(start==address)return start>=v.text && next<=v.text+v.ts && next-start==bytes;
+  if(start>address)return false;start=next;
+ }
+ return false;
+}
+inline Reason qualify(const uint8_t *b,size_t n,Hasher hash,Plan &out,uint32_t *detail=nullptr,uint8_t *scratch=nullptr,size_t scratchBytes=0){
  if(detail)*detail=0xffffffff;
  out={};Image v;if(!hash || !parseImage(b,n,v))return MalformedImage;
+ if(!scratch || scratchBytes<contractWorkspaceBytes)return HashFailure;
  Plan p={};p.sliceOffset=v.base;p.sliceSize=v.slice;
  // All function starts come from Apple's bounded LC_FUNCTION_STARTS table.
  uint64_t found[contractCount]={};uint32_t counts[contractCount]={};uint64_t cursor=0,start=0,next=0;
  bool have=nextFunction(v,cursor,start,next);if(!have)return UnexpectedFunctionLayout;start=next;
  while(nextFunction(v,cursor,start,next)){
   if(start>=v.text && next<=v.text+v.ts && next>start){
-   for(unsigned k=0;k<contractCount;++k){const auto &c=contracts[k];if(next-start==c.size && c.size>=8 && equal(b+v.base+start,c.prefix,c.size<16?c.size:16)){
-    uint8_t digest[32];if(!hash(b+v.base+start,c.size,digest))return HashFailure;
+   for(unsigned k=0;k<contractCount;++k){
+    // Many native bool setters share the same instruction layout. Resolve
+    // these two by the actual calls below, never by a global first match.
+    if(k==F_AddressSetter || k==F_ConnectionSetter)continue;
+    const auto &c=contracts[k];if(next-start==c.size && c.size>=8 && prefixMatches(b+v.base+start,c)){
+    uint8_t digest[32];if(!layoutHash(b+v.base+start,c,scratch,scratchBytes,hash,digest))return HashFailure;
     if(equal(digest,c.sha256,32)){found[k]=start;++counts[k];}
    }}
   }
   start=next;
  }
- for(unsigned k=0;k<contractCount;++k){if(counts[k]!=1){if(detail)*detail=k;return counts[k]?AmbiguousFunctionContract:MissingFunctionContract;}}
- struct Spec {unsigned function;uint32_t offset;uint8_t size;const uint8_t *find,*replace;};
+ for(unsigned k=0;k<contractCount;++k){if(k!=F_AddressSetter && k!=F_ConnectionSetter && counts[k]!=1){if(detail)*detail=k;return counts[k]?AmbiguousFunctionContract:MissingFunctionContract;}}
+ struct Spec {unsigned function;uint32_t offset;uint8_t size;const uint8_t *find,*replace;uint8_t editOffset,editSize;};
  const Spec specs[]={
-  {F_SpecQuery,0x6b,sizeof(SpecAdvSetsCheck_find),SpecAdvSetsCheck_find,SpecAdvSetsCheck_replace},
-  {F_CoreInit,0x5db,sizeof(ExtendedAdvertisingCheck_find),ExtendedAdvertisingCheck_find,ExtendedAdvertisingCheck_replace},
-  {F_ExtendedSetsQuery,0x6b,sizeof(ExtendedAdvertisingSetsCheck_find),ExtendedAdvertisingSetsCheck_find,ExtendedAdvertisingSetsCheck_replace},
-  {F_CoreInit,0xdd8,sizeof(AdvertisingSetAddressGate_find),AdvertisingSetAddressGate_find,AdvertisingSetAddressGate_replace},
-  {F_AddressSync,0xf0,sizeof(AdvertisingSetAddressSync_find),AdvertisingSetAddressSync_find,AdvertisingSetAddressSync_replace},
-  {F_CoreInit,0xa22,sizeof(ExtendedScanning_find),ExtendedScanning_find,ExtendedScanning_replace},
-  {F_CoreInit,0xa06,sizeof(ExtendedCreateConnection_find),ExtendedCreateConnection_find,ExtendedCreateConnection_replace}};
+  {F_SpecQuery,0x6b,sizeof(SpecAdvSetsCheck_find),SpecAdvSetsCheck_find,SpecAdvSetsCheck_replace,3,6},
+  {F_CoreInit,0x5db,sizeof(ExtendedAdvertisingCheck_find),ExtendedAdvertisingCheck_find,ExtendedAdvertisingCheck_replace,3,6},
+  {F_ExtendedSetsQuery,0x6b,sizeof(ExtendedAdvertisingSetsCheck_find),ExtendedAdvertisingSetsCheck_find,ExtendedAdvertisingSetsCheck_replace,3,6},
+  {F_CoreInit,0xdd8,sizeof(AdvertisingSetAddressGate_find),AdvertisingSetAddressGate_find,AdvertisingSetAddressGate_replace,11,5},
+  {F_AddressSync,0xf0,sizeof(AdvertisingSetAddressSync_find),AdvertisingSetAddressSync_find,AdvertisingSetAddressSync_replace,3,6},
+  {F_CoreInit,0xa22,sizeof(ExtendedScanning_find),ExtendedScanning_find,ExtendedScanning_replace,0,10},
+  {F_CoreInit,0xa06,sizeof(ExtendedCreateConnection_find),ExtendedCreateConnection_find,ExtendedCreateConnection_replace,0,7}};
  for(unsigned i=0;i<7;++i){const auto &s=specs[i];uint64_t off=found[s.function]+s.offset;
-  if(s.size>20 || s.offset+s.size>contracts[s.function].size || !equal(b+v.base+off,s.find,s.size))return MissingEdit;
-  auto &e=p.edits[i];e.fileOffset=v.base+off;e.length=s.size;for(unsigned j=0;j<s.size;++j){e.find[j]=s.find[j];e.replace[j]=s.replace[j];}
+  if(s.size>20 || s.offset+s.size>contracts[s.function].size || s.editOffset+s.editSize>s.size)return MissingEdit;
+  for(unsigned j=0;j<s.size;++j)if(!relativeByte(contracts[s.function],s.offset+j) && b[v.base+off+j]!=s.find[j])return MissingEdit;
+  // Replace only the intended instructions. Never copy a reference build's
+  // call/RIP displacement into the newly selected, originally signed image.
+  auto &e=p.edits[i];e.fileOffset=v.base+off+s.editOffset;e.length=s.editSize;
+  for(unsigned j=0;j<e.length;++j){e.find[j]=b[e.fileOffset+j];e.replace[j]=s.replace[s.editOffset+j];}
  }
  unsigned matches=0;uint64_t maskOff=0;
  for(uint64_t i=v.constant;i+sizeof(LeEventMask_find)<=v.constant+v.cs;++i)if(equal(b+v.base+i,LeEventMask_find,sizeof(LeEventMask_find))){maskOff=i;++matches;}
@@ -121,7 +157,17 @@ inline Reason qualify(const uint8_t *b,size_t n,Hasher hash,Plan &out,uint32_t *
  auto &mask=p.edits[7];mask.fileOffset=v.base+maskOff;mask.length=sizeof(LeEventMask_find);
  for(unsigned j=0;j<mask.length;++j){mask.find[j]=LeEventMask_find[j];mask.replace[j]=LeEventMask_replace[j];}
  const auto *s=b+v.base;uint64_t clear=found[F_CoreInit]+0xdd8,addr=found[F_AddressSync]+0xf0,conn=found[F_CoreInit]+0xa06;
- // Exact, REA-qualified instructions plus their resolved relationships.
+ const unsigned setters[]={F_AddressSetter,F_ConnectionSetter};
+ const int64_t targets[]={rel(s,clear+11,1,5),rel(s,conn+7,1,5)};
+ for(unsigned i=0;i<2;++i){auto k=setters[i];const auto &c=contracts[k];uint8_t digest[32];
+  if(targets[i]<0 || !functionAt(v,uint64_t(targets[i]),c.size) ||
+     !layoutHash(s+targets[i],c,scratch,scratchBytes,hash,digest) || !equal(digest,c.sha256,32))return WrongOperandRelationship;
+  found[k]=uint64_t(targets[i]);
+ }
+ if(found[F_AddressSetter]==found[F_ConnectionSetter] ||
+    rel(s,found[F_AddressSetter]+4,3,7)==rel(s,found[F_ConnectionSetter]+4,3,7))return WrongOperandRelationship;
+ // Inspected instructions plus resolved call/global relationships, not a
+ // claim that all native initialization or firmware behavior is verified.
  if(rel(s,clear+11,1,5)!=int64_t(found[F_AddressSetter]) || rel(s,conn+7,1,5)!=int64_t(found[F_ConnectionSetter]) ||
     s[found[F_AddressSetter]+4]!=0x40 || s[found[F_AddressSetter]+5]!=0x88 || s[found[F_AddressSetter]+6]!=0x3d ||
     rel(s,found[F_AddressSetter]+4,3,7)!=rel(s,addr+9,2,7) ||

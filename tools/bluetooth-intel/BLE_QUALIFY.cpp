@@ -11,7 +11,8 @@ int main(int argc,char **argv){
  std::ifstream f(argv[1],std::ios::binary|std::ios::ate);auto size=f.tellg();
  if(size<32 || size>48*1024*1024){std::puts("{\"compatible\":false,\"reason\":\"unreadable or unbounded file\"}");return 2;}
  std::vector<uint8_t>b(static_cast<size_t>(size));f.seekg(0);if(!f.read(reinterpret_cast<char*>(b.data()),size))return 2;
- KGPBLE::Plan p;uint32_t detail=0xffffffff;auto r=KGPBLE::qualify(b.data(),b.size(),hash,p,&detail);
+ std::vector<uint8_t>scratch(KGPBLE::contractWorkspaceBytes);
+ KGPBLE::Plan p;uint32_t detail=0xffffffff;auto r=KGPBLE::qualify(b.data(),b.size(),hash,p,&detail,scratch.data(),scratch.size());
  std::printf("{\"compatible\":%s,\"reason_code\":%u,\"reason\":\"%s\",\"missing_function\":\"%s\",\"pages\":%u,\"integrity_cdhash\":\"",
  r==KGPBLE::Good?"true":"false",r,KGPBLE::reasonName(r),detail<KGPBLE::contractCount?KGPBLE::contracts[detail].name:"",p.pageCount);
  for(unsigned i=0;i<20;++i)std::printf("%02x",p.cdhash[i]);
