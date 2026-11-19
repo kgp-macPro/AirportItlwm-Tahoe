@@ -1,0 +1,101 @@
+{
+  "package_version": "2.1.0-beta.1",
+  "public_source_ref": "v2.1.0-beta.1",
+  "public_history": "Curated snapshot descending from existing public main; private experimental history is not included",
+  "wlan": {
+    "original_commit": "c9a72c638e72945e8dd6b34728c35b6fca948a44",
+    "uuid": "557EF8F5-45E3-3B78-B2AE-D1B3B0C4EED0",
+    "executable_sha256": "6359207e57bba95178712e30ef7c572156baf07131e9139d07afc2aa180af925"
+  },
+  "bluetool": {
+    "original_commit": "1f27753f9b757dae59d995dafb083fd7dd9f61ba",
+    "uuid": "EA3EDF65-862E-3D83-A6BF-97CD62836556",
+    "executable_sha256": "e7e3368b8f6a3a5bc650422b68d95d4b07c2e3e84b37b86e78cfbc3414b4cc1f"
+  },
+  "stock_bluetooth": {
+    "repository": "https://github.com/lshbluesky/IntelBluetoothFirmware",
+    "original_commit": "8190bcc0c3cadebacd7e4ccd876836247f7cd4ce",
+    "version": "2.5.3",
+    "source_path": "third_party/IntelBluetoothFirmware-2.5.3"
+  },
+  "lilu": {
+    "repository": "https://github.com/acidanthera/Lilu",
+    "commit": "e4748cc081bf060302c7d3c44a643ce1d11b7e1d",
+    "version": "1.7.2",
+    "source_path": "third_party/Lilu-1.7.2",
+    "sdk_path": "third_party/Lilu-1.7.2-SDK/Lilu.kext"
+  },
+  "MacKernelSDK": {
+    "url": "https://github.com/acidanthera/MacKernelSDK.git",
+    "commit": "05094e5e88cec7caedbfb35e8449ed0db94bf95b",
+    "tree": "fbcf7dd1826765b762b40f88b77fc37e1fb93e33"
+  },
+  "dependency_archive_sha256": {
+    "Lilu-1.7.2-e4748cc.tar.gz": "7aac97e65bb61067f14b97a8744f8abfbb761d0345949394c6979fa3ec97ddd9",
+    "IntelBluetoothFirmware-8190bcc.tar.gz": "09dbf5927ec2911fb4c09fd3b7328a27f550d5b8f6e2d4e474582d4104e17155"
+  },
+  "unchanged_bluetool_inputs": [
+    {
+      "path": "bluetooth/BlueToolFixup-Intel/BlueToolFixup.cpp",
+      "sha256": "3bc26aaf7047162d61b4284d9c0410feb743c757d9517be5998dd0660907850c",
+      "same_at_r49": true
+    },
+    {
+      "path": "bluetooth/BlueToolFixup-Intel/KGPBLE.hpp",
+      "sha256": "b7f9abd5909d0a5045e46211b8e80f90cd51116aeb5db34614639c77f4c32474",
+      "same_at_r49": true
+    },
+    {
+      "path": "bluetooth/BlueToolFixup-Intel/KGPBLEContracts.hpp",
+      "sha256": "672a28fe99490ca4150810ffed48281799fa34c4f9bbe794cebcfb5278b7c19a",
+      "same_at_r49": true
+    },
+    {
+      "path": "bluetooth/BlueToolFixup-Intel/KGPBLEPatterns.hpp",
+      "sha256": "6ce5fc35b1c21fef13147bc82c42e7107492106d0b7634d2f7848901ab7f7d3e",
+      "same_at_r49": true
+    },
+    {
+      "path": "bluetooth/BlueToolFixup-Intel/KGPBLEQualify.hpp",
+      "sha256": "f5d512d64810811a7ed54f46f1ebdcae935011b9fc2cc4b6a4851db4425767de",
+      "same_at_r49": true
+    },
+    {
+      "path": "bluetooth/BlueToolFixup-Intel/KextEntry.cpp",
+      "sha256": "6f12b09a68a7d97adb360aaa796d38b91dde84cc5a4d688497fc0602714bfc70",
+      "same_at_r49": true
+    },
+    {
+      "path": "bluetooth/BlueToolFixup-Intel/LICENSE",
+      "sha256": "a45d0bb572ed792ed34627a72621834b3ba92aab6e2cc4e04301dee7a728d753",
+      "same_at_r49": true
+    },
+    {
+      "path": "bluetooth/BlueToolFixup-Intel/README.md",
+      "sha256": "cdb596e2423c1d51b0b3e44b5453d03a1cf1d020d7c11b4b698a502a53c3c0a9",
+      "same_at_r49": true
+    },
+    {
+      "path": "bluetooth/Common/IntelBLEExchange.hpp",
+      "sha256": "106befaa4793128f2b6696d0f95b79214c47b641ba8970ba5c456222df3022d6",
+      "same_at_r49": true
+    },
+    {
+      "path": "bluetooth/Common/IntelBLEProfiles.hpp",
+      "sha256": "a220bb5db96e60d2ab3cf378a062bf23df58abc0a9fef2a3ff5fb494029bddde",
+      "same_at_r49": true
+    },
+    {
+      "path": "tools/bluetooth-intel/BLE_QUALIFY.cpp",
+      "sha256": "8780be701772ee91c30d774534543b2f889dd687c18814e2e06e953b86e43f28",
+      "same_at_r49": true
+    },
+    {
+      "path": "tools/bluetooth-intel/BUILD_BLE_PROFILES.py",
+      "sha256": "87d2c0345a571f6081405a69b07a9f264dca390ed6e77079e2c7e3a4ea035b0e",
+      "same_at_r49": true
+    }
+  ],
+  "production_manifest": "tools/release_2_1_0_beta_1_inputs.json",
+  "source_archive": "Full curated Git bundle plus complete checked-out tree; no private R45/R47 prerequisites"
+}

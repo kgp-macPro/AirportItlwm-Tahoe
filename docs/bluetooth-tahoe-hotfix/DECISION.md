@@ -1,3 +1,7 @@
+> Historical implementation decision. For current hardware/update status use
+> [PUBLICATION_STATUS_20261119.md](PUBLICATION_STATUS_20261119.md); for
+> installation use [INSTALL.md](INSTALL.md). The original scope is retained.
+
 # Tahoe discovery hotfix — implementation decision, 2026-11-18
 
 The running system is 26.7.3 (25G342). The original R49 WLAN UUID, BlueToolFixup

@@ -24,6 +24,11 @@
     },
     "tools/bluetooth-intel/TEST_TAHOE_LAYOUT.cpp": {
       "sha256": "4ae2a4ac66065adba7640c45bea48b2542e73d0f16f00b45de8d6f06b5101c87"
+    },
+    "bluetooth/BlueToolFixup-Intel/README.md": {
+      "sha256": "5d109f563792af9997190e1611931a4922e65a1cb186cb967e5c74fd7eae92af",
+      "role": "Publication documentation, not a compiler input"
     }
-  }
+  },
+  "publication_source_ref": "bluetoolfixup-intel-v2.7.6"
 }
