@@ -6,6 +6,7 @@
 
 > **AirDrop beta testing — R49:** Testers with Intel **BE200, AX210, AX211 and AX201** are welcome.
 > [Jump to Beta testing](#beta-testing) for the tested setup, known limitations and screenshots.
+> **Bluetooth update:** use the [BlueToolFixup 2.7.6 compatibility hotfix](#bluetoolfixup-276-compatibility-hotfix) with R49.
 > **2.0.0 remains the regular Wi-Fi release.**
 
 # AirportItlwm-Tahoe 2.0.0
@@ -446,6 +447,41 @@ context uses 20 MHz on primary channel 44. Separate firmware PHY contexts do
 not mean separate physical radios. Other AP channels and automatic channel
 following are outside the documented R49 setup.
 
+### BlueToolFixup 2.7.6 compatibility hotfix
+
+**19 November 2026: use the project-modified BlueToolFixup 2.7.6 with R49.**
+The original beta package remains available and still contains 2.7.5; replace
+only that Bluetooth kext with the hotfix below. Keep AirportItlwm R49,
+IntelBluetoothFirmware 2.5.3, IntelBTPatcher 2.5.3 and the documented boot
+arguments unchanged. Installation and restart are manual.
+
+After some Tahoe updates, 2.7.5 could reject otherwise compatible Apple
+functions because its checks included addresses that changed between builds.
+This could leave the additional BLE patches inactive despite `-kgpble` and a
+loaded kext. Our 2.7.6 checks the required instruction layouts while allowing
+those address changes. It retains the same eight patch effects and native
+initialization. This is our compatibility correction, not an official
+Acidanthera 2.7.6 release or an OTA fix.
+
+**After updating to Tahoe 26.7.3 and 26.7.4 RC, successful bidirectional
+Hackintosh-iPhone file transfers were confirmed with R49 and BlueToolFixup
+2.7.6. These results confirm basic R49 AirDrop functionality on both releases.**
+
+The shared Intel Bluetooth selection remains available for BE200, AX210,
+AX211 and AX201; these results do not constitute new physical testing of all
+four cards. Discovery can still be
+delayed after a restart, and the Mac-to-Mac performance limits remain.
+Unknown native layouts skip the additional patches; future macOS support
+is not guaranteed.
+
+**[Download BlueToolFixup 2.7.6 hotfix](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.1.0-beta.1/BlueToolFixup-2.7.6-Tahoe-Hotfix.zip)** ·
+[Corresponding hotfix SOURCE.zip](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.1.0-beta.1/BlueToolFixup-2.7.6-Tahoe-Hotfix-SOURCE.zip) ·
+[Hotfix SHA256 checksums](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.1.0-beta.1/BlueToolFixup-2.7.6-Tahoe-Hotfix-SHA256SUMS.txt) ·
+[Tagged hotfix sources](https://github.com/kgp-macPro/AirportItlwm-Tahoe/tree/bluetoolfixup-intel-v2.7.6/bluetooth/BlueToolFixup-Intel)
+
+The original R49 downloads and source tag below are preserved. The hotfix
+has its own source tag and checksums; the old archives are not silently replaced.
+
 ### Requirements and setup
 
 - The same **OCLP-CustoMac 3.0.0+ and matching Legacy wireless root patches**
@@ -455,7 +491,7 @@ following are outside the documented R49 setup.
 - **HE without beamforming** for the documented beta setup. Keep `-itlwmbf`
   disabled initially. The infrastructure reference uses 160 MHz; the private
   AWDL context uses 20 MHz on the same primary channel.
-- The tested Bluetooth combination: project-modified **BlueToolFixup 2.7.5**, original
+- The Bluetooth combination: project-modified **BlueToolFixup 2.7.6 hotfix**, original
   **IntelBluetoothFirmware 2.5.3** and **IntelBTPatcher 2.5.3**.
 
 Use these additional boot arguments for the documented beta configuration:
@@ -467,20 +503,23 @@ Use these additional boot arguments for the documented beta configuration:
 `-kgpble` enables the additional BLE patches in the modified BlueToolFixup.
 `-itlwmbeawdldpnoinfra` selects the adapted Data-Path-TLV form without optional
 infrastructure details; it does **not** disable the normal Wi-Fi connection.
-The 2.7.5 label identifies this project's modified build, not an official
+The 2.7.6 label identifies this project's modified build, not an official
 Acidanthera release. IntelBluetoothFirmware and IntelBTPatcher 2.5.3 are
 unmodified lshbluesky releases.
 Use the beta's Bluetooth instructions rather than the historical 2.0.0
 Bluetooth versions listed above. No BTLEAdvFixup is required by this setup.
 
-**[Download 2.1.0 Beta 1 — RELEASE.zip](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.1.0-beta.1/AirportItlwm-Tahoe-2.1.0-beta.1-RELEASE.zip)** ·
+**[Download original R49 base package — RELEASE.zip](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.1.0-beta.1/AirportItlwm-Tahoe-2.1.0-beta.1-RELEASE.zip)** ·
 [Complete SOURCE.zip](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.1.0-beta.1/AirportItlwm-Tahoe-2.1.0-beta.1-SOURCE.zip) ·
 [SHA256 checksums](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/download/v2.1.0-beta.1/SHA256SUMS.txt) ·
 [Beta release and instructions](https://github.com/kgp-macPro/AirportItlwm-Tahoe/releases/tag/v2.1.0-beta.1) ·
 [Tagged sources](https://github.com/kgp-macPro/AirportItlwm-Tahoe/tree/v2.1.0-beta.1)
 
-The beta Wi-Fi and Bluetooth drivers are separate components supplied in one
-RELEASE.zip, under `Wi-Fi/` and `Bluetooth/`. Follow the included INSTALL.md,
+The original beta Wi-Fi and Bluetooth drivers are supplied in RELEASE.zip,
+under `Wi-Fi/` and `Bluetooth/`. That preserved package contains BlueToolFixup
+**2.7.5**. For the current setup, use it with the **2.7.6 hotfix above**,
+replacing only BlueToolFixup.kext. Follow the included INSTALL.md and the
+updated hotfix README,
 back up the current kexts and boot configuration,
 and retain a known working setup for rollback. All installation and reboot
 steps are manual.
@@ -491,12 +530,41 @@ steps are manual.
 |---|---|
 | **AirDrop — BE200 and AX210** | Successful bidirectional transfers demonstrated; reliability varies by peer and session. |
 | **Mac-to-Mac transfers** | Connection setup can be slow, and some transfers fail. Start latency and transfer speed remain development priorities. |
+| **Discovery after restart** | Visibility can be delayed or initially differ between peers even with the additional BLE patches active. The cause remains open. |
 | **Personal Hotspot** | The adapted laobamac WPA2/WPA3 compatibility change is included. Historical connections succeeded, but current attempts can fail during BLE setup or WLAN network matching. Not reliably qualified. |
 | **Continuity Camera** | Not qualified by the AirDrop results. |
 | **AX201 and AX211** | Included for beta testing; actual AirDrop hardware results are still needed. |
 
 R49 is not locked to one Tahoe build number. Later macOS builds still require
-a compatible Legacy wireless environment; future compatibility is not guaranteed.
+a compatible Legacy wireless environment and compatible native Bluetooth
+instruction layouts for the additional BLE patches; future compatibility
+is not guaranteed.
+
+### macOS updates: known incremental OTA limitation
+
+The approximately **1 GB delta updates to Tahoe 26.7.3 and 26.7.4 RC** failed
+in Software Update at the preparation/verification stage of installation.
+
+**BlueToolFixup 2.7.6 does not fix incremental OTA verification failures.**
+BlueToolFixup's existing page-cache patches can make the updater see changed
+`bluetoothd` contents and reject a delta update with
+`MSU_ERR_FILESYSTEM_DOESNT_VERIFY` / `FullReplacementRequired`.
+
+An incremental attempt with `-btlfxoff` also failed, this time while checking
+**System Information**, a different file that BlueToolFixup does not patch.
+
+**After these failed installation attempts, Software Update automatically
+offered the full approximately 18.3 GB OTA payloads. These completed
+successfully on two separate system disks,
+reaching Tahoe 26.7.3 and 26.7.4 RC. Successful full OTA updates were confirmed
+with and without `-btlfxoff`; this update path does not require the argument.**
+
+`-btlfxoff` disables the entire BlueToolFixup plugin when effective; removing
+only `-kgpble` disables the additional BLE patches while leaving its base
+patches. **Neither is a verified complete workaround for all incremental
+update failures.** Changing a boot argument requires a restart before it
+can affect the update environment. Disabling the plugin also removes its
+Bluetooth fixes, so that boot is not an AirDrop qualification test.
 
 ### Personal Hotspot: included change and remaining limits
 
@@ -581,6 +649,10 @@ This image alone does not establish the browser request's network route.
 </details>
 
 ### Testing and feedback
+
+Developer contributions are very welcome. If you would like to help improve
+the driver, Bluetooth integration, performance or documentation, please submit
+a [pull request](https://github.com/kgp-macPro/AirportItlwm-Tahoe/pulls).
 
 Please report the card, macOS version, loaded WLAN/Bluetooth versions, AP
 channel and transfer direction. Distinguish discovery from an actual file
