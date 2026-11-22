@@ -455,6 +455,25 @@ only that Bluetooth kext with the hotfix below. Keep AirportItlwm R49,
 IntelBluetoothFirmware 2.5.3, IntelBTPatcher 2.5.3 and the documented boot
 arguments unchanged. Installation and restart are manual.
 
+After restarting, check the loaded BlueToolFixup build in Terminal:
+
+```sh
+sudo kmutil showloaded --list-only | grep -i BlueToolFixup
+```
+
+- If `kmutil` runs without an error and there is no matching line, no
+  BlueToolFixup build is listed as loaded.
+- If a line appears, compare both the version and UUID. The hotfix must show
+  **2.7.6** and **BE8B2187-41AA-3EF6-963D-2C4CEBA49982**. If either value
+  differs, the loaded build is different.
+- If `kmutil` reports an error, rerun it without the pipe to see the full
+  diagnostic. An error leaves the loaded build unverified.
+
+A matching identity confirms which kext is loaded. BLE patch activation and
+AirDrop still need separate checks. The original ZIP's optional checker can
+print messages in German. To use the [maintained English checker](https://github.com/kgp-macPro/AirportItlwm-Tahoe/blob/airdrop-beta/tools/bluetooth-intel/CHECK_LOADED.py),
+save it next to the extracted hotfix's `BUILD_IDENTITY.json`.
+
 After some Tahoe updates, 2.7.5 could reject otherwise compatible Apple
 functions because its checks included addresses that changed between builds.
 This could leave the additional BLE patches inactive despite `-kgpble` and a

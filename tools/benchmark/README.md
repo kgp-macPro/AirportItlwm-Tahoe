@@ -47,3 +47,7 @@ Mandatory peer link: VHT 1000Base-T; HE/HE+BF 2500Base-T. Never 5/10G for these
 comparisons. Standard runner first for VHT, extended RX stress for HE; UDP1700
 is not a loss-free guarantee. The guide covers mode/bootargs, server/client
 commands, IP prompt, output path and returning the complete ZIP.
+
+The Git branch contains the maintained runner sources.
+`RUNNER_IDENTITY.json` records the runner hashes from the published tools
+package. Verify a downloaded package against its companion release checksums.
