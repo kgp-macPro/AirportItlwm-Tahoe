@@ -249,7 +249,7 @@ else
       exit 2
     fi
     if valid_server_ipv4 "$SERVER"; then break; fi
-    echo 'Ungültige IPv4-Adresse. Bitte Punkte statt Kommas verwenden.' >&2
+    echo 'Invalid IPv4 address. Use dots instead of commas.' >&2
     SERVER=''
   done
   if [[ -z "$SERVER" ]]; then

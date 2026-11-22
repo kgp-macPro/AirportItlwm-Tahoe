@@ -29,21 +29,34 @@ Use it with the original AirportItlwm-Tahoe 2.1.0 Beta 1 (R49) base package.
 4. Restart manually. A live file replacement does not change the loaded kext.
    For normal AirDrop use, `-btlfxoff` must not be active because it disables
    BlueToolFixup. Do not judge Bluetooth/AirDrop while that plugin is disabled.
-5. Optionally run the included read-only checker from the extracted folder:
-
-   ```sh
-   sudo python3 CHECK_LOADED.py
-   ```
-
-   Expected BlueToolFixup version: **2.7.6**. Expected UUID:
-   **BE8B2187-41AA-3EF6-963D-2C4CEBA49982**. A matching loaded UUID alone does
-   not prove BLE transmission, remote discovery or file delivery.
+5. Verify the loaded build using the Terminal check below.
 6. Check Wi-Fi/Internet, visibility from both peers before offering a file,
    and actual file arrivals in each direction. Ethernet can be disabled
    manually for a WLAN comparison; AirDrop may still choose local Wi-Fi.
 
 Nothing in this package installs automatically, changes permissions or edits
 EFI, NVRAM, boot arguments or Apple system files on your behalf.
+
+## Verify the loaded build
+
+After restarting, check the loaded BlueToolFixup build in Terminal:
+
+```sh
+sudo kmutil showloaded --list-only | grep -i BlueToolFixup
+```
+
+- If `kmutil` runs without an error and there is no matching line, no
+  BlueToolFixup build is listed as loaded.
+- If a line appears, compare both the version and UUID. The hotfix must show
+  **2.7.6** and **BE8B2187-41AA-3EF6-963D-2C4CEBA49982**. If either value
+  differs, the loaded build is different.
+- If `kmutil` reports an error, rerun it without the pipe to see the full
+  diagnostic. An error leaves the loaded build unverified.
+
+A matching identity confirms which kext is loaded. BLE patch activation and
+AirDrop still need separate checks. The original ZIP's optional checker can
+print messages in German. To use the [maintained English checker](https://github.com/kgp-macPro/AirportItlwm-Tahoe/blob/airdrop-beta/tools/bluetooth-intel/CHECK_LOADED.py),
+save it next to the extracted hotfix's `BUILD_IDENTITY.json`.
 
 ## Scope and remaining limitations
 
